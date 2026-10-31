@@ -1,0 +1,43 @@
+name: Release km
+
+# Baut das Plugin und veröffentlicht ein GitHub-Release für BRAT,
+# sobald ein Tag der Form 1.2.3-km.N gepusht wird.
+# Der Tag muss mit "version" in manifest.json übereinstimmen.
+
+on:
+  push:
+    tags:
+      - "*-km.*"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 20.19.1
+          cache: npm
+
+      - name: Check tag matches manifest
+        run: |
+          V=$(node -p "require('./manifest.json').version")
+          if [ "$V" != "${GITHUB_REF_NAME}" ]; then
+            echo "Tag ${GITHUB_REF_NAME} passt nicht zu manifest.json ($V)"
+            exit 1
+          fi
+
+      - run: npm ci
+      - run: npm run build
+
+      - name: Publish release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create "${GITHUB_REF_NAME}" main.js manifest.json styles.css \
+            --title "${GITHUB_REF_NAME}" \
+            --notes "Fork-Build von StoryLine (id storyline-km) für BRAT-Tests."
