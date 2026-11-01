@@ -1,6 +1,6 @@
 # Changelog: fork storyline-km
 
-Changes of this fork compared to the original StoryLine plugin by Jan Sandström. Each `## <version>` section is used automatically as the text of the matching GitHub release. Every release also carries `storyline-km-source.zip` (all source files that are new or changed compared to the original, without `main.js`) and `storyline-km.patch` (the full diff against the original).
+Changes of this fork compared to the original StoryLine plugin by Jan Sandström. Each `## <version>` section is used as the initial text of the matching GitHub release; texts edited on GitHub (e.g. with screenshots) are never overwritten. Every release also carries `storyline-km-source.zip` (all source files that are new or changed compared to the original, without `main.js`) and `storyline-km.patch` (the full diff against the original).
 
 ## 1.11.8-km.12
 

@@ -77,14 +77,19 @@ jobs:
           V: ${{ steps.v.outputs.version }}
         run: |
           node .github/scripts/km-release-notes.js notes
-          # Attach source bundle and patch to the current release
           gh release upload "$V" storyline-km-source.zip storyline-km.patch --clobber
-          # Every "## <version>" section in CHANGELOG-km.md becomes the text of that release
-          for f in notes/*.md; do
-            [ -e "$f" ] || continue
-            v=$(basename "$f" .md)
-            if gh release view "$v" >/dev/null 2>&1; then
-              gh release edit "$v" --notes-file "$f"
-              echo "Notes updated: $v"
-            fi
-          done
+          # Release text comes from the matching CHANGELOG-km.md section, but ONLY for the
+          # current version, and never when the text was edited by hand on GitHub
+          # (screenshots, images, extra notes). Older releases are never touched.
+          f="notes/$V.md"
+          [ -e "$f" ] || { echo "No changelog section for $V"; exit 0; }
+          current=$(gh release view "$V" --json body -q .body)
+          placeholder="Fork build of StoryLine (id storyline-km) for BRAT testing."
+          if [ -z "$current" ] || [ "$current" = "$placeholder" ] || [ "$current" = "$(cat "$f")" ]; then
+            gh release edit "$V" --notes-file "$f"
+            echo "Notes set: $V"
+          elif printf '%s' "$current" | grep -q -E '!\[|<img|user-attachments'; then
+            echo "Notes of $V contain images edited on GitHub - left untouched"
+          else
+            echo "Notes of $V were edited on GitHub - left untouched"
+          fi
