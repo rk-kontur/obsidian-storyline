@@ -2,6 +2,26 @@
 
 Changes of this fork compared to the original StoryLine plugin by Jan Sandström. Each `## <version>` section is used as the initial text of the matching GitHub release; texts edited on GitHub (e.g. with screenshots) are never overwritten. Every release also carries `storyline-km-source.zip` (all source files that are new or changed compared to the original, without `main.js`) and `storyline-km.patch` (the full diff against the original).
 
+## 1.12.0-km.8
+
+**Subway map: off page band also behind the line names**
+
+- The tinted OFF PAGE band now continues behind the line names in the name column on the left, so the zone reads as one band across the whole width.
+- More space above the off page lines; the OFF PAGE header sits with some air above the first line name.
+
+<!-- screenshot: Subway map with tinted name column in the off page zone -->
+
+**How and where to use:**
+
+1. Open **Plotlines** in **Subway** mode with at least one line moved to off page (right-click a line name → **Move to off page**).
+2. The tint covers the line names and the map.
+
+**Files:**
+
+- `utils/pageZones.ts` (band in the name column, larger zone gap)
+- `views/StorylineView.ts` (+1)
+- `styles.css` (fork section: name column band)
+
 ## 1.12.0-km.7
 
 **Subway map: "on page" and "off page" zones**

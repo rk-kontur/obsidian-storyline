@@ -2,7 +2,7 @@
 import { ButtonComponent, ItemView, Menu, MenuItem, Modal, Notice, Setting, TFile, TextComponent, WorkspaceLeaf } from 'obsidian';
 import { aliasRealizedColumns, drawRealizedLinks, removeRealizedStations, resolveRealizations, splitRealizedLanes } from '../utils/arcRealization';
 import { renderVolumeScopeSelect, scopeFilter } from '../utils/volumeScope';
-import { attachZoneMenu, drawOffPageBand, getOffPageLines, orderByZone, renderZoneHeader, ZONE_GAP } from '../utils/pageZones';
+import { attachZoneMenu, drawOffPageBand, getOffPageLines, orderByZone, renderOffPageLabelBand, renderZoneHeader, ZONE_GAP } from '../utils/pageZones';
 import { drawSubwayVolumeMarker, getProjectVolumes, getVolumeForAct, VolumeDividerTracker } from '../utils/volumes';
 import * as obsidian from 'obsidian';
 import { Scene } from '../models/Scene';
@@ -509,8 +509,9 @@ export class StorylineView extends ItemView {
         if (zoneSplit >= 0) {
             const bandTop = TOP_MARGIN + zoneSplit * LANE_HEIGHT + 4;
             drawOffPageBand(svg, activeDocument, bandTop, trackBottom - bandTop + 10, svgWidth);
+            renderOffPageLabelBand(labelCol, bandTop, trackBottom - bandTop + 10);
             if (zoneSplit > 0) renderZoneHeader(labelCol, 'ON PAGE', TOP_MARGIN - 22, LABEL_LEFT, false);
-            renderZoneHeader(labelCol, 'OFF PAGE', bandTop + 6, LABEL_LEFT, true);
+            renderZoneHeader(labelCol, 'OFF PAGE', bandTop + 10, LABEL_LEFT, true);
         }
 
         // ── Build plotline → columns map ──

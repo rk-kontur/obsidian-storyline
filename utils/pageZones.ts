@@ -20,7 +20,7 @@ import type { App } from 'obsidian';
 export const OFF_PAGE_KEY = 'offPageLines';
 
 /** Vertical space added above the off-page band (room for its header). */
-export const ZONE_GAP = 34;
+export const ZONE_GAP = 44;
 
 export function getOffPageLines(app: App, projectFilePath: string | undefined | null): Set<string> {
     if (!projectFilePath) return new Set();
@@ -64,6 +64,12 @@ export function drawOffPageBand(svg: SVGSVGElement, doc: Document, y: number, he
     rect.setAttribute('height', String(height));
     rect.classList.add('sl-km-offpage-band');
     svg.insertBefore(rect, svg.firstChild);
+}
+
+/** Same tint behind the line names in the sticky name column. */
+export function renderOffPageLabelBand(labelCol: HTMLElement, top: number, height: number): void {
+    const band = labelCol.createDiv('sl-km-offpage-band-label');
+    band.setCssStyles({ position: 'absolute', left: '0', right: '0', top: `${top}px`, height: `${height}px` });
 }
 
 /** "ON PAGE" / "OFF PAGE" header in the sticky line-name column. */

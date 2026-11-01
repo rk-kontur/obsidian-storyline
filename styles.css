@@ -14178,6 +14178,16 @@ body.sl-focus-active-global.sl-focus-dim-text .markdown-source-view.mod-cm6 .cm-
     opacity: 0.6;
 }
 
+.subway-label-col .sl-km-offpage-band-label {
+    z-index: -1;
+    background: var(--background-modifier-hover);
+    opacity: 0.6;
+}
+
+.subway-label-col {
+    isolation: isolate;
+}
+
 .sl-km-zone-header {
     font-family: var(--font-interface);
     font-size: var(--font-ui-smaller);
