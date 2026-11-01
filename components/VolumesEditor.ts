@@ -7,7 +7,7 @@
 
 import { Notice, TFile } from 'obsidian';
 import type { App } from 'obsidian';
-import { assignMissingVolumeIds, getProjectVolumes, hasImplicitVolumeIds, readVolumeIdSeq, resolveVolumeIds, volumeIdNumber, type VolumeDef } from '../utils/volumes';
+import { normalizeVolumeIds, parseVolumes, readVolumeIdSeq, resolveVolumeIds, volumeIdNumber, type VolumeIdFix } from '../utils/volumes';
 import { clearVolumeScopeIfId, getVolumeScope, nextVolumeId } from '../utils/volumeScope';
 
 interface EditableVolume {
@@ -51,6 +51,15 @@ export function findOverlaps(volumes: { acts: number[] }[]): Map<number, number[
 
 type VolumeFields = Pick<EditableVolume, 'title' | 'acts' | 'wordGoal' | 'deadline'>;
 
+/** Copy of plain frontmatter data (arrays and objects); other values (dates) are shared. */
+function cloneRaw(value: unknown): unknown {
+    if (Array.isArray(value)) return value.map(cloneRaw);
+    if (value && typeof value === 'object' && Object.getPrototypeOf(value) === Object.prototype) {
+        return Object.fromEntries(Object.entries(value as Record<string, unknown>).map(([k, v]) => [k, cloneRaw(v)]));
+    }
+    return value;
+}
+
 function sameActs(a: number[], b: number[]): boolean {
     return a.length === b.length && a.every((x, i) => x === b[i]);
 }
@@ -71,8 +80,12 @@ function rawVolumeIds(raw: unknown): string[] {
  *   that were changed in the editor (title, acts, word goal, deadline) are
  *   written; all other keys (e.g. `color`) and the original notation of
  *   unchanged fields (e.g. `acts: "1-4"`) stay as they are.
- * - Volumes deleted in the editor are removed; new ones are appended.
- * - Entries the editor cannot show (no valid acts, not an object) are kept.
+ * - Only volumes deleted in this dialog (`deletedIds`) are removed; new ones
+ *   are appended.
+ * - Every other entry is kept untouched in its position: entries the editor
+ *   cannot show (no valid acts, not an object), entries added or changed in
+ *   the file while the dialog was open, and a second entry with an id that
+ *   was already written.
  * - `volumeIdSeq` keeps the highest volume number ever used (also of deleted
  *   volumes), so ids are never handed out twice.
  */
@@ -81,7 +94,7 @@ async function saveVolumes(
     projectFilePath: string,
     volumes: EditableVolume[],
     original: Map<string, VolumeFields>,
-    retiredIds: Iterable<string> = [],
+    deletedIds: ReadonlySet<string> = new Set(),
 ): Promise<void> {
     const file = app.vault.getAbstractFileByPath(projectFilePath);
     if (!(file instanceof TFile)) {
@@ -91,7 +104,7 @@ async function saveVolumes(
     await app.fileManager.processFrontMatter(file, (fm: Record<string, unknown>) => {
         const raw: unknown[] = Array.isArray(fm.volumes) ? (fm.volumes as unknown[]) : [];
         const seq = Math.max(readVolumeIdSeq(fm), ...volumes.map(v => volumeIdNumber(v.id)),
-            ...[...retiredIds].map(volumeIdNumber), ...rawVolumeIds(raw).map(volumeIdNumber));
+            ...[...deletedIds].map(volumeIdNumber), ...rawVolumeIds(raw).map(volumeIdNumber));
         if (seq > 0) fm.volumeIdSeq = seq;
 
         const byId = new Map(volumes.map(v => [v.id, v]));
@@ -100,9 +113,12 @@ async function saveVolumes(
         const out: unknown[] = [];
         raw.forEach((entry, idx) => {
             const id = resolved[idx];
-            if (!id) { out.push(entry); return; } // draft / unknown entry: keep untouched
+            if (!id || written.has(id)) { out.push(entry); return; } // draft, unknown entry or duplicate id: keep untouched
             const v = byId.get(id);
-            if (!v || written.has(id)) return; // deleted in the editor
+            if (!v) {
+                if (!deletedIds.has(id)) out.push(entry); // not known to this dialog (e.g. added by hand meanwhile): keep
+                return; // deleted in this dialog
+            }
             written.add(id);
             const e = { ...(entry as Record<string, unknown>) };
             const before = original.get(id);
@@ -133,14 +149,14 @@ async function saveVolumes(
 }
 
 /**
- * Hand-written entries without `id`: add the id each one has now, in place,
- * so removing an entry above them no longer renames them. Nothing else changes.
+ * Write the id fix of normalizeVolumeIds (missing ids, renumbered
+ * duplicates) to the project file, in place. Only `id` values change.
  */
-async function persistMissingIds(app: App, projectFilePath: string): Promise<void> {
+async function persistIdFix(app: App, projectFilePath: string): Promise<void> {
     const file = app.vault.getAbstractFileByPath(projectFilePath);
     if (!(file instanceof TFile)) return;
     await app.fileManager.processFrontMatter(file, (fm: Record<string, unknown>) => {
-        assignMissingVolumeIds(fm.volumes);
+        normalizeVolumeIds(fm.volumes, readVolumeIdSeq(fm));
     });
 }
 
@@ -161,18 +177,29 @@ export function renderVolumesEditor(
         return;
     }
 
-    const volumes: EditableVolume[] = getProjectVolumes(app, projectFilePath)
-        .map((v: VolumeDef) => ({ ...v, acts: [...v.acts] }));
+    const projectFile = app.vault.getAbstractFileByPath(projectFilePath);
+    const projectFm = () => (projectFile instanceof TFile ? app.metadataCache.getFileCache(projectFile)?.frontmatter : undefined);
+    // Ids must be explicit and unique before editing: entries without `id`
+    // keep the id they have now, later duplicates get a new id. Applied to a
+    // copy first (the editor shows the fixed ids), then written to the file.
+    const fmNow = projectFm();
+    const rawCopy: unknown = Array.isArray(fmNow?.volumes) ? cloneRaw(fmNow?.volumes) : [];
+    const idFix: VolumeIdFix = normalizeVolumeIds(rawCopy, readVolumeIdSeq(fmNow));
+    if (idFix.changed) void persistIdFix(app, projectFilePath);
+
+    const volumes: EditableVolume[] = parseVolumes(rawCopy)
+        .map(v => ({ ...v, acts: [...v.acts] }));
     // Field values at open: only fields changed in the editor are written back
     const original = new Map<string, VolumeFields>(volumes.map(v => [v.id, { title: v.title, acts: [...v.acts], wordGoal: v.wordGoal, deadline: v.deadline }]));
 
-    // Ids deleted in this session are never handed out again
+    // Ids deleted in this dialog: removed from the file on save, never handed out again
     const retiredIds = new Set<string>();
-    const projectFile = app.vault.getAbstractFileByPath(projectFilePath);
-    const projectFm = () => (projectFile instanceof TFile ? app.metadataCache.getFileCache(projectFile)?.frontmatter : undefined);
-    // Hand-written entries without `id`: store the ids they have now, so
-    // removing an entry above them no longer renames them.
-    if (hasImplicitVolumeIds(projectFm()?.volumes)) void persistMissingIds(app, projectFilePath);
+    if (idFix.renumbered.length > 0) {
+        container.createEl('p', {
+            cls: 'sl-km-volumes-warning',
+            text: `Duplicate volume ids were renumbered: ${idFix.renumbered.map(r => `${r.title || 'untitled'} (${r.from} → ${r.to})`).join(', ')}.`,
+        });
+    }
 
     const list = container.createDiv('sl-km-volumes-list');
     const warn = container.createDiv('sl-km-volumes-warning');

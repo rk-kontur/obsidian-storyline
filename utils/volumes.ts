@@ -85,23 +85,48 @@ export function resolveVolumeIds(raw: unknown): string[] {
     });
 }
 
+/** Result of normalizeVolumeIds: what was changed in place. */
+export interface VolumeIdFix {
+    changed: boolean;
+    /** Later entries that shared an explicit id with an earlier one: title, old id, new id. */
+    renumbered: Array<{ title: string; from: string; to: string }>;
+}
+
 /**
- * Give every object entry of a raw `volumes:` array that has no `id` the id
- * it has now (resolveVolumeIds), in place. Entries parseVolumes skips (e.g. a
- * draft without acts) get a free "v<position>" id as well. Nothing else is
- * changed. Returns true if an id was added.
+ * Make the ids of a raw `volumes:` array explicit and unique, in place:
+ * - Entries without `id` get the id they have now (resolveVolumeIds); an
+ *   entry parseVolumes skips (e.g. a draft without acts) gets a free
+ *   "v<position>" id.
+ * - Explicit duplicates: the first entry keeps the id, every later one gets
+ *   a new id above every id in the list and above `seq` (volumeIdSeq).
+ * Only `id` is touched. Non-object entries are left alone.
  */
-export function assignMissingVolumeIds(raw: unknown): boolean {
-    if (!Array.isArray(raw)) return false;
+export function normalizeVolumeIds(raw: unknown, seq = 0): VolumeIdFix {
+    const fix: VolumeIdFix = { changed: false, renumbered: [] };
+    if (!Array.isArray(raw)) return fix;
     const resolved = resolveVolumeIds(raw);
-    const taken = new Set(raw
-        .map((e, i) => (e && typeof e === 'object' ? scalarText((e as Record<string, unknown>).id) || resolved[i] : ''))
-        .filter(id => id));
-    let changed = false;
-    raw.forEach((entry, idx) => {
-        if (!entry || typeof entry !== 'object') return;
-        const e = entry as Record<string, unknown>;
-        if (scalarText(e.id)) return;
+    const entries = raw.map(e => (e && typeof e === 'object' ? (e as Record<string, unknown>) : null));
+    const allIds = entries.map((e, i) => (e ? scalarText(e.id) || resolved[i] : '')).filter(id => id);
+    let next = Math.max(seq, ...allIds.map(volumeIdNumber)) + 1;
+    const taken = new Set(allIds);
+    const seen = new Set<string>();
+    // 1. Explicit duplicates get a fresh id
+    entries.forEach(e => {
+        if (!e) return;
+        const id = scalarText(e.id);
+        if (!id) return;
+        if (seen.has(id)) {
+            const to = `v${next++}`;
+            fix.renumbered.push({ title: typeof e.title === 'string' ? e.title : '', from: id, to });
+            e.id = to;
+            taken.add(to);
+            fix.changed = true;
+        }
+        seen.add(scalarText(e.id));
+    });
+    // 2. Missing ids: the current positional id, drafts a free one
+    entries.forEach((e, idx) => {
+        if (!e || scalarText(e.id)) return;
         let id = resolved[idx];
         if (!id) {
             let n = idx + 1;
@@ -110,9 +135,9 @@ export function assignMissingVolumeIds(raw: unknown): boolean {
             taken.add(id);
         }
         e.id = id;
-        changed = true;
+        fix.changed = true;
     });
-    return changed;
+    return fix;
 }
 
 /** Parse the raw `volumes:` frontmatter value. Invalid entries are skipped. */
@@ -148,14 +173,6 @@ export function getProjectVolumes(app: App, projectFilePath: string | undefined 
     if (!(file instanceof TFile)) return [];
     const fm = app.metadataCache.getFileCache(file)?.frontmatter;
     return parseVolumes(fm?.volumes);
-}
-
-/** True if a `volumes:` entry has no explicit `id` (its id then depends on its list position). */
-export function hasImplicitVolumeIds(raw: unknown): boolean {
-    return Array.isArray(raw) && raw.some(e => {
-        if (!e || typeof e !== 'object') return false;
-        return !scalarText((e as Record<string, unknown>).id);
-    });
 }
 
 /**
