@@ -2,6 +2,25 @@
 
 Changes of this fork compared to the original StoryLine plugin by Jan Sandström. Each `## <version>` section is used as the initial text of the matching GitHub release; texts edited on GitHub (e.g. with screenshots) are never overwritten. Every release also carries `storyline-km-source.zip` (all source files that are new or changed compared to the original, without `main.js`) and `storyline-km.patch` (the full diff against the original).
 
+## 1.12.0-km.6
+
+**Subway map: volume name in the act labels**
+
+- The act labels above the Subway map now read **"VOLUME 1 ACT 1"**, "VOLUME 1 ACT 2" … for acts that belong to a volume. The separate volume title at the top left of each volume is gone; the solid volume divider line stays.
+- Acts without a volume keep their plain label ("ACT 9").
+
+<!-- screenshot: Subway map act labels with volume names -->
+
+**How and where to use:**
+
+1. Define volumes (Manage story structure → Volumes).
+2. Open **Plotlines** in **Subway** mode: each act label carries its volume name.
+
+**Files:**
+
+- `views/StorylineView.ts` (act label with volume name)
+- `utils/volumes.ts` (+1: volume marker without separate title)
+
 ## 1.12.0-km.5
 
 **Filter bar: "Type" and "State" labels, no more cut-off buttons**

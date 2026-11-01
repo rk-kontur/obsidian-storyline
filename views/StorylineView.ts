@@ -2,7 +2,7 @@
 import { ButtonComponent, ItemView, Menu, MenuItem, Modal, Notice, Setting, TFile, TextComponent, WorkspaceLeaf } from 'obsidian';
 import { aliasRealizedColumns, drawRealizedLinks, removeRealizedStations, resolveRealizations, splitRealizedLanes } from '../utils/arcRealization';
 import { renderVolumeScopeSelect, scopeFilter } from '../utils/volumeScope';
-import { drawSubwayVolumeMarker, getProjectVolumes, VolumeDividerTracker } from '../utils/volumes';
+import { drawSubwayVolumeMarker, getProjectVolumes, getVolumeForAct, VolumeDividerTracker } from '../utils/volumes';
 import * as obsidian from 'obsidian';
 import { Scene } from '../models/Scene';
 import { SceneManager } from '../services/SceneManager';
@@ -526,7 +526,8 @@ export class StorylineView extends ItemView {
             acts.get(act)!.push(col);
         });
 
-        const volumeTracker = new VolumeDividerTracker(getProjectVolumes(this.app, this.sceneManager.activeProject?.filePath));
+        const subwayVolumes = getProjectVolumes(this.app, this.sceneManager.activeProject?.filePath);
+        const volumeTracker = new VolumeDividerTracker(subwayVolumes);
         const actEntries = [...acts.entries()].sort((a, b) => a[0] - b[0]);
         for (let ai = 0; ai < actEntries.length; ai++) {
             const [actNum, cols] = actEntries[ai];
@@ -542,7 +543,7 @@ export class StorylineView extends ItemView {
                     labelY: TOP_MARGIN - 40,
                     y1: TOP_MARGIN - 50,
                     y2: trackBottom,
-                    title: startedVolume.title,
+                    title: '', // volume name goes into the act label (below)
                     drawLine: ai > 0,
                 });
             }
@@ -556,7 +557,9 @@ export class StorylineView extends ItemView {
             actLabel.setAttribute('font-size', '16');
             actLabel.setAttribute('font-weight', '700');
             actLabel.setAttribute('fill', 'var(--text-muted)');
-            actLabel.textContent = getActDisplayLabel(actNum).toUpperCase();
+            // fork: "VOLUME 1 ACT 1" when the act belongs to a volume
+            const actVolume = getVolumeForAct(subwayVolumes, actNum);
+            actLabel.textContent = `${actVolume ? actVolume.title + ' ' : ''}${getActDisplayLabel(actNum)}`.toUpperCase();
             svg.appendChild(actLabel);
 
             // Vertical divider line before this act group (clear, visible)

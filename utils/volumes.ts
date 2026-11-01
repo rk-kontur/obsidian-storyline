@@ -161,6 +161,7 @@ export function drawSubwayVolumeMarker(
         line.setAttribute('stroke-width', '4');
         svg.appendChild(line);
     }
+    if (!opts.title) return; // no separate title (e.g. shown in the act labels instead)
     const label = doc.createElementNS(svgNS, 'text');
     label.setAttribute('x', String(opts.labelX));
     label.setAttribute('y', String(opts.labelY));
