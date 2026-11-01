@@ -5,7 +5,7 @@ import { SceneManager } from '../services/SceneManager';
 import { SceneCardComponent } from '../components/SceneCard';
 import { getProjectVolumes, VolumeDividerTracker } from '../utils/volumes';
 import { getOffPageLines, orderByZone } from '../utils/pageZones';
-import { sceneCharacterNames } from '../utils/sceneCharacters';
+import { characterKey, sceneCharacterNames } from '../utils/sceneCharacters';
 import { defaultActForScope, placeInFullList, renderVolumeScopeSelect, scopeActs, scopeFilter } from '../utils/volumeScope';
 import { ArcFilterMode, arcFilterQuery, loadArcFilter, renderArcFilterToggle, renderArcPointBadge, saveArcFilter } from '../components/ArcPointUI';
 import { InspectorComponent } from '../components/Inspector';
@@ -1079,10 +1079,11 @@ export class TimelineView extends ItemView {
             });
         }
 
-        // Characters
-        if (scene.characters?.length) {
+        // Characters (fork: without the POV character, it is already shown as "POV: …")
+        const timelineChars = (scene.characters ?? []).filter(c => !scene.pov || characterKey(c) !== characterKey(scene.pov));
+        if (timelineChars.length) {
             const chars = card.createDiv('timeline-card-chars');
-            scene.characters.forEach(c => {
+            timelineChars.forEach(c => {
                 chars.createSpan({ cls: 'timeline-char-tag', text: c });
             });
         }

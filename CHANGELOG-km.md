@@ -2,6 +2,22 @@
 
 Changes of this fork compared to the original StoryLine plugin by Jan Sandström. Each `## <version>` section is used as the initial text of the matching GitHub release; texts edited on GitHub (e.g. with screenshots) are never overwritten. Every release also carries `storyline-km-source.zip` (all source files that are new or changed compared to the original, without `main.js`) and `storyline-km.patch` (the full diff against the original).
 
+## 1.12.0-km.11
+
+**Timeline: POV character no longer listed twice on a card**
+
+- A Timeline card showed the POV character twice when it was also entered under Characters: once as "POV: Yasemin" and again in the character list below. The list now leaves out the POV character, as the Board cards already do. `Yasemin` and `[[Yasemin]]` count as the same character.
+
+<!-- screenshot: Timeline card with POV and characters -->
+
+**How and where to use:**
+
+1. Open the **Timeline** (linear mode). A scene with POV Yasemin and Characters Yasemin, Mark shows "POV: Yasemin" and below only "Mark".
+
+**Files:**
+
+- `views/TimelineView.ts` (character list without the POV character)
+
 ## 1.12.0-km.10
 
 **The POV character counts as a character of the scene everywhere**
