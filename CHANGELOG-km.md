@@ -2,6 +2,29 @@
 
 Changes of this fork compared to the original StoryLine plugin by Jan Sandström. Each `## <version>` section is used as the initial text of the matching GitHub release; texts edited on GitHub (e.g. with screenshots) are never overwritten. Every release also carries `storyline-km-source.zip` (all source files that are new or changed compared to the original, without `main.js`) and `storyline-km.patch` (the full diff against the original).
 
+## 1.12.0-km.14
+
+**"Delete plotline" shows what is really affected, per volume**
+
+- Deleting a plotline removes its tag from **every** scene of the project. With a volume selected, the dialog used to count only the scenes of that volume, so it promised far fewer changes than it made.
+- The dialog now says how many scenes carry the plotline in the current selection, and warns how many **more** scenes in how many **other volumes** will lose the tag as well.
+- Below, one column per volume (plus "Without volume") lists every affected scene side by side; the selected volume is highlighted.
+- Without volumes, the dialog shows the correct total for the whole project, as before.
+
+<!-- screenshot: Delete plotline dialog with one column per volume -->
+
+**How and where to use:**
+
+1. Select a volume in any volume dropdown.
+2. **Plotlines** (list view) → plotline header → delete icon, or right-click → delete.
+3. Read the overview, then **Delete** or **Cancel**.
+
+**Files:**
+
+- `components/PlotlineDeleteImpact.ts` (new: impact per volume and dialog text)
+- `views/StorylineView.ts` (+3: dialog uses it)
+- `styles.css` (fork section: columns)
+
 ## 1.12.0-km.13
 
 **Statistics for off page plotlines**

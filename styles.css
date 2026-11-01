@@ -14241,3 +14241,43 @@ body.sl-focus-active-global.sl-focus-dim-text .markdown-source-view.mod-cm6 .cm-
     font-weight: 600;
     color: var(--text-muted);
 }
+
+/* Fork: "Delete plotline" impact overview per volume */
+.sl-km-delete-impact-warning {
+    color: var(--text-error);
+    font-weight: 600;
+}
+
+.sl-km-delete-impact {
+    display: flex;
+    gap: 10px;
+    overflow-x: auto;
+    margin: 8px 0 12px;
+}
+
+.sl-km-delete-impact-col {
+    flex: 1 0 160px;
+    min-width: 0;
+    padding: 6px 8px;
+    border: 1px solid var(--background-modifier-border);
+    border-radius: 6px;
+}
+
+.sl-km-delete-impact-col.is-selection {
+    border-color: var(--interactive-accent);
+    background: var(--background-modifier-hover);
+}
+
+.sl-km-delete-impact-head {
+    margin-bottom: 4px;
+    font-weight: 700;
+    font-size: var(--font-ui-small);
+}
+
+.sl-km-delete-impact-col ul {
+    max-height: 220px;
+    overflow-y: auto;
+    margin: 0;
+    padding-left: 16px;
+    font-size: var(--font-ui-smaller);
+}

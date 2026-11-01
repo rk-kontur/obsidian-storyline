@@ -2,6 +2,7 @@
 import { ButtonComponent, ItemView, Menu, MenuItem, Modal, Notice, Setting, TFile, TextComponent, WorkspaceLeaf } from 'obsidian';
 import { aliasRealizedColumns, drawRealizedLinks, removeRealizedStations, resolveRealizations, splitRealizedLanes } from '../utils/arcRealization';
 import { renderVolumeScopeSelect, scopeFilter } from '../utils/volumeScope';
+import { renderTagDeleteImpact } from '../components/PlotlineDeleteImpact';
 import { attachZoneMenu, drawOffPageBand, getOffPageLines, orderByZone, renderOffPageLabelBand, renderZoneHeader, renderZoneListHeading, ZONE_GAP } from '../utils/pageZones';
 import { drawSubwayVolumeMarker, getProjectVolumes, getVolumeForAct, VolumeDividerTracker } from '../utils/volumes';
 import * as obsidian from 'obsidian';
@@ -1213,9 +1214,9 @@ export class StorylineView extends ItemView {
     private confirmDeletePlotline(plotline: string, sceneCount: number): void {
         const modal = new Modal(this.app);
         modal.titleEl.setText('Delete plotline');
-        modal.contentEl.createEl('p', {
-            text: `Remove the tag "${plotline}" from ${sceneCount} scene${sceneCount !== 1 ? 's' : ''}? The scenes themselves will not be deleted.`
-        });
+        // fork: the tag is removed project-wide; show the real impact per volume
+        void sceneCount;
+        renderTagDeleteImpact(modal.contentEl, this.app, this.sceneManager.activeProject?.filePath, this.sceneManager.getAllScenes(), plotline);
 
         new Setting(modal.contentEl)
             .addButton((btn: ButtonComponent) => {
