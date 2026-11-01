@@ -7,7 +7,7 @@
 //
 //   volumes:
 //     - id: b1
-//       title: "Band 1"
+//       title: "Volume 1"
 //       acts: [1, 2, 3, 4]        # or "1-4"
 //       wordGoal: 90000           # optional
 //       deadline: 2027-03-01      # optional

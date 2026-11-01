@@ -1,29 +1,33 @@
-# StoryLine-Fork (rk-kontur)
+# StoryLine fork (rk-kontur)
 
-Fork von PixeroJan/obsidian-storyline (MIT). Obsidian-Plugin in TypeScript, Build mit esbuild. Sprache der Arbeit: Deutsch.
+Fork of PixeroJan/obsidian-storyline (MIT). Obsidian plugin in TypeScript, built with esbuild.
+
+## Language
+- **Everything in the repository is English**: code, comments, UI strings, CSS comments, workflow files, changelog, commit messages, release notes. The maintainer (Jan) must be able to read all of it.
+- Conversation with the fork owner is in German.
 
 ## Branches
-- `main` ist nur ein Spiegel von `upstream/main`. Keine eigenen Commits, nur `git merge --ff-only upstream/main`.
-- Eigene Arbeit liegt auf `km/base` und Feature-Branches (`feature/<name>`).
-- Upstream holen: `git fetch upstream`, `main` aktualisieren, dann `git merge main` in den Arbeitsbranch. `rerere` ist aktiviert.
+- `main` only mirrors `upstream/main`. No own commits, only `git merge --ff-only upstream/main`.
+- Own work lives on `km/base` and feature branches (`feature/<name>`).
+- Pulling upstream: `git fetch upstream`, update `main`, then `git merge main` into the working branch. `rerere` is enabled.
 
 ## Manifest
-- Nur `id` (`storyline-km`) und `version` ändern. `name` und `author` nicht anfassen: `name` wegen Merge-Konflikten, `author` ist im Upstream fehlerhaft kodiert und darf nicht durch einen Editor neu gespeichert werden. Änderungen mit `sed` oder gezielt per Edit.
-- Das Plugin darf im selben Vault nicht zusammen mit dem Original (`storyline`) aktiv sein.
+- Only change `id` (`storyline-km`) and `version`. Do not touch `name` and `author`: `name` because of merge conflicts, `author` is mis-encoded upstream and must not be re-saved by an editor. Edit with `sed` or targeted edits.
+- The fork must never be enabled in the same vault together with the original (`storyline`).
 
-## Versionen und Releases
-- Schema `x.y.z-km.N`, wobei x.y.z die Upstream-Basis ist.
-	- Fix oder Nachreichung: nur `N` erhöhen (`1.11.8-km.1` → `1.11.8-km.2`).
-	- Größeres Update: Minor erhöhen und `N` auf 1 setzen (`1.11.8-km.3` → `1.12.0-km.1`).
-	- Neue Upstream-Basis: x.y.z anpassen, `N` zurück auf 1.
-- Release: Version in `manifest.json` setzen, auf `km/base` pushen, dann Tag mit exakt dieser Version auf `km/base` setzen (`git tag <version> && git push origin <version>`, oder im Browser Draft a new release mit Target `km/base`, Label None).
-- `.github/workflows/release-km.yml` baut bei jedem Tag `*-km.*`, prüft Tag gegen `manifest.json` und lädt `main.js`, `manifest.json`, `styles.css` ans Release (auch an ein vorhandenes).
-- Ohne Tag-Push: `release-km.yml` manuell starten (workflow_dispatch) auf dem Branch mit der gewünschten Version. Der Workflow legt Tag und Release selbst an. So released auch Claude aus Cloud-Sessions, die keine Tags pushen können.
-- **Jedes Release braucht einen Abschnitt `## <Version>` in `CHANGELOG-km.md`, auf Englisch** (vor dem Release anlegen): Was ist neu, unter **How and where to use:** Schritt für Schritt, in welcher Ansicht/welchem Dialog man das Feature findet und bedient, unter **Files:** alle neuen und geänderten Quelldateien. Der Workflow übernimmt den Abschnitt als Release-Text (auch rückwirkend für ältere Releases) und hängt `storyline-km-source.zip` und `storyline-km.patch` (Unterschied zu `main`) an. `CHANGELOG.md` gehört dem Upstream und wird nicht angefasst.
-- Test über BRAT mit `rk-kontur/obsidian-storyline`.
+## Versions and releases
+- Scheme `x.y.z-km.N`, where x.y.z is the upstream base.
+	- Fix or follow-up: increase `N` only (`1.11.8-km.1` → `1.11.8-km.2`).
+	- Larger update: increase minor and reset `N` to 1 (`1.11.8-km.3` → `1.12.0-km.1`).
+	- New upstream base: adjust x.y.z, reset `N` to 1.
+- Release: set the version in `manifest.json`, push to `km/base`, then tag exactly this version on `km/base` (`git tag <version> && git push origin <version>`, or in the browser: Draft a new release, target `km/base`).
+- `.github/workflows/release-km.yml` builds on every `*-km.*` tag, checks the tag against `manifest.json` and uploads `main.js`, `manifest.json`, `styles.css` to the release (also to an existing one).
+- Without pushing a tag: start `release-km.yml` manually (workflow_dispatch) on the branch with the desired version. The workflow creates tag and release itself. This is how Claude releases from cloud sessions, which cannot push tags.
+- **Every release needs a `## <version>` section in `CHANGELOG-km.md`, in English** (write it before releasing): what is new, a **How and where to use:** part with step-by-step instructions (which view or dialog, which control), and a **Files:** list of all new and changed source files. The workflow uses the section as release text (also retroactively for older releases) and attaches `storyline-km-source.zip` and `storyline-km.patch` (diff against `main`). `CHANGELOG.md` belongs to upstream and is not touched.
+- Test via BRAT with `rk-kontur/obsidian-storyline`.
 
-## Entwicklung
-- Eingriffe in bestehende Dateien klein halten, vor allem `main.ts`, `settings.ts` und `styles.css` (häufige Konfliktstellen). Neue Funktionen in neuen Dateien unter `views/`, `services/`, `components/`, `models/`, `utils/`. Eigene Styles in einem klar markierten Abschnitt.
-- Bauen: `npm install`, `npm run build`. `main.js` ist im Repo eingecheckt: bei Merge-Konflikten dort eine Seite nehmen und neu bauen.
-- Kein `.gitignore` im Repo: `node_modules/` nie committen, Dateien gezielt mit `git add <pfad>` aufnehmen.
-- Größere Features zuerst mit dem Maintainer klären und nach Möglichkeit als Pull Request an das Original schicken.
+## Development
+- Keep changes to existing files small, especially `main.ts`, `settings.ts` and `styles.css` (frequent conflict spots). New features go into new files under `views/`, `services/`, `components/`, `models/`, `utils/`. Own styles go into the clearly marked fork section at the end of `styles.css`.
+- Build: `npm install`, `npm run build`. `main.js` is checked in: on merge conflicts take one side and rebuild.
+- No `.gitignore` in the repo: never commit `node_modules/`, add files explicitly with `git add <path>`.
+- Larger features should be discussed with the maintainer first and, where possible, be sent as a pull request to the original.

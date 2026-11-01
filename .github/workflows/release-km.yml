@@ -1,12 +1,11 @@
 name: Release km
 
-# Baut das Plugin und veröffentlicht ein GitHub-Release für BRAT,
-# sobald ein Tag der Form 1.2.3-km.N gepusht wird.
-# Der Tag muss mit "version" in manifest.json übereinstimmen.
+# Builds the plugin and publishes a GitHub release for BRAT
+# when a tag of the form 1.2.3-km.N is pushed.
+# The tag must match "version" in manifest.json.
 #
-# Alternativ manuell starten (workflow_dispatch, z. B. durch Claude):
-# Version kommt aus manifest.json, der Tag wird auf dem gewählten
-# Branch-Stand angelegt.
+# Can also be started manually (workflow_dispatch): the version is taken
+# from manifest.json and the tag is created on the selected branch.
 
 on:
   push:
@@ -35,12 +34,12 @@ jobs:
         run: |
           V=$(node -p "require('./manifest.json').version")
           if [ "${GITHUB_EVENT_NAME}" = "push" ] && [ "$V" != "${GITHUB_REF_NAME}" ]; then
-            echo "Tag ${GITHUB_REF_NAME} passt nicht zu manifest.json ($V)"
+            echo "Tag ${GITHUB_REF_NAME} does not match manifest.json ($V)"
             exit 1
           fi
           case "$V" in
             *-km.*) ;;
-            *) echo "Version $V hat kein -km.N-Suffix"; exit 1 ;;
+            *) echo "Version $V has no -km.N suffix"; exit 1 ;;
           esac
           echo "version=$V" >> "$GITHUB_OUTPUT"
 
@@ -56,14 +55,14 @@ jobs:
             gh release create "$V" \
               --target "${GITHUB_SHA}" \
               --title "$V" \
-              --notes "Fork-Build von StoryLine (id storyline-km) für BRAT-Tests."
+              --notes "Fork build of StoryLine (id storyline-km) for BRAT testing."
           fi
           gh release upload "$V" main.js manifest.json styles.css --clobber
 
-      - name: Source bundle (Änderungen gegenüber Upstream)
+      - name: Source bundle (changes compared to upstream)
         run: |
-          # Alle Quelldateien, die der Fork gegenüber main (= Upstream) neu hat oder ändert,
-          # ohne Build-Ausgabe. Dazu ein Patch für Jan / zum Nachvollziehen.
+          # All source files the fork adds or changes compared to main (= upstream),
+          # without build output, plus a patch with the full diff.
           git fetch --no-tags origin main:refs/remotes/origin/main
           EXCL=(':(exclude)main.js' ':(exclude)package-lock.json')
           git diff --name-only --diff-filter=AMR origin/main...HEAD -- . "${EXCL[@]}" > changed-files.txt
@@ -78,14 +77,14 @@ jobs:
           V: ${{ steps.v.outputs.version }}
         run: |
           node .github/scripts/km-release-notes.js notes
-          # Quellpaket und Patch an das aktuelle Release
+          # Attach source bundle and patch to the current release
           gh release upload "$V" storyline-km-source.zip storyline-km.patch --clobber
-          # Jeder Abschnitt "## <Version>" in CHANGELOG-km.md wird zum Text des Releases
+          # Every "## <version>" section in CHANGELOG-km.md becomes the text of that release
           for f in notes/*.md; do
             [ -e "$f" ] || continue
             v=$(basename "$f" .md)
             if gh release view "$v" >/dev/null 2>&1; then
               gh release edit "$v" --notes-file "$f"
-              echo "Notes aktualisiert: $v"
+              echo "Notes updated: $v"
             fi
           done
