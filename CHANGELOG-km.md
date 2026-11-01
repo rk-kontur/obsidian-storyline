@@ -9,15 +9,17 @@ Changes of this fork compared to the original StoryLine plugin by Jan Sandström
 ### The volume dropdown no longer goes stale
 
 - Board, Plot Grid and Navigator built their volume dropdown only once, when the view opened. After picking a volume in another view, the dropdown still showed the old value, and **All volumes** could not be picked again. After switching books in series mode it still listed the previous book's volumes, and picking one stored a foreign volume id for the new book. Added or renamed volumes did not show up.
-- All volume dropdowns (Board, Manuscript, Plot Grid, Timeline, Subway, Statistics, Navigator, Characters, Locations, Codex) now update themselves: options, title and selected value always follow the current project, after every refresh, on project switch and as soon as the `volumes:` of the project file change.
+- All volume dropdowns (Board, Manuscript, Plot Grid, Timeline, Subway, Statistics, Navigator, Characters, Locations, Codex) now update themselves: options, title and selected value always follow the current project, after every refresh, on every project switch (also when opening a character, location or codex entry of another book) and as soon as the `volumes:` of the project file change.
 - The Navigator dropdown also appears when Obsidian starts before the project's metadata is ready; it shows up by itself once the volumes are known.
 - A dropdown can no longer store a volume id that the current project does not define.
 
 ### Deleted volumes do not come back as the selection
 
 - Deleting the selected volume in **Manage story structure** → **Volumes** resets the selection to **All volumes**.
-- New volumes get an id that was never used in the project (highest number so far + 1, including deleted ones and the stored selection), so a new volume is never selected silently because it inherited the id of a deleted one.
-- A stored selection that points to a volume that no longer exists (e.g. removed by hand in the project file) is reset to **All volumes**.
+- The volumes editor now keeps a high-water mark `volumeIdSeq` in the project file: the highest volume number it has ever saved, including deleted volumes. **+ Add volume** creates `v<volumeIdSeq + 1>` (or higher, if an existing id, a volume deleted in the open dialog or the stored selection has a higher number). So an id that the editor has saved once is never handed out again, also after closing and reopening the dialog and on other devices that still have the old volume selected.
+- Not covered: ids that were deleted before this version, or added and removed only by hand in the project file without the editor saving in between, are unknown to `volumeIdSeq` and can be reused once.
+- Every save from the editor writes an explicit `id` for every volume. Opening the editor on hand-written `volumes:` entries without `id` writes the ids they currently have (`v1`, `v2`, … by position) right away, so removing an entry above them no longer renames the ones below. An entry without `id` also never gets an id that another entry uses explicitly.
+- A stored selection that points to a volume that no longer exists (e.g. removed by hand in the project file) is reset to **All volumes** on this device.
 
 ### Faster scene lists with a volume selected
 
@@ -31,10 +33,17 @@ Changes of this fork compared to the original StoryLine plugin by Jan Sandström
 
 - The **Characters**, **Locations** and **Codex** views now show the same volume dropdown in their toolbar, so the volume can be switched from there too.
 - With a volume selected, they count and list only the scenes of that volume: scene counts and POV counts on character and location cards, the scene list, POV/presence stats, gaps and intensity curve in the character side panel, the scene list and stats of a location or world, the Story graph, and the scenes in **Referenced by** (references from characters, locations and codex entries stay). Scenes without an act stay visible in every volume, as in the other views.
+- So that an entity never looks unused just because its scenes are in other volumes, the views say what the selection hides:
+  - Character cards without scenes in the selected volume say **No scenes in Volume 2** (instead of "No scenes yet").
+  - The scene stats of a character, location or world add a line such as **3 more in other volumes**.
+  - **Referenced by** shows **No references in Volume 2 (3 in other volumes)** when all references are scenes of other volumes (Characters and Locations used to hide the section, Codex said "No linked entries yet"), and **N more in other volumes** when some are hidden.
+- **Characters from scenes (no profile yet)** lists only characters that appear (`characters:` or `pov:`) in scenes of the selected volume.
+- A volume switch always re-renders these views, also right after saving an entry (the short "just saved" pause that protects the editor no longer swallows the switch).
 - The "may need review" warning of a modified codex entry still lists all affected scenes, so none is missed.
 
 <!-- screenshot: Characters view toolbar with the volume dropdown -->
 <!-- screenshot: Codex entry, Referenced by limited to the selected volume -->
+<!-- screenshot: Character side panel with "3 more in other volumes" -->
 
 **How and where to use:**
 
@@ -42,11 +51,14 @@ Changes of this fork compared to the original StoryLine plugin by Jan Sandström
 2. Pick a volume in the volume dropdown of any view: the **Filter by** dropdown at the left of the filter bar (Board, Manuscript, Plot Grid) or the dropdown in the toolbar (Timeline, Subway, Statistics, Navigator, Characters, Locations, Codex).
 3. All other open views switch to that volume right away and show the same value, and start at the top. Pick **All volumes** in any of them to show everything again.
 4. Open **Characters**, **Locations** or **Codex** and select an entry: the scene lists and **Referenced by** show only scenes of the selected volume.
-5. Delete a volume in **Manage story structure** → **Volumes** (× at the end of its row): if it was selected, the views go back to **All volumes**. **+ Add volume** creates a volume with a fresh id.
+5. If an entity shows **No scenes in Volume 2** or **N more in other volumes**, pick **All volumes** (or the other volume) in the dropdown to see those scenes.
+6. Delete a volume in **Manage story structure** → **Volumes** (× at the end of its row): if it was selected, the views go back to **All volumes**. **+ Add volume** creates a volume with a fresh id; the project file now also holds `volumeIdSeq` (leave it in place).
 
 **Files:**
 
-- `utils/volumeScope.ts` (self-updating dropdown registry `syncVolumeScopeSelects` / `registerVolumeScopeSync`, `volumeScopePredicate`, `scopeScenes`, `scopeSceneRefs`, `clearVolumeScope`, `clearVolumeScopeIfId`, `nextVolumeId`, scroll reset after a volume change)
+- `utils/volumeScope.ts` (self-updating dropdown registry `syncVolumeScopeSelects` / `registerVolumeScopeSync`, `volumeScopePredicate`, `scopeScenes`, `scopeSceneRefs`, `clearVolumeScope`, `clearVolumeScopeIfId`, `nextVolumeId`, `volumeScopeChanged`, scroll reset after a volume change)
+- `utils/volumes.ts` (`readVolumeIdSeq`, `volumeIdNumber`, `hasImplicitVolumeIds`, collision-free positional ids)
+- `components/VolumeScopeNotes.ts` (new: "hidden by the volume selection" notes)
 - `components/VolumesEditor.ts`
 - `services/ForkCommands.ts`
 - `main.ts`
@@ -56,6 +68,7 @@ Changes of this fork compared to the original StoryLine plugin by Jan Sandström
 - `views/CharacterView.ts`
 - `views/LocationView.ts`
 - `views/CodexView.ts`
+- `styles.css` (fork section: `.sl-km-scope-hidden-note`)
 - `CHANGELOG-km.md`
 
 ## 1.11.8-km.14

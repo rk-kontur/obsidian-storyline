@@ -14281,3 +14281,10 @@ body.sl-focus-active-global.sl-focus-dim-text .markdown-source-view.mod-cm6 .cm-
     padding-left: 16px;
     font-size: var(--font-ui-smaller);
 }
+
+/* Volume selection hides items (Characters, Locations, Codex) */
+.sl-km-scope-hidden-note {
+    margin: 4px 0;
+    color: var(--text-muted);
+    font-size: var(--font-ui-smaller);
+}

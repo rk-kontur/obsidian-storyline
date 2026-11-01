@@ -7,7 +7,7 @@
 
 import { Notice, TFile } from 'obsidian';
 import type { App } from 'obsidian';
-import { getProjectVolumes, type VolumeDef } from '../utils/volumes';
+import { getProjectVolumes, hasImplicitVolumeIds, readVolumeIdSeq, volumeIdNumber, type VolumeDef } from '../utils/volumes';
 import { clearVolumeScopeIfId, getVolumeScope, nextVolumeId } from '../utils/volumeScope';
 
 interface EditableVolume {
@@ -49,13 +49,20 @@ export function findOverlaps(volumes: { acts: number[] }[]): Map<number, number[
     return result;
 }
 
-async function saveVolumes(app: App, projectFilePath: string, volumes: EditableVolume[]): Promise<void> {
+/**
+ * Write the volumes back. Every volume gets its explicit `id`, so ids no
+ * longer depend on list position. `volumeIdSeq` keeps the highest volume
+ * number ever used (also of deleted volumes), so ids are never handed out twice.
+ */
+async function saveVolumes(app: App, projectFilePath: string, volumes: EditableVolume[], retiredIds: Iterable<string> = []): Promise<void> {
     const file = app.vault.getAbstractFileByPath(projectFilePath);
     if (!(file instanceof TFile)) {
         new Notice('Project file not found.');
         return;
     }
     await app.fileManager.processFrontMatter(file, (fm: Record<string, unknown>) => {
+        const seq = Math.max(readVolumeIdSeq(fm), ...volumes.map(v => volumeIdNumber(v.id)), ...[...retiredIds].map(volumeIdNumber));
+        if (seq > 0) fm.volumeIdSeq = seq;
         if (volumes.length === 0) { delete fm.volumes; return; }
         fm.volumes = volumes.map(v => {
             const out: Record<string, unknown> = { id: v.id, title: v.title, acts: v.acts };
@@ -88,13 +95,18 @@ export function renderVolumesEditor(
 
     // Ids deleted in this session are never handed out again
     const retiredIds = new Set<string>();
+    const projectFile = app.vault.getAbstractFileByPath(projectFilePath);
+    const projectFm = () => (projectFile instanceof TFile ? app.metadataCache.getFileCache(projectFile)?.frontmatter : undefined);
+    // Hand-written entries without `id`: store the ids they have now, so
+    // removing an entry above them no longer renames them.
+    if (hasImplicitVolumeIds(projectFm()?.volumes)) void saveVolumes(app, projectFilePath, volumes);
 
     const list = container.createDiv('sl-km-volumes-list');
     const warn = container.createDiv('sl-km-volumes-warning');
     let saveTimer: number | null = null;
     const scheduleSave = () => {
         if (saveTimer) window.clearTimeout(saveTimer);
-        saveTimer = window.setTimeout(() => { void saveVolumes(app, projectFilePath, volumes); }, 400);
+        saveTimer = window.setTimeout(() => { void saveVolumes(app, projectFilePath, volumes, retiredIds); }, 400);
     };
 
     const render = () => {
@@ -176,7 +188,7 @@ export function renderVolumesEditor(
         const used = volumes.flatMap(v => v.acts);
         const lastSize = volumes.length ? volumes[volumes.length - 1].acts.length : 4;
         const start = used.length ? Math.max(...used) + 1 : (getDefinedActs().filter(a => a > 0 && a !== 99)[0] ?? 1);
-        const id = nextVolumeId(volumes.map(v => v.id), retiredIds, getVolumeScope(app, projectFilePath));
+        const id = nextVolumeId(volumes.map(v => v.id), retiredIds, getVolumeScope(app, projectFilePath), readVolumeIdSeq(projectFm()));
         volumes.push({ id, title: `Volume ${volumes.length + 1}`, acts: toRange(start, start + Math.max(1, lastSize) - 1) });
         scheduleSave();
         render();

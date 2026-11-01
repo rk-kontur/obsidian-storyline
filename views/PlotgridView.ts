@@ -4,7 +4,7 @@ import * as obsidian from 'obsidian';
 import { CellData, ColumnMeta, RowMeta, PlotGridData } from '../models/PlotGridData';
 import { renderArcPointIcon } from '../components/ArcPointUI';
 import { getProjectVolumes, VolumeDividerTracker } from '../utils/volumes';
-import { scopeFilter, volumeScopeKey } from '../utils/volumeScope';
+import { scopeFilter, volumeScopeKey } from '../utils/volumeScope'; // fork: shared volume scope
 import { getOffPageLines, isOffPage } from '../utils/pageZones';
 import { columnTemplate, findEmptyAutoColumns, hiddenColumnsWidth, renderHiddenColumnsHint, updateHiddenColumnsHint } from '../utils/plotgridVolume';
 import { LocationManager } from '../services/LocationManager';

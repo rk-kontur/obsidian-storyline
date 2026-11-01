@@ -10,7 +10,8 @@ import { CodexManager } from '../services/CodexManager';
 import { CodexEntry, CodexCategoryDef, CodexFieldCategory, CodexFieldDef, BUILTIN_CODEX_CATEGORIES, makeCustomCodexCategory, CODEX_ICON_OPTIONS } from '../models/Codex';
 import { CODEX_VIEW_TYPE, CHARACTER_VIEW_TYPE, LOCATION_VIEW_TYPE } from '../constants';
 import { renderViewSwitcher } from '../components/ViewSwitcher';
-import { renderVolumeScopeSelect, scopeSceneRefs } from '../utils/volumeScope'; // fork: shared volume scope
+import { renderVolumeScopeSelect, scopeSceneRefs, volumeScopeChanged } from '../utils/volumeScope'; // fork: shared volume scope
+import { renderScopeHiddenNote, scopeHiddenText } from '../components/VolumeScopeNotes'; // fork: volume scope notes
 import { applyMobileClass } from '../components/MobileAdapter';
 import { pickImage as pickImageModal, resolveImagePath } from '../components/ImagePicker';
 import { AddFieldModal } from '../components/AddFieldModal';
@@ -200,8 +201,9 @@ export class CodexView extends ItemView {
 
     /** Called by refreshOpenViews */
     async refresh(): Promise<void> {
+        const kmScopeChanged = volumeScopeChanged(this, this.plugin); // fork: a volume switch always re-renders
         // Grace period — skip re-render if we just saved ourselves
-        if (this.selectedEntry && (Date.now() - this._lastSaveTime) < CodexView.SAVE_REFRESH_GRACE_MS) {
+        if (this.selectedEntry && (Date.now() - this._lastSaveTime) < CodexView.SAVE_REFRESH_GRACE_MS && !kmScopeChanged) { // fork: && !kmScopeChanged
             this.codexManager.initCategories(
                 this.plugin.settings.codexEnabledCategories,
                 this.resolveCustomDefs(),
@@ -1976,7 +1978,8 @@ export class CodexView extends ItemView {
 
     private renderReferencesPanel(container: HTMLElement, entry: CodexEntry): void {
         const index = this.plugin.linkScanner.buildEntityIndex();
-        const refs = scopeSceneRefs(this.plugin, index.get(entry.name.toLowerCase()) ?? []); // fork: volume scope
+        const kmAllRefs = index.get(entry.name.toLowerCase()) ?? []; // fork: volume scope
+        const refs = scopeSceneRefs(this.plugin, kmAllRefs); // fork: volume scope
         const section = container.createDiv('codex-references-panel');
         const header = section.createDiv('codex-references-header');
         header.createEl('h3', { text: 'Referenced by' });
@@ -1991,10 +1994,11 @@ export class CodexView extends ItemView {
         if (refs.length === 0) {
             section.createEl('p', {
                 cls: 'codex-references-empty',
-                text: 'No linked entries yet.',
+                text: scopeHiddenText(this.plugin, 0, kmAllRefs.length, 'references') || 'No linked entries yet.', // fork: volume scope
             });
             return;
         }
+        renderScopeHiddenNote(section, this.plugin, refs.length, kmAllRefs.length - refs.length, 'references'); // fork: volume scope
 
         const groups: Record<string, typeof refs> = {};
         for (const ref of refs) {

@@ -3,7 +3,8 @@ import * as obsidian from 'obsidian';
 import { SceneManager } from '../services/SceneManager';
 import { CharacterManager } from '../services/CharacterManager';
 import { renderViewSwitcher } from '../components/ViewSwitcher';
-import { renderVolumeScopeSelect, scopeSceneRefs, scopeScenes } from '../utils/volumeScope'; // fork: shared volume scope
+import { renderVolumeScopeSelect, scopeSceneRefs, scopeScenes, volumeScopeChanged } from '../utils/volumeScope'; // fork: shared volume scope
+import { renderScopeHiddenNote, renderScopedReferencesEmpty, scopedNoScenesText, scopeSceneCharacterNames } from '../components/VolumeScopeNotes'; // fork: volume scope notes
 import { RelationshipMap } from '../components/RelationshipMap';
 import { StoryGraph } from '../components/StoryGraph';
 import { pickImage as pickImageModal, resolveImagePath } from '../components/ImagePicker';
@@ -357,8 +358,8 @@ export class CharacterView extends ItemView {
         const q = this.searchText.toLowerCase();
 
         let fileCharacters = this.characterManager.getAllCharacters();
-        const sceneCharNames = this.sceneManager.queryService.getAllCharacters();
         const scenes = scopeScenes(this.plugin, this.sceneManager.getAllScenes().filter(scene => !scene.inactive)); // fork: volume scope
+        const sceneCharNames = scopeSceneCharacterNames(this.plugin, this.sceneManager.queryService.getAllCharacters(), scenes); // fork: volume scope
 
         // Build alias map: lowered alias → canonical name
         const aliasMap = this.characterManager.buildAliasMap(this.plugin.settings.characterAliases);
@@ -668,7 +669,7 @@ export class CharacterView extends ItemView {
             stats.createSpan({ cls: 'character-stat-sep', text: '\u00b7' });
             stats.createSpan({ text: `${total} scenes` });
         } else {
-            stats.createSpan({ cls: 'character-stat-none', text: 'No scenes yet' });
+            stats.createSpan({ cls: 'character-stat-none', text: scopedNoScenesText(this.plugin, 'No scenes yet') }); // fork: volume scope
         }
 
         // Completeness indicator
@@ -2964,10 +2965,11 @@ export class CharacterView extends ItemView {
     // ── Scene side panel ───────────────────────────────
 
     private renderScenePanel(container: HTMLElement, characterName: string): void {
-        const scenes = scopeScenes(this.plugin, this.sceneManager.queryService.getFilteredScenes( // fork: volume scope
+        const kmAllScenes = this.sceneManager.queryService.getFilteredScenes( // fork: volume scope
             undefined,
             { field: 'sequence', direction: 'asc' }
-        ));
+        );
+        const scenes = scopeScenes(this.plugin, kmAllScenes); // fork: volume scope
 
         // Build alias set for this character (full name + all aliases)
         const aliasMap = this.characterManager.buildAliasMap(this.plugin.settings.characterAliases);
@@ -2997,6 +2999,9 @@ export class CharacterView extends ItemView {
         this.renderStat(statGrid, String(povScenes.length), 'POV');
         this.renderStat(statGrid, String(presentScenes.length), 'Supporting');
         this.renderStat(statGrid, String(allCharScenes.length), 'Total');
+        // fork: say how many scenes the volume selection hides
+        renderScopeHiddenNote(statsBox, this.plugin, allCharScenes.length,
+            kmAllScenes.filter(s => this.isCharInScene(s, charAliases).isPresent).length - allCharScenes.length);
 
         // Plotgrid stat (patched async)
         const pgStatEl = statGrid.createDiv('character-stat-item');
@@ -3166,11 +3171,13 @@ export class CharacterView extends ItemView {
 
     private renderReferencesPanel(container: HTMLElement, entityName: string): void {
         const index = this.plugin.linkScanner.buildEntityIndex();
-        const refs = scopeSceneRefs(this.plugin, index.get(entityName.toLowerCase()) ?? []); // fork: volume scope
-        if (refs.length === 0) return;
+        const kmAllRefs = index.get(entityName.toLowerCase()) ?? []; // fork: volume scope
+        const refs = scopeSceneRefs(this.plugin, kmAllRefs); // fork: volume scope
+        if (refs.length === 0) { renderScopedReferencesEmpty(container, this.plugin, 'character-references-panel', kmAllRefs.length); return; } // fork: volume scope
 
         const section = container.createDiv('character-references-panel');
         section.createEl('h3', { text: 'Referenced by' });
+        renderScopeHiddenNote(section, this.plugin, refs.length, kmAllRefs.length - refs.length, 'references'); // fork: volume scope
 
         const groups: Record<string, typeof refs> = {};
         for (const ref of refs) {
@@ -3698,9 +3705,11 @@ export class CharacterView extends ItemView {
      * save (within the grace window), skip the re-render to avoid stealing focus.
      */
     async refresh(): Promise<void> {
+        const kmScopeChanged = volumeScopeChanged(this, this.plugin); // fork: a volume switch always re-renders
         if (
             this.selectedCharacter &&
             Date.now() - this._lastSaveTime < CharacterView.SAVE_REFRESH_GRACE_MS
+            && !kmScopeChanged // fork
         ) {
             // Our own save triggered this — silently reload data but don't re-render
             await this.plugin.reloadEntities();

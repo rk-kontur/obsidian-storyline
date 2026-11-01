@@ -13,7 +13,7 @@
 import type { App } from 'obsidian';
 import type SceneCardsPlugin from '../main';
 import type { Scene, SceneFilter } from '../models/Scene';
-import { getProjectVolumes, getVolumeForAct, type VolumeDef } from './volumes';
+import { getProjectVolumes, getVolumeForAct, volumeIdNumber, type VolumeDef } from './volumes';
 
 const STORAGE_KEY = 'storyline-km:volumeScope';
 
@@ -23,6 +23,7 @@ function storageKey(projectFilePath: string | undefined | null): string {
 }
 
 export function getVolumeScope(app: App, projectFilePath: string | undefined | null): string {
+    ensureDropdownsFollowProject();
     const v: unknown = app.loadLocalStorage(storageKey(projectFilePath));
     return typeof v === 'string' ? v : '';
 }
@@ -71,17 +72,28 @@ export function consumeVolumeScopeScrollReset(): boolean {
 }
 
 /**
- * New volume id that was never used in this project: max numeric suffix of
- * the existing ids, of ids retired in this editing session and of the stored
- * scope id, plus 1. A deleted `v3` is therefore never handed out again.
+ * New volume id: "v" + (highest number so far + 1). "So far" covers the
+ * existing ids, ids deleted in this editing session, the stored scope id and
+ * `seq`, the high-water mark kept in the project file (`volumeIdSeq`), so an
+ * id the editor has once saved is never handed out again, on any device.
  */
-export function nextVolumeId(existingIds: Iterable<string>, retiredIds: Iterable<string> = [], scopeId = ''): string {
-    let max = 0;
-    for (const id of [...existingIds, ...retiredIds, scopeId]) {
-        const m = /^v(\d+)$/.exec(id ?? '');
-        if (m) max = Math.max(max, Number(m[1]));
-    }
+export function nextVolumeId(existingIds: Iterable<string>, retiredIds: Iterable<string> = [], scopeId = '', seq = 0): string {
+    let max = Math.max(0, seq);
+    for (const id of [...existingIds, ...retiredIds, scopeId]) max = Math.max(max, volumeIdNumber(id));
     return `v${max + 1}`;
+}
+
+/**
+ * True if the volume scope changed since the last call for this owner (a
+ * view). Lets a view's refresh() bypass its "just saved" grace window when
+ * the volume was switched. The first call only records the key.
+ */
+const lastScopeKeys = new WeakMap<object, string>();
+export function volumeScopeChanged(owner: object, plugin: SceneCardsPlugin): boolean {
+    const key = `${plugin.sceneManager?.activeProject?.filePath ?? ''}|${volumeScopeKey(plugin.app, plugin.sceneManager?.activeProject?.filePath)}`;
+    const prev = lastScopeKeys.get(owner);
+    lastScopeKeys.set(owner, key);
+    return prev !== undefined && prev !== key;
 }
 
 /** The scoped volume, or undefined for "All volumes" / unknown id. */
@@ -202,9 +214,27 @@ interface ScopeSelect {
     select: HTMLSelectElement;
     /** Element hidden when the project has no volumes (select or "Filter by" wrapper). */
     host: HTMLElement;
+    created: number;
+    /** Was in the document at least once; removed from it afterwards means the view re-rendered or closed. */
+    wasConnected: boolean;
 }
 
 const registry = new Set<ScopeSelect>();
+/** A dropdown that never reached the document within this time is dropped. */
+const ATTACH_GRACE_MS = 10000;
+
+/** Drop dropdowns that left the document (or never reached it). Marks attached ones. */
+function pruneRegistry(now = Date.now()): void {
+    for (const entry of [...registry]) {
+        if (entry.select.isConnected) entry.wasConnected = true;
+        else if (entry.wasConnected || now - entry.created > ATTACH_GRACE_MS) registry.delete(entry);
+    }
+}
+
+/** Number of registered dropdowns (simulation / debugging). */
+export function volumeScopeSelectCount(): number {
+    return registry.size;
+}
 
 function syncOne(entry: ScopeSelect, volumes: VolumeDef[], current: string): void {
     const { select, host } = entry;
@@ -220,9 +250,14 @@ function syncOne(entry: ScopeSelect, volumes: VolumeDef[], current: string): voi
     host.toggle(volumes.length > 0);
 }
 
+/** Plugin bound by registerVolumeScopeSync, and the project the dropdowns were last synced for. */
+let boundPlugin: SceneCardsPlugin | null = null;
+let syncedProject: string | null | undefined;
+
 /** Update every rendered volume dropdown to the current project's volumes and scope. */
 export function syncVolumeScopeSelects(plugin: SceneCardsPlugin): void {
     const projectFilePath = plugin.sceneManager?.activeProject?.filePath;
+    syncedProject = projectFilePath ?? null; // before getVolumeScope (which checks it)
     const volumes = getProjectVolumes(plugin.app, projectFilePath);
     let current = getVolumeScope(plugin.app, projectFilePath);
     // Stored id of a volume that no longer exists: back to "All volumes", so a
@@ -231,30 +266,44 @@ export function syncVolumeScopeSelects(plugin: SceneCardsPlugin): void {
         clearVolumeScope(plugin.app, projectFilePath);
         current = '';
     }
-    for (const entry of [...registry]) {
-        if (!entry.select.isConnected) { registry.delete(entry); continue; }
-        syncOne(entry, volumes, current);
-    }
+    pruneRegistry();
+    for (const entry of registry) syncOne(entry, volumes, current);
+}
+
+/**
+ * Cheap check on every scope read: if the active project changed since the
+ * last sync (by any code path, e.g. opening an entity of another book), sync
+ * the dropdowns to the new project.
+ */
+function ensureDropdownsFollowProject(): void {
+    if (!boundPlugin) return;
+    const project = boundPlugin.sceneManager?.activeProject?.filePath ?? null;
+    if (project !== syncedProject) syncVolumeScopeSelects(boundPlugin);
 }
 
 /**
  * Keep the dropdowns current when the project file's `volumes:` change
  * (added, renamed, deleted), also on startup when the metadata cache becomes
- * ready after a view was opened. Call once in onload.
+ * ready after a view was opened, and when the active project changes. Call once in onload.
  */
 export function registerVolumeScopeSync(plugin: SceneCardsPlugin): void {
+    boundPlugin = plugin;
     plugin.registerEvent(plugin.app.metadataCache.on('changed', (file) => {
         if (file.path === plugin.sceneManager?.activeProject?.filePath) syncVolumeScopeSelects(plugin);
     }));
     plugin.registerEvent(plugin.app.metadataCache.on('resolved', () => syncVolumeScopeSelects(plugin)));
+    plugin.registerEvent(plugin.app.workspace.on('active-leaf-change', () => ensureDropdownsFollowProject()));
+    plugin.registerEvent(plugin.app.workspace.on('layout-change', () => ensureDropdownsFollowProject()));
+    plugin.register(() => { boundPlugin = null; registry.clear(); });
 }
 
 function createScopeSelect(parent: HTMLElement, plugin: SceneCardsPlugin, host?: HTMLElement): HTMLSelectElement {
+    pruneRegistry(); // dropdowns of the previous render of this view are gone now
     const select = parent.createEl('select', {
         cls: 'dropdown sl-km-volume-scope',
         attr: { 'aria-label': 'Volume' },
     });
-    const entry: ScopeSelect = { select, host: host ?? select };
+    const entry: ScopeSelect = { select, host: host ?? select, created: Date.now(), wasConnected: false };
     registry.add(entry);
     const projectFilePath = plugin.sceneManager?.activeProject?.filePath;
     syncOne(entry, getProjectVolumes(plugin.app, projectFilePath), getVolumeScope(plugin.app, projectFilePath));

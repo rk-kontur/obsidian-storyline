@@ -53,21 +53,38 @@ export function parseActList(raw: unknown): number[] {
     return Array.from(new Set(out)).sort((a, b) => a - b);
 }
 
+/** Trimmed text of a string/number frontmatter value, '' for anything else. */
+function scalarText(v: unknown): string {
+    return typeof v === 'string' || typeof v === 'number' ? String(v).trim() : '';
+}
+
 /** Parse the raw `volumes:` frontmatter value. Invalid entries are skipped. */
 export function parseVolumes(raw: unknown): VolumeDef[] {
     if (!Array.isArray(raw)) return [];
     const volumes: VolumeDef[] = [];
+    // Entries without `id` get "v<position>", but never an id that another
+    // entry uses explicitly (that would make two volumes share one id).
+    const explicitIds = new Set(raw
+        .map(e => (e && typeof e === 'object' ? scalarText((e as Record<string, unknown>).id) : ''))
+        .filter(id => id));
+    const usedIds = new Set<string>();
     raw.forEach((entry, idx) => {
         if (!entry || typeof entry !== 'object') return;
         const e = entry as Record<string, unknown>;
         const acts = parseActList(e.acts);
         if (acts.length === 0) return;
         const title = typeof e.title === 'string' && e.title.trim() ? e.title.trim() : `Volume ${idx + 1}`;
-        const id = e.id !== undefined && String(e.id).trim() ? String(e.id).trim() : `v${idx + 1}`;
+        let id = scalarText(e.id);
+        if (!id) {
+            let n = idx + 1;
+            while (explicitIds.has(`v${n}`) || usedIds.has(`v${n}`)) n++;
+            id = `v${n}`;
+        }
+        usedIds.add(id);
         const goal = Number(e.wordGoal);
         const deadline = e.deadline instanceof Date
             ? e.deadline.toISOString().slice(0, 10)
-            : (e.deadline !== undefined && e.deadline !== null ? String(e.deadline) : undefined);
+            : (scalarText(e.deadline) || undefined);
         volumes.push({
             id,
             title,
@@ -86,6 +103,29 @@ export function getProjectVolumes(app: App, projectFilePath: string | undefined 
     if (!(file instanceof TFile)) return [];
     const fm = app.metadataCache.getFileCache(file)?.frontmatter;
     return parseVolumes(fm?.volumes);
+}
+
+/** True if a `volumes:` entry has no explicit `id` (its id then depends on its list position). */
+export function hasImplicitVolumeIds(raw: unknown): boolean {
+    return Array.isArray(raw) && raw.some(e => {
+        if (!e || typeof e !== 'object') return false;
+        return !scalarText((e as Record<string, unknown>).id);
+    });
+}
+
+/**
+ * Highest volume number ever handed out in this project (`volumeIdSeq` in
+ * the project file, written by the volumes editor). 0 if not set.
+ */
+export function readVolumeIdSeq(fm: Record<string, unknown> | undefined | null): number {
+    const n = Number(fm?.volumeIdSeq);
+    return Number.isFinite(n) && n > 0 ? Math.floor(n) : 0;
+}
+
+/** Numeric part of a generated id ("v7" → 7), 0 for other ids. */
+export function volumeIdNumber(id: string | undefined | null): number {
+    const m = /^v(\d+)$/.exec(id ?? '');
+    return m ? Number(m[1]) : 0;
 }
 
 /** Volume containing the given act, or undefined. */

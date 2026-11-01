@@ -3,7 +3,7 @@ import { SceneManager } from '../services/SceneManager';
 import { renderVolumeStatsSection } from '../components/VolumeStatsSection';
 import { getProjectVolumes } from '../utils/volumes';
 import { openStructureDialog } from '../services/ForkCommands';
-import { getVolumeScope, renderVolumeScopeSelect, scopeFilter, volumeScopePredicate } from '../utils/volumeScope';
+import { getVolumeScope, renderVolumeScopeSelect, scopeFilter, volumeScopePredicate } from '../utils/volumeScope'; // fork: shared volume scope
 import { adjustOffPageWarnings, computeOffPageCoverage, offPageCardValue, renderOffPageCoverage, type OffPageLineCoverage } from '../components/OffPageStatsSection';
 import { getOffPageLines } from '../utils/pageZones';
 import { getStatsScope, scopedDeadline, scopedWordGoal, statsHeading, validateForScope, withLinkPartners } from '../utils/volumeStatsScope';
