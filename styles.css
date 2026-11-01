@@ -14171,3 +14171,16 @@ body.sl-focus-active-global.sl-focus-dim-text .markdown-source-view.mod-cm6 .cm-
     width: 100%;
     min-width: 0;
 }
+
+/* Fork: volume badge in Kanban cards.
+   Kanban places the word count absolutely at the top right, so the badge
+   goes first in the header instead. When the board is grouped by act the
+   volume bands between the columns already show the volume: no badge. */
+.story-line-column-body .sl-km-volume-badge {
+    order: -1;
+    margin-left: 0;
+}
+
+.story-line-board:has(.sl-km-volume-column) .story-line-column-body .sl-km-volume-badge {
+    display: none;
+}

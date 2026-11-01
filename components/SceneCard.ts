@@ -53,6 +53,7 @@ export class SceneCardComponent {
             const colorMode = options?.colorCoding || this.plugin.settings.colorCoding;
             const color = this.getCardColor(scene, colorMode);
             card.setCssStyles({ borderLeftColor: color });
+            card.style.setProperty('--sl-km-card-color', color); // fork: lets themes/snippets reuse the card colour
 
             // Custom per-scene color applied as background overlay (independent of edge color)
             if (scene.color && /^#[0-9a-fA-F]{6}$/.test(scene.color)) {
