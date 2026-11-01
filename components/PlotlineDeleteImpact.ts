@@ -31,18 +31,30 @@ export interface TagImpact {
     inSelectionUnassigned: number;
     /** Scenes outside the current selection */
     elsewhere: number;
+    /** Affected scenes in other volumes than the selected one */
+    inOtherVolumes: number;
     /** Number of other volumes holding affected scenes */
     otherVolumes: number;
-    /** Affected scenes whose act belongs to no volume, outside the selection */
+    /** Affected scenes that belong to no volume and are hidden under a volume selection */
     outsideVolumes: number;
-    /** Number of volumes holding affected scenes (all, regardless of selection) */
+    /** Affected scenes and number of volumes holding them (regardless of selection) */
+    inVolumes: number;
     volumesHit: number;
     /** Affected scenes without an act */
     unassigned: number;
+    /** Affected scenes the Plotlines view never lists, but which lose the tag too */
+    inactive: number;
+    notes: number;
     selectionTitle?: string;
     groups: TagImpactGroup[];
 }
 
+/**
+ * "No act" exactly as the volume scope sees it: scopeFilter keeps scenes
+ * whose act is undefined or '' (SceneQueryService.matchesFilter). An empty
+ * `act:` (null) or whitespace is NOT kept, so such scenes belong outside.
+ */
+const isUnassigned = (s: Scene) => s.act === undefined || String(s.act) === '';
 const hasAct = (s: Scene) => s.act !== undefined && s.act !== null && String(s.act).trim() !== '';
 
 const bySequence = (a: Scene, b: Scene) =>
@@ -50,9 +62,9 @@ const bySequence = (a: Scene, b: Scene) =>
 
 /**
  * Who loses the tag: every scene of the project that carries it (the same set
- * SceneManager.deleteTag changes), grouped by volume. Scenes without an act
- * and corkboard notes count as part of every volume selection, like
- * inVolumeScope(…, keepUnassigned = true) and scopeFilter.
+ * SceneManager.deleteTag changes), grouped by volume. Grouping follows the
+ * volume scope (scopeFilter), so "current selection" means what the views
+ * show for the selected volume.
  */
 export function computeTagImpact(volumes: VolumeDef[], scoped: VolumeDef | undefined, allScenes: Scene[], tag: string): TagImpact {
     const affected = allScenes.filter(s => s.tags?.includes(tag)).sort(bySequence);
@@ -60,34 +72,35 @@ export function computeTagImpact(volumes: VolumeDef[], scoped: VolumeDef | undef
     const unassigned: TagImpactGroup = { id: '#unassigned', kind: 'unassigned', title: 'No act', scenes: [], isSelection: !!scoped };
     const outside: TagImpactGroup = { id: '#outside', kind: 'outside', title: 'Not in a volume', scenes: [], isSelection: false };
     for (const s of affected) {
-        if (!hasAct(s) || s.corkboardNote) { unassigned.scenes.push(s); continue; }
-        const v = getVolumeForAct(volumes, s.act);
+        if (isUnassigned(s)) { unassigned.scenes.push(s); continue; }
+        const v = hasAct(s) ? getVolumeForAct(volumes, s.act) : undefined;
         const g = v ? groups.find(x => x.id === v.id) : undefined;
         (g ?? outside).scenes.push(s);
     }
     const all = [...groups, unassigned, outside];
     const used = all.filter(g => g.scenes.length > 0 || (g.kind === 'volume' && g.isSelection));
     const inSelection = scoped ? all.filter(g => g.isSelection).reduce((n, g) => n + g.scenes.length, 0) : affected.length;
+    const others = groups.filter(g => !g.isSelection && g.scenes.length > 0);
+    const hit = groups.filter(g => g.scenes.length > 0);
     return {
         total: affected.length,
         inSelection,
         inSelectionUnassigned: scoped ? unassigned.scenes.length : 0,
         elsewhere: affected.length - inSelection,
-        otherVolumes: scoped ? groups.filter(g => !g.isSelection && g.scenes.length > 0).length : 0,
+        inOtherVolumes: scoped ? others.reduce((n, g) => n + g.scenes.length, 0) : 0,
+        otherVolumes: scoped ? others.length : 0,
         outsideVolumes: outside.scenes.length,
-        volumesHit: groups.filter(g => g.scenes.length > 0).length,
+        inVolumes: hit.reduce((n, g) => n + g.scenes.length, 0),
+        volumesHit: hit.length,
         unassigned: unassigned.scenes.length,
+        inactive: affected.filter(s => s.inactive).length,
+        notes: affected.filter(s => s.corkboardNote).length,
         selectionTitle: scoped?.title,
         groups: volumes.length ? used : [],
     };
 }
 
 const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
-
-/** "2 other volumes and 1 scene outside any volume" */
-function joinParts(parts: string[]): string {
-    return parts.length <= 1 ? (parts[0] ?? '') : `${parts.slice(0, -1).join(', ')} and ${parts[parts.length - 1]}`;
-}
 
 function sceneLabel(s: Scene): string {
     const act = hasAct(s) ? `${String(s.act)}-` : '';
@@ -98,42 +111,51 @@ function sceneLabel(s: Scene): string {
 export function renderTagDeleteImpact(parent: HTMLElement, app: App, projectFilePath: string | undefined | null, allScenes: Scene[], tag: string): void {
     const volumes = getProjectVolumes(app, projectFilePath);
     const scoped = getScopedVolume(app, projectFilePath);
-    const impact = computeTagImpact(volumes, scoped, allScenes, tag);
+    const i = computeTagImpact(volumes, scoped, allScenes, tag);
 
     if (scoped) {
-        const noAct = impact.inSelectionUnassigned
-            ? `, ${impact.inSelectionUnassigned} of them without an act`
-            : '';
+        const noAct = i.inSelectionUnassigned ? `, ${i.inSelectionUnassigned} of them without an act` : '';
         parent.createEl('p', {
-            text: `The plotline "${tag}" has ${plural(impact.inSelection, 'scene', 'scenes')} in the current selection (${impact.selectionTitle}${noAct}).`,
+            text: i.inSelection
+                ? `The plotline "${tag}" has ${plural(i.inSelection, 'scene', 'scenes')} in the current selection (${i.selectionTitle}${noAct}).`
+                : `The plotline "${tag}" has no scenes in the current selection (${i.selectionTitle}).`,
         });
-        if (impact.elsewhere > 0) {
+        if (i.elsewhere > 0) {
             const where: string[] = [];
-            if (impact.otherVolumes) where.push(plural(impact.otherVolumes, 'other volume', 'other volumes'));
-            if (impact.outsideVolumes) where.push('acts outside any volume');
+            if (i.inOtherVolumes) where.push(`${i.inOtherVolumes} in ${plural(i.otherVolumes, 'other volume', 'other volumes')}`);
+            if (i.outsideVolumes) where.push(`${i.outsideVolumes} outside any volume`);
             parent.createEl('p', {
                 cls: 'mod-warning sl-km-delete-impact-warning',
-                text: `Deleting it removes the tag not only here, but also from ${plural(impact.elsewhere, 'more scene', 'more scenes')} in ${joinParts(where)}.`,
+                text: i.inSelection
+                    ? `Deleting it removes the tag not only here, but also from ${plural(i.elsewhere, 'more scene', 'more scenes')}: ${where.join(', ')}.`
+                    : `Deleting it removes the tag from ${plural(i.elsewhere, 'scene', 'scenes')} elsewhere: ${where.join(', ')}.`,
             });
         }
     } else {
-        let where = '';
-        if (impact.groups.length) {
-            const parts: string[] = [];
-            if (impact.volumesHit) parts.push(plural(impact.volumesHit, 'volume', 'volumes'));
-            if (impact.outsideVolumes) parts.push('acts outside any volume');
-            if (impact.unassigned) parts.push(`${plural(impact.unassigned, 'scene', 'scenes')} without an act`);
-            where = parts.length ? ` (in ${joinParts(parts)})` : '';
+        parent.createEl('p', { text: `Remove the tag "${tag}" from ${plural(i.total, 'scene', 'scenes')}?` });
+        const parts: string[] = [];
+        if (i.groups.length) {
+            if (i.inVolumes) parts.push(`${i.inVolumes} in ${plural(i.volumesHit, 'volume', 'volumes')}`);
+            if (i.unassigned) parts.push(`${i.unassigned} without an act`);
+            if (i.outsideVolumes) parts.push(`${i.outsideVolumes} outside any volume`);
         }
+        if (parts.length > 1) parent.createEl('p', { text: `Affected: ${parts.join(', ')}.` });
+    }
+
+    const hidden: string[] = [];
+    if (i.inactive) hidden.push(plural(i.inactive, 'inactive scene', 'inactive scenes'));
+    if (i.notes) hidden.push(plural(i.notes, 'corkboard note', 'corkboard notes'));
+    if (hidden.length) {
         parent.createEl('p', {
-            text: `Remove the tag "${tag}" from ${plural(impact.total, 'scene', 'scenes')}${where}?`,
+            cls: 'setting-item-description',
+            text: `Included: ${hidden.join(', ')}. This view does not list them, but they lose the tag too.`,
         });
     }
     parent.createEl('p', { cls: 'setting-item-description', text: 'The scenes themselves will not be deleted.' });
 
-    if (impact.groups.length === 0) return;
+    if (i.groups.length === 0) return;
     const cols = parent.createDiv('sl-km-delete-impact');
-    for (const g of impact.groups) {
+    for (const g of i.groups) {
         const col = cols.createDiv(`sl-km-delete-impact-col${g.isSelection ? ' is-selection' : ''}`);
         col.createDiv({ cls: 'sl-km-delete-impact-head', text: `${g.title} (${g.scenes.length})` });
         const list = col.createEl('ul');
