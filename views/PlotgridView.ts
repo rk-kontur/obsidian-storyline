@@ -2,6 +2,7 @@
 import { App, ItemView, WorkspaceLeaf, Menu, Modal, TFile, Notice, MarkdownRenderer, Component } from 'obsidian';
 import * as obsidian from 'obsidian';
 import { CellData, ColumnMeta, RowMeta, PlotGridData } from '../models/PlotGridData';
+import { renderArcPointIcon } from '../components/ArcPointUI';
 import { LocationManager } from '../services/LocationManager';
 import type { SceneFilter, SortConfig } from '../models/Scene';
 import { SceneManager } from '../services/SceneManager';
@@ -1436,6 +1437,7 @@ export class PlotgridView extends ItemView {
                 if (rowScene) {
                     const statusCfg = resolveStatusCfg(rowScene.status || 'idea');
                     rowEl.setCssStyles({ borderLeft: `4px solid ${statusCfg.color}` });
+                    renderArcPointIcon(rowEl, rowScene);
                 }
             }
 
@@ -1710,6 +1712,7 @@ export class PlotgridView extends ItemView {
                         obsidian.setIcon(statusIcon, statusCfg.icon);
                         statusIcon.title = statusCfg.label;
                         titleRow.createSpan({ cls: 'pg-mini-title', text: scene.title || 'Untitled' });
+                        renderArcPointIcon(titleRow, scene);
 
                         // Meta row: description snippet
                         const metaRow = miniCard.createDiv('pg-mini-meta markdown-rendered');

@@ -2,6 +2,7 @@
 import { openConfirmModal } from '../components/ConfirmModal';
 import { SceneManager } from '../services/SceneManager';
 import { SceneCardComponent } from '../components/SceneCard';
+import { ArcFilterMode, arcFilterQuery, loadArcFilter, renderArcFilterToggle, renderArcPointBadge, saveArcFilter } from '../components/ArcPointUI';
 import { InspectorComponent } from '../components/Inspector';
 import { QuickAddModal } from '../components/QuickAddModal';
 import { openStructureLabelModal } from '../components/StructureLabelModal';
@@ -47,6 +48,8 @@ export class TimelineView extends ItemView {
     private rootContainer: HTMLElement | null = null;
     private _pendingRefresh: number | null = null;
     private cardComponent: SceneCardComponent;
+    /** Arc Point filter (fork): 'all' | 'scenes' | 'arcPoints' */
+    private arcFilter: ArcFilterMode = 'all';
     private _lastCacheVersion = -1;
     /** When true, display multi-lane swimlane view instead of single-column */
     private swimlaneMode = false;
@@ -60,6 +63,7 @@ export class TimelineView extends ItemView {
         this.plugin = plugin;
         this.sceneManager = sceneManager;
         this.cardComponent = new SceneCardComponent(plugin);
+        this.arcFilter = loadArcFilter(plugin.app, 'timelineArcFilter');
         // Restore persisted filter states from settings
         this.timelineOrder = plugin.settings.timelineOrder === 'chronological' ? 'chronological' : 'reading';
         this.swimlaneMode = plugin.settings.timelineSwimlaneMode ?? false;
@@ -194,6 +198,13 @@ export class TimelineView extends ItemView {
             });
         }
 
+        // Arc Points filter toggle (All / Scenes / Arc Points)
+        renderArcFilterToggle(controls, this.arcFilter, (mode) => {
+            this.arcFilter = mode;
+            saveArcFilter(this.app, 'timelineArcFilter', mode);
+            this.refresh();
+        });
+
         // Zoom controls
         const zoomOut = controls.createEl('button', {
             cls: 'clickable-icon',
@@ -268,7 +279,7 @@ export class TimelineView extends ItemView {
         const timelineEl = container.createDiv('story-line-timeline');
         const sortField = this.timelineOrder === 'chronological' ? 'chronologicalOrder' : 'chapter';
         const scenes = this.sceneManager.queryService.getFilteredScenes(
-            undefined,
+            arcFilterQuery(this.arcFilter),
             { field: sortField, direction: 'asc' }
         ).filter(scene => !this.isNoteScene(scene));
 
@@ -618,7 +629,7 @@ export class TimelineView extends ItemView {
         enableDragToPan(timelineEl);
         const sortField = this.timelineOrder === 'chronological' ? 'chronologicalOrder' : 'chapter';
         const scenes = this.sceneManager.queryService.getFilteredScenes(
-            undefined,
+            arcFilterQuery(this.arcFilter),
             { field: sortField, direction: 'asc' }
         ).filter(scene => !this.isNoteScene(scene));
 
@@ -798,6 +809,7 @@ export class TimelineView extends ItemView {
         card.dataset.path = scene.filePath;
 
         card.createDiv({ cls: 'timeline-card-title', text: scene.title || 'Untitled' });
+        renderArcPointBadge(card, scene);
 
         // Timeline mode badge (for non-linear scenes)
         const slMode = scene.timeline_mode || 'linear';
@@ -974,6 +986,7 @@ export class TimelineView extends ItemView {
         }
 
         card.createDiv({ cls: 'timeline-card-title', text: scene.title || 'Untitled' });
+        renderArcPointBadge(card, scene);
 
         // Timeline mode badge (for non-linear scenes)
         const tlMode = scene.timeline_mode || 'linear';
