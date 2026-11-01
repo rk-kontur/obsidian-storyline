@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-floating-promises, @typescript-eslint/no-misused-promises, @typescript-eslint/no-unnecessary-type-assertion -- Obsidian's API surface and several untyped third-party libraries force dynamic dispatch; floating promises are intentional in DOM/event handlers; matching enable at end of file */
 import { ItemView, WorkspaceLeaf, Menu, Notice, TFile, Modal, Setting, MarkdownRenderer, normalizePath } from 'obsidian';
-import { tabifyStructureModal } from '../components/StructureModalTabs';
+import { enhanceStructureModal } from '../components/StructureModalSections';
 import { renderVolumeScopeSelect, scopeActs, scopeFilter } from '../utils/volumeScope';
 import { actFromColumnKey, getProjectVolumes, renderVolumeColumnDivider, VolumeDividerTracker } from '../utils/volumes';
 import * as obsidian from 'obsidian';
@@ -3839,8 +3839,8 @@ export class BoardView extends ItemView {
             this.refreshBoard();
         });
 
-        // Fork: regroup into tabs (Volumes | Acts | Chapters | Templates)
-        tabifyStructureModal(modal, { app: this.app, projectFilePath: this.sceneManager.activeProject?.filePath, definedActs: this.sceneManager.getDefinedActs() });
+        // Fork: regroup into collapsible sections (Volumes, Acts, Chapters, Templates)
+        enhanceStructureModal(modal, { app: this.app, projectFilePath: this.sceneManager.activeProject?.filePath, definedActs: this.sceneManager.getDefinedActs() });
         modal.open();
 
         // Issue #214 — on iOS/iPadOS the modal opens scrolled past the top,

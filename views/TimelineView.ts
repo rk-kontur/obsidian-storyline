@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-floating-promises, @typescript-eslint/no-misused-promises, @typescript-eslint/no-unnecessary-type-assertion, @typescript-eslint/no-unused-vars -- Obsidian's API surface and several untyped third-party libraries force dynamic dispatch; floating promises are intentional in DOM/event handlers; matching enable at end of file */
 import { openConfirmModal } from '../components/ConfirmModal';
-import { tabifyStructureModal } from '../components/StructureModalTabs';
+import { enhanceStructureModal } from '../components/StructureModalSections';
 import { SceneManager } from '../services/SceneManager';
 import { SceneCardComponent } from '../components/SceneCard';
 import { getProjectVolumes, VolumeDividerTracker } from '../utils/volumes';
@@ -1691,8 +1691,8 @@ export class TimelineView extends ItemView {
             this.refresh();
         });
 
-        // Fork: regroup into tabs (Volumes | Acts | Chapters | Templates)
-        tabifyStructureModal(modal, { app: this.app, projectFilePath: this.sceneManager.activeProject?.filePath, definedActs: this.sceneManager.getDefinedActs() });
+        // Fork: regroup into collapsible sections (Volumes, Acts, Chapters, Templates)
+        enhanceStructureModal(modal, { app: this.app, projectFilePath: this.sceneManager.activeProject?.filePath, definedActs: this.sceneManager.getDefinedActs() });
         modal.open();
     }
 

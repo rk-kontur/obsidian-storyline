@@ -2,6 +2,31 @@
 
 Changes of this fork compared to the original StoryLine plugin by Jan Sandström. Each `## <version>` section is used as the initial text of the matching GitHub release; texts edited on GitHub (e.g. with screenshots) are never overwritten. Every release also carries `storyline-km-source.zip` (all source files that are new or changed compared to the original, without `main.js`) and `storyline-km.patch` (the full diff against the original).
 
+## 1.12.0-km.2
+
+**"Manage story structure": collapsible sections like the plugin settings, wider dialog**
+
+- The tabs are replaced by collapsible sections with the same look as the plugin settings: **Volumes**, **Acts**, **Chapters**, **Templates**. Several sections can be open at the same time; which ones are open is remembered.
+- **Templates** contains beat sheet templates, saved custom beat sheets and the custom structure builder as nested collapsible blocks.
+- The dialog is wider (up to 960 px) and no longer shows a horizontal scrollbar.
+- Fix: "Apply custom structure" / "Save as beat sheet" were shown below every tab; they now sit inside the custom structure builder where they belong. **Done** stays at the bottom of the dialog.
+- The command **Manage volumes** opens the dialog with the Volumes section expanded.
+
+<!-- screenshot: dialog with collapsible sections -->
+
+**How and where to use:**
+
+1. Open the dialog: Board or Timeline toolbar → structure button (columns icon), or Command palette → **StoryLine: Manage story structure** / **StoryLine: Manage volumes**.
+2. Click a section title (▸ Volumes, ▸ Acts, ▸ Chapters, ▸ Templates) to expand or collapse it.
+3. Close with **Done**.
+
+**Files:**
+
+- `components/StructureModalSections.ts` (renamed from `StructureModalTabs.ts`, sections instead of tabs)
+- `services/ForkCommands.ts` (open a given section)
+- `views/BoardView.ts`, `views/TimelineView.ts` (hook renamed)
+- `styles.css` (fork section: dialog width, no horizontal scrollbar)
+
 ## 1.12.0-km.1
 
 **Volumes in every view, one shared volume selector**

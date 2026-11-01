@@ -13982,50 +13982,23 @@ body.sl-focus-active-global.sl-focus-dim-text .markdown-source-view.mod-cm6 .cm-
     white-space: nowrap;
 }
 
-/* Fork: "Manage story structure" tabs + volumes editor */
-.sl-km-tab-bar {
-    display: flex;
-    gap: 4px;
-    margin: 4px 0 12px;
-    border-bottom: 1px solid var(--background-modifier-border);
+/* Fork: "Manage story structure" as collapsible sections + volumes editor */
+.sl-km-structure-modal .modal {
+    width: min(960px, 92vw);
+    max-width: 92vw;
+    overflow-x: hidden;
 }
 
-.sl-km-tab {
-    padding: 6px 14px;
-    border: none;
-    border-bottom: 2px solid transparent;
-    border-radius: 0;
-    background: none;
-    box-shadow: none;
-    color: var(--text-muted);
-    font-weight: 600;
-    cursor: pointer;
+.sl-km-structure-modal .modal-content {
+    overflow-x: hidden;
 }
 
-.sl-km-tab:hover {
-    color: var(--text-normal);
+.sl-km-structure-modal .story-line-settings-section-body {
+    min-width: 0;
 }
 
-.sl-km-tab.is-active {
-    color: var(--text-accent);
-    border-bottom-color: var(--interactive-accent);
-}
-
-.sl-km-tab-panel.is-hidden {
-    display: none;
-}
-
-.sl-km-collapsible {
-    margin: 0 0 8px;
-    padding: 4px 0;
-    border-bottom: 1px solid var(--background-modifier-border);
-}
-
-.sl-km-collapsible > summary {
-    padding: 6px 0;
-    font-size: var(--font-ui-medium);
-    font-weight: 600;
-    cursor: pointer;
+.sl-km-structure-sub {
+    margin-bottom: 8px;
 }
 
 .sl-km-volume-row {

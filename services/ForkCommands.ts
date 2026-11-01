@@ -7,7 +7,7 @@
 
 import type SceneCardsPlugin from '../main';
 import { BOARD_VIEW_TYPE, TIMELINE_VIEW_TYPE } from '../constants';
-import { setNextStructureTab, type StructureTab } from '../components/StructureModalTabs';
+import { setNextStructureSection, type StructureSection } from '../components/StructureModalSections';
 
 interface HasStructureModal { openStructureModal(): void }
 
@@ -15,8 +15,8 @@ interface HasStructureModal { openStructureModal(): void }
  * Open the "Manage story structure" dialog from anywhere: uses an open Board
  * or Timeline view, otherwise opens the Board first.
  */
-export async function openStructureDialog(plugin: SceneCardsPlugin, tab?: StructureTab): Promise<void> {
-    if (tab) setNextStructureTab(plugin.app, tab);
+export async function openStructureDialog(plugin: SceneCardsPlugin, section?: StructureSection): Promise<void> {
+    if (section) setNextStructureSection(plugin.app, section);
     const { workspace } = plugin.app;
     const find = () => workspace.getLeavesOfType(BOARD_VIEW_TYPE)[0] ?? workspace.getLeavesOfType(TIMELINE_VIEW_TYPE)[0];
     let leaf = find();
