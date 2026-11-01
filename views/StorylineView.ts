@@ -408,8 +408,10 @@ export class StorylineView extends ItemView {
         const LINE_WIDTH = 8;
         const LABEL_LEFT = 14;
         const TRACK_LEFT = 160;
-        // fork: spacing can be tuned from CSS (--sl-km-subway-spacing, --sl-km-subway-lane-gap)
-        const SCENE_SPACING = readCssNumber(content, '--sl-km-subway-spacing', 220, 80, 600);
+        // fork: spacing can be tuned from CSS: --sl-km-subway-spacing (px) or
+        // --sl-km-subway-spacing-factor (1 = default), --sl-km-subway-lane-gap (px)
+        const SCENE_SPACING = readCssNumber(content, '--sl-km-subway-spacing',
+            220 * readCssNumber(content, '--sl-km-subway-spacing-factor', 1, 0.3, 3), 60, 900);
         const TOP_MARGIN = 55;
 
         // Each lane needs room for: the track line + scene label + tag pills below it

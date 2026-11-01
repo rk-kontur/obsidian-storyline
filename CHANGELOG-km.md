@@ -8,7 +8,7 @@ Changes of this fork compared to the original StoryLine plugin by Jan Sandström
 
 - The "V1" volume badge collided with the word count, which upstream places absolutely at the top right of Kanban cards. The badge now comes first in the card header. When the board is grouped by act, the volume bands between the columns already show the volume, so the badge is hidden there. Corkboard cards keep the badge on the right.
 
-- **Subway map spacing from CSS:** the distance between stations and the vertical space of each line can be tuned with the CSS variables `--sl-km-subway-spacing` (default 220 px) and `--sl-km-subway-lane-gap` (default 30 px), e.g. from a Style Settings snippet. Without them nothing changes. (Station size, Arc Point size, line width and connectors can be styled with plain CSS.)
+- **Subway map spacing from CSS:** the distance between stations and the vertical space of each line can be tuned with the CSS variables `--sl-km-subway-spacing-factor` (1 = default distance of 220 px; or `--sl-km-subway-spacing` in px) and `--sl-km-subway-lane-gap` (default 30 px), e.g. from a Style Settings snippet. Without them nothing changes. (Station size, Arc Point size, line width and connectors can be styled with plain CSS.)
 
 <!-- screenshot: Kanban card with volume badge on the left -->
 
