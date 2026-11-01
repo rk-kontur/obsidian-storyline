@@ -4,6 +4,8 @@ import { renderVolumeStatsSection } from '../components/VolumeStatsSection';
 import { getProjectVolumes } from '../utils/volumes';
 import { openStructureDialog } from '../services/ForkCommands';
 import { getVolumeScope, inVolumeScope, renderVolumeScopeSelect, scopeFilter } from '../utils/volumeScope';
+import { adjustOffPageWarnings, computeOffPageCoverage, offPageCardValue, renderOffPageCoverage, type OffPageLineCoverage } from '../components/OffPageStatsSection';
+import { getOffPageLines } from '../utils/pageZones';
 import { getStatsScope, scopedDeadline, scopedWordGoal, statsHeading, validateForScope, withLinkPartners } from '../utils/volumeStatsScope';
 import { renderViewSwitcher } from '../components/ViewSwitcher';
 import * as obsidian from 'obsidian';
@@ -65,6 +67,9 @@ export class StatsView extends ItemView {
         return 'bar-chart-2';
     }
 
+    /** fork: coverage of off page lines for the current render */
+    private kmOffPage: OffPageLineCoverage[] = [];
+
     async onOpen(): Promise<void> {
         this.plugin.storyLeaf = this.leaf;
         const container = this.containerEl.children[1] as HTMLElement;
@@ -120,6 +125,9 @@ export class StatsView extends ItemView {
             : stats.totalWords;
         // Setup/payoff across volume borders: include linked scenes of other volumes
         const linkScenes = withLinkPartners(allScenes, projectScenes);
+        // fork: off page lines - coverage of their stages (respects the volume selection)
+        this.kmOffPage = computeOffPageCoverage(this.app, getOffPageLines(this.app, projectPath), allScenes, projectScenes);
+        const openSceneFile = (scene: Scene) => { const f = this.app.vault.getFileByPath(scene.filePath); if (f) void this.app.workspace.getLeaf('tab').openFile(f); };
 
         // Per-volume statistics and goals (fork) — only when `volumes:` is defined
         renderVolumeStatsSection(content, getProjectVolumes(this.app, projectPath),
@@ -136,6 +144,9 @@ export class StatsView extends ItemView {
 
             this.renderCollapsible(content, 'target', 'Progress Breakdown', true, body =>
                 this.renderProgressBreakdown(body, stats, allScenes));
+
+            if (this.kmOffPage.length) this.renderCollapsible(content, 'cloud', 'Off page coverage', true, body => // fork
+                renderOffPageCoverage(body, this.kmOffPage, openSceneFile));
 
             this.renderCollapsible(content, 'calendar', 'Writing History', false, body =>
                 this.renderWritingHistory(body));
@@ -191,6 +202,9 @@ export class StatsView extends ItemView {
         // 4. Progress Breakdown (collapsible, default open)
         this.renderCollapsible(content, 'list-checks', 'Progress Breakdown', true, body =>
             this.renderProgressBreakdown(body, stats, allScenes));
+
+        if (this.kmOffPage.length) this.renderCollapsible(content, 'cloud', 'Off page coverage', true, body => // fork
+            renderOffPageCoverage(body, this.kmOffPage, openSceneFile));
 
         // 5. Characters & World (collapsible, default collapsed)
         this.renderCollapsible(content, 'users', 'Characters & World', false, body =>
@@ -393,6 +407,8 @@ export class StatsView extends ItemView {
         const readM = readMinutes % 60;
         this.createStatCard(row, 'book-open', 'Read Time',
             readH > 0 ? `${readH}h ${readM}m` : `${readMinutes}m`);
+        // fork: realized stages of off page lines
+        if (this.kmOffPage.length) this.createStatCard(row, 'cloud', 'Off page stages told', offPageCardValue(this.kmOffPage));
 
         const renderProjectOverview = (section: HTMLElement): void => {
             // fork: volume goal / sum of volume goals when volumes are defined
@@ -2247,7 +2263,8 @@ export class StatsView extends ItemView {
     private renderWarnings(parent: HTMLElement, allScenes: Scene[]): void {
         if (this.plugin.settings.enablePlotHoleDetection && allScenes.length > 0) {
             // fork: with a volume selected, validate with cross-volume link partners
-            const warnings = validateForScope(allScenes, this.sceneManager.getAllScenes().filter(sc => !sc.inactive && !sc.corkboardNote));
+            const warnings = adjustOffPageWarnings( // fork: off page lines - no act gap warnings, unrealized stages instead
+                validateForScope(allScenes, this.sceneManager.getAllScenes().filter(sc => !sc.inactive && !sc.corkboardNote)), this.kmOffPage);
             if (warnings.length === 0) {
                 const ok = parent.createDiv('stats-ok');
                 const ic = ok.createSpan();

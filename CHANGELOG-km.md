@@ -2,6 +2,33 @@
 
 Changes of this fork compared to the original StoryLine plugin by Jan Sandström. Each `## <version>` section is used as the initial text of the matching GitHub release; texts edited on GitHub (e.g. with screenshots) are never overwritten. Every release also carries `storyline-km-source.zip` (all source files that are new or changed compared to the original, without `main.js`) and `storyline-km.patch` (the full diff against the original).
 
+## 1.12.0-km.13
+
+**Statistics for off page plotlines**
+
+When at least one plotline is marked off page (Subway map → right-click a line name → Move to off page), the Statistics view reports how far the background developments already reach the text.
+
+- **Overview card "Off page stages told":** realized stages / all stages of all off page lines, e.g. "12 / 30". A stage (Arc Point) counts as told when it is linked to a scene via **Realized** in the Inspector.
+- **New section "Off page coverage"** (below Progress Breakdown): one row per off page line with a progress bar, "x / y realized" and the number of regular scenes on that line. Expanded, it lists the stages **not yet told** and the ones **told in** which scene; every entry opens the note.
+- **Warnings:** act gap warnings ("Plotline X has no scenes in Act 5", "last seen in Act 3") are no longer shown for off page lines; sparse appearance is normal for them. Instead, one note per line lists the stages that are not yet told.
+- Follows the volume selector: with a volume selected, only that volume's stages are counted (the realizing scene may be in any volume).
+- Word counts are unchanged: scenes on off page lines are written text and count as usual; Arc Points follow your existing word count setting.
+
+<!-- screenshot: Statistics overview with the Off page card -->
+<!-- screenshot: Off page coverage section -->
+
+**How and where to use:**
+
+1. Mark plotlines as off page in the **Subway map** (right-click the line name → **Move to off page**).
+2. Link stages to their scenes: Inspector of the Arc Point → **Realized** → pick the scene.
+3. Open **Statistics**: see the **Off page stages told** card, the **Off page coverage** section and the adjusted **Warnings**.
+
+**Files:**
+
+- `components/OffPageStatsSection.ts` (new: coverage, overview value, warning adjustment, section rendering)
+- `views/StatsView.ts` (overview card, section, warnings)
+- `styles.css` (fork section)
+
 ## 1.12.0-km.12
 
 **Manuscript no longer turns blank with Pane Relief's "Maximize active tab"**
