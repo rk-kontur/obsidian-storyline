@@ -74,18 +74,59 @@ function rawVolumeIds(raw: unknown): string[] {
     }).filter(id => id);
 }
 
+/** State of one open Volumes tab. */
+interface EditorSession {
+    /**
+     * Field values of every volume this dialog knows to be in the file (at
+     * open, or written by this dialog). Only fields changed against it are
+     * written; an id in here that is missing from the file was deleted
+     * elsewhere and is never re-added.
+     */
+    original: Map<string, VolumeFields>;
+    /** Deleted in this dialog and not yet removed from the file: id → fields at deletion. */
+    pendingDeletes: Map<string, VolumeFields | undefined>;
+    /** All ids deleted in this dialog (never handed out again). */
+    retiredIds: Set<string>;
+}
+
+function fieldsOf(v: VolumeFields): VolumeFields {
+    return { title: v.title, acts: [...v.acts], wordGoal: v.wordGoal, deadline: v.deadline };
+}
+
+function sameFields(a: VolumeFields, b: VolumeFields): boolean {
+    return a.title === b.title && sameActs(a.acts, b.acts) && a.wordGoal === b.wordGoal && a.deadline === b.deadline;
+}
+
+/**
+ * Raw index to remove for each id deleted in this dialog: exactly one entry
+ * per id, preferably the one whose fields still match what the dialog knew
+ * (another entry with the same id added elsewhere stays).
+ */
+function pickDeletions(raw: unknown[], resolved: string[], pending: Map<string, VolumeFields | undefined>): Set<number> {
+    const out = new Set<number>();
+    for (const [id, fields] of pending) {
+        const candidates = resolved.map((r, i) => (r === id ? i : -1)).filter(i => i >= 0);
+        if (candidates.length === 0) continue;
+        const match = fields
+            ? candidates.find(i => { const p = parseVolumes([raw[i]])[0]; return p ? sameFields(p, fields) : false; })
+            : undefined;
+        out.add(match ?? candidates[0]);
+    }
+    return out;
+}
+
 /**
  * Write the editor's changes back into the raw `volumes:` entries:
- * - Volumes the editor knows are updated in place. Only `id` and the fields
- *   that were changed in the editor (title, acts, word goal, deadline) are
- *   written; all other keys (e.g. `color`) and the original notation of
- *   unchanged fields (e.g. `acts: "1-4"`) stay as they are.
- * - Only volumes deleted in this dialog (`deletedIds`) are removed; new ones
- *   are appended.
- * - Every other entry is kept untouched in its position: entries the editor
- *   cannot show (no valid acts, not an object), entries added or changed in
- *   the file while the dialog was open, and a second entry with an id that
- *   was already written.
+ * - Volumes shown in the dialog are updated in place. Only `id` and the
+ *   fields changed in the dialog (title, acts, word goal, deadline) are
+ *   written; other keys (e.g. `color`) and the notation of unchanged fields
+ *   (e.g. `acts: "1-4"`) stay as they are.
+ * - A volume deleted in the dialog removes exactly one entry with its id
+ *   (preferably the one that still matches), once.
+ * - Only volumes added in the dialog are appended. A volume that was in the
+ *   file but has been deleted there meanwhile is not re-added.
+ * - Every other entry is kept untouched in its position: drafts, non-objects,
+ *   entries added elsewhere meanwhile, a second entry with an id already written.
  * - `volumeIdSeq` keeps the highest volume number ever used (also of deleted
  *   volumes), so ids are never handed out twice.
  */
@@ -93,32 +134,32 @@ async function saveVolumes(
     app: App,
     projectFilePath: string,
     volumes: EditableVolume[],
-    original: Map<string, VolumeFields>,
-    deletedIds: ReadonlySet<string> = new Set(),
+    session: EditorSession,
 ): Promise<void> {
     const file = app.vault.getAbstractFileByPath(projectFilePath);
     if (!(file instanceof TFile)) {
         new Notice('Project file not found.');
         return;
     }
+    const { original, pendingDeletes, retiredIds } = session;
     await app.fileManager.processFrontMatter(file, (fm: Record<string, unknown>) => {
         const raw: unknown[] = Array.isArray(fm.volumes) ? (fm.volumes as unknown[]) : [];
         const seq = Math.max(readVolumeIdSeq(fm), ...volumes.map(v => volumeIdNumber(v.id)),
-            ...[...deletedIds].map(volumeIdNumber), ...rawVolumeIds(raw).map(volumeIdNumber));
+            ...[...retiredIds].map(volumeIdNumber), ...rawVolumeIds(raw).map(volumeIdNumber));
         if (seq > 0) fm.volumeIdSeq = seq;
 
         const byId = new Map(volumes.map(v => [v.id, v]));
         const resolved = resolveVolumeIds(raw);
+        const remove = pickDeletions(raw, resolved, pendingDeletes);
         const written = new Set<string>();
         const out: unknown[] = [];
         raw.forEach((entry, idx) => {
+            if (remove.has(idx)) return; // deleted in this dialog (one entry per id)
             const id = resolved[idx];
-            if (!id || written.has(id)) { out.push(entry); return; } // draft, unknown entry or duplicate id: keep untouched
-            const v = byId.get(id);
-            if (!v) {
-                if (!deletedIds.has(id)) out.push(entry); // not known to this dialog (e.g. added by hand meanwhile): keep
-                return; // deleted in this dialog
-            }
+            const v = id ? byId.get(id) : undefined;
+            // Draft, unknown entry, entry not shown in this dialog (e.g. added
+            // elsewhere meanwhile) or a second entry with an id already written: keep untouched
+            if (!id || !v || written.has(id)) { out.push(entry); return; }
             written.add(id);
             const e = { ...(entry as Record<string, unknown>) };
             const before = original.get(id);
@@ -133,18 +174,22 @@ async function saveVolumes(
             }
             out.push(e);
         });
+        // Append only volumes added in this dialog. A volume the dialog knew
+        // to be in the file but that is gone now was deleted elsewhere: not re-added.
         for (const v of volumes) {
-            if (written.has(v.id)) continue;
+            if (written.has(v.id) || original.has(v.id)) continue;
             const e: Record<string, unknown> = { id: v.id, title: v.title, acts: v.acts };
             if (v.wordGoal) e.wordGoal = v.wordGoal;
             if (v.deadline) e.deadline = v.deadline;
             out.push(e);
+            written.add(v.id);
         }
         if (out.length === 0) delete fm.volumes;
         else fm.volumes = out;
         // The file now holds these values: later saves compare against them
-        original.clear();
-        for (const v of volumes) original.set(v.id, { title: v.title, acts: [...v.acts], wordGoal: v.wordGoal, deadline: v.deadline });
+        for (const id of pendingDeletes.keys()) original.delete(id);
+        pendingDeletes.clear();
+        for (const v of volumes) if (written.has(v.id)) original.set(v.id, fieldsOf(v));
     });
 }
 
@@ -157,6 +202,9 @@ async function persistIdFix(app: App, projectFilePath: string): Promise<void> {
     if (!(file instanceof TFile)) return;
     await app.fileManager.processFrontMatter(file, (fm: Record<string, unknown>) => {
         normalizeVolumeIds(fm.volumes, readVolumeIdSeq(fm));
+        // Renumbered duplicates must count as used ids too
+        const seq = Math.max(readVolumeIdSeq(fm), ...rawVolumeIds(fm.volumes).map(volumeIdNumber));
+        if (seq > 0) fm.volumeIdSeq = seq;
     });
 }
 
@@ -190,10 +238,11 @@ export function renderVolumesEditor(
     const volumes: EditableVolume[] = parseVolumes(rawCopy)
         .map(v => ({ ...v, acts: [...v.acts] }));
     // Field values at open: only fields changed in the editor are written back
-    const original = new Map<string, VolumeFields>(volumes.map(v => [v.id, { title: v.title, acts: [...v.acts], wordGoal: v.wordGoal, deadline: v.deadline }]));
+    const original = new Map<string, VolumeFields>(volumes.map(v => [v.id, fieldsOf(v)]));
 
     // Ids deleted in this dialog: removed from the file on save, never handed out again
     const retiredIds = new Set<string>();
+    const session: EditorSession = { original, pendingDeletes: new Map(), retiredIds };
     if (idFix.renumbered.length > 0) {
         container.createEl('p', {
             cls: 'sl-km-volumes-warning',
@@ -206,7 +255,7 @@ export function renderVolumesEditor(
     let saveTimer: number | null = null;
     const scheduleSave = () => {
         if (saveTimer) window.clearTimeout(saveTimer);
-        saveTimer = window.setTimeout(() => { void saveVolumes(app, projectFilePath, volumes, original, retiredIds); }, 400);
+        saveTimer = window.setTimeout(() => { void saveVolumes(app, projectFilePath, volumes, session); }, 400);
     };
 
     const render = () => {
@@ -259,6 +308,7 @@ export function renderVolumesEditor(
             del.addEventListener('click', () => {
                 volumes.splice(i, 1);
                 retiredIds.add(v.id);
+                session.pendingDeletes.set(v.id, original.get(v.id));
                 // The volume selection must not point to a deleted volume
                 clearVolumeScopeIfId(app, projectFilePath, v.id);
                 scheduleSave();
