@@ -494,8 +494,8 @@ export class InspectorComponent {
             await this.sceneManager.updateScene(scene.filePath, { arcAnchor: val });
             scene.arcAnchor = val || undefined;
         });
-        // Arc Point → realizing scene (fork)
-        renderRealizedByControl(this.container, this.plugin.app, scene, () => this.sceneManager.getAllScenes());
+        // Arc Point → realizing scene, in the same row as the checkbox (fork)
+        renderRealizedByControl(arcRow, this.plugin.app, scene, () => this.sceneManager.getAllScenes());
 
         // ── Story Date / Time ──
         const dtRow = this.container.createDiv('inspector-section');

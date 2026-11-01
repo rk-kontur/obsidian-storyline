@@ -22,7 +22,8 @@ async function writeRealizedBy(app: App, arc: Scene, target: Scene | undefined):
 }
 
 /**
- * Renders "realized by [dropdown: not yet | scenes…]" in one line for Arc Points.
+ * Renders "Realized [dropdown: not yet | scenes…]" next to the Arc point checkbox.
+ * `container` is the Arc point row of the Inspector.
  * `getScenes` returns the candidate scenes (regular scenes of the project).
  */
 export function renderRealizedByControl(
@@ -32,7 +33,7 @@ export function renderRealizedByControl(
     getScenes: () => Scene[],
     onChanged?: () => void,
 ): void {
-    const row = container.createDiv('inspector-section sl-km-realized-by');
+    const row = container.createDiv('sl-km-realized-by');
     const isArc = () => {
         const cb = container.querySelector<HTMLInputElement>('#arc-anchor-toggle');
         return cb ? cb.checked : !!scene.arcAnchor;
@@ -41,7 +42,7 @@ export function renderRealizedByControl(
         row.empty();
         if (!isArc()) { row.hide(); return; }
         row.show();
-        row.createSpan({ cls: 'sl-km-realized-by-label', text: 'realized by' });
+        row.createSpan({ cls: 'sl-km-realized-by-label', text: 'Realized' });
 
         const raw = readRealizedBy(app, scene);
         const candidates = getScenes()

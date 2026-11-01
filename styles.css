@@ -13963,9 +13963,11 @@ body.sl-focus-active-global.sl-focus-dim-text .markdown-source-view.mod-cm6 .cm-
 
 .sl-km-realized-by {
     display: flex;
+    flex: 1 1 auto;
+    min-width: 0;
     align-items: center;
     gap: 8px;
-    flex-wrap: nowrap;
+    margin-left: 12px;
 }
 
 .sl-km-realized-by-select {
@@ -13976,5 +13978,6 @@ body.sl-focus-active-global.sl-focus-dim-text .markdown-source-view.mod-cm6 .cm-
 .sl-km-realized-by-label {
     flex: 0 0 auto;
     font-weight: 600;
+    font-size: var(--font-ui-small);
     white-space: nowrap;
 }

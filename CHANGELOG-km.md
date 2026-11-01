@@ -2,6 +2,25 @@
 
 Changes of this fork compared to the original StoryLine plugin by Jan Sandström. Each `## <version>` section is used automatically as the text of the matching GitHub release. Every release also carries `storyline-km-source.zip` (all source files that are new or changed compared to the original, without `main.js`) and `storyline-km.patch` (the full diff against the original).
 
+## 1.11.8-km.10
+
+**Inspector: "Realized" sits in the Arc point row**
+
+- The link control is now on the same line as the **Arc point** checkbox: `☑ Arc point   Realized [not yet ▾]`. No separate row any more.
+- The dropdown shows **not yet** as long as no scene is linked.
+
+**How and where to use:**
+
+1. Click the Arc Point scene in Board or Timeline (or use **Open Scene Details Sidebar**) to open the Inspector.
+2. Tick **Arc point**. Next to it, **Realized** and the dropdown appear.
+3. Pick the scene that tells this stage. Pick **not yet** to remove the link.
+
+**Files:**
+
+- `components/RealizedByControl.ts` (label, placement)
+- `components/Inspector.ts` (renders into the Arc point row)
+- `styles.css` (fork section)
+
 ## 1.11.8-km.9
 
 **Subway map: finer dashed link for realized Arc Points**
