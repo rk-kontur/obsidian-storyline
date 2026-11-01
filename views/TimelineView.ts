@@ -4,7 +4,7 @@ import { enhanceStructureModal } from '../components/StructureModalSections';
 import { SceneManager } from '../services/SceneManager';
 import { SceneCardComponent } from '../components/SceneCard';
 import { getProjectVolumes, VolumeDividerTracker } from '../utils/volumes';
-import { getOffPageLines, orderByZone } from '../utils/pageZones';
+import { getOffPageLines, isOffPage, orderByZone } from '../utils/pageZones';
 import { characterKey, sceneCharacterNames } from '../utils/sceneCharacters';
 import { defaultActForScope, placeInFullList, renderVolumeScopeSelect, scopeActs, scopeFilter } from '../utils/volumeScope';
 import { ArcFilterMode, arcFilterQuery, loadArcFilter, renderArcFilterToggle, renderArcPointBadge, saveArcFilter } from '../components/ArcPointUI';
@@ -708,7 +708,7 @@ export class TimelineView extends ItemView {
         // Lane headers
         for (const lane of laneKeys) {
             const header = grid.createDiv('swimlane-lane-header');
-            if (laneOffPage.has(lane)) header.addClass('sl-km-off-page');
+            if (isOffPage(laneOffPage, lane)) header.addClass('sl-km-off-page');
             header.textContent = lane;
             header.setAttribute('title', lane);
         }
@@ -770,7 +770,7 @@ export class TimelineView extends ItemView {
             for (let laneIdx = 0; laneIdx < laneKeys.length; laneIdx++) {
                 const lane = laneKeys[laneIdx];
                 const cell = grid.createDiv('swimlane-lane-cell');
-                if (laneOffPage.has(lane)) cell.addClass('sl-km-off-page');
+                if (isOffPage(laneOffPage, lane)) cell.addClass('sl-km-off-page');
 
                 if (sceneKeySet.has(lane)) {
                     // Multi-value groups (characters / plotlines) render the scene in every matching lane.

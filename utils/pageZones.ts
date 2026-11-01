@@ -94,6 +94,8 @@ export async function setOffPage(app: App, projectFilePath: string | undefined |
 
 /** Hook for renaming (`newTag`) or deleting (`newTag` null) a plotline. */
 export async function transferOffPage(app: App, projectFilePath: string | undefined | null, oldTag: string, newTag: string | null): Promise<void> {
+    // Cheap pre-check: never touch the project file for plotlines that are not off page
+    if (!isOffPage(getOffPageLines(app, projectFilePath), oldTag)) return;
     await updateOffPage(app, projectFilePath, current => withTransferredOffPage(current, oldTag, newTag));
 }
 

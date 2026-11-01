@@ -53,8 +53,9 @@ Changes of this fork compared to the original StoryLine plugin by Jan Sandström
 - `components/PlotlineDeleteImpact.ts` (new: impact per volume and dialog texts for delete and rename)
 - `utils/pageZones.ts` (shared parser and tag normalization for `offPageLines`, `isOffPage`, rename/delete hook `transferOffPage`, menu entry `addZoneMenuItem`)
 - `components/OffPageStatsSection.ts` (match scene tags normalized, ignore orphaned entries, cap warning titles, hint text)
-- `views/StorylineView.ts` (+8: delete and rename dialogs, off page hooks, list view context menu entry)
-- `views/PlotgridView.ts` (1 line: off page check uses `isOffPage`)
+- `views/StorylineView.ts` (delete and rename dialogs, off page hooks, list view context menu entry)
+- `views/PlotgridView.ts` (off page check uses `isOffPage`)
+- `views/TimelineView.ts` (swimlane tint uses `isOffPage`)
 - `services/SceneManager.ts` (+2: no duplicate tag on rename)
 - `styles.css` (fork section: columns)
 
