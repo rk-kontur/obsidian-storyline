@@ -14121,3 +14121,8 @@ body.sl-focus-active-global.sl-focus-dim-text .markdown-source-view.mod-cm6 .cm-
     border: none !important;
     min-width: 0 !important;
 }
+
+/* Fork: Export dialog volume choice */
+.sl-km-export-volume:not(:empty) {
+    margin-bottom: 12px;
+}

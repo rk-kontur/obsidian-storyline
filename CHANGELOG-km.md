@@ -2,6 +2,25 @@
 
 Changes of this fork compared to the original StoryLine plugin by Jan Sandström. Each `## <version>` section is used as the initial text of the matching GitHub release; texts edited on GitHub (e.g. with screenshots) are never overwritten. Every release also carries `storyline-km-source.zip` (all source files that are new or changed compared to the original, without `main.js`) and `storyline-km.patch` (the full diff against the original).
 
+## 1.12.0-km.4
+
+**Export dialog: Volume choice next to Content and Format**
+
+- The **Volume** dropdown now sits directly below **Format**, above the Export / Cancel buttons, with some space before the buttons. Before, it was squeezed in right below the buttons.
+
+<!-- screenshot: export dialog with Volume below Format -->
+
+**How and where to use:**
+
+1. Command palette → **StoryLine: Export project**.
+2. Choose **Content** (Manuscript or Outline) and **Format**.
+3. Choose a **Volume** right below, then **Export**.
+
+**Files:**
+
+- `components/ExportModal.ts` (own container for the volume choice)
+- `styles.css` (fork section)
+
 ## 1.12.0-km.3
 
 **Statistics per volume and across all volumes, volume filter in the filter bar, Plot Grid hides empty plotlines, fixes**

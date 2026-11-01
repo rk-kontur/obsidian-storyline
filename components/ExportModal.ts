@@ -111,6 +111,9 @@ export class ExportModal extends Modal {
                 });
             });
 
+        // fork: Volume choice sits with Content/Format, above the buttons
+        const volumeOptions = contentEl.createDiv({ cls: 'sl-km-export-volume' });
+
         // Actions
         const actions = contentEl.createDiv({ cls: 'storyline-export-actions' });
 
@@ -132,9 +135,10 @@ export class ExportModal extends Modal {
             }
 
             // Volume selection (fork) — only when the project defines `volumes:`
+            volumeOptions.empty();
             const volumes = getProjectVolumes(this.app, this.plugin.sceneManager.activeProject?.filePath);
             if (volumes.length > 0 && this.exportContent !== 'scenes' && this.exportContent !== 'chapters') {
-                new Setting(manuscriptOptions)
+                new Setting(volumeOptions)
                     .setName('Volume')
                     .setDesc('Export a single volume (its acts) or the whole project.')
                     .addDropdown(dd => {
