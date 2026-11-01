@@ -4,7 +4,7 @@ import * as obsidian from 'obsidian';
 import { CellData, ColumnMeta, RowMeta, PlotGridData } from '../models/PlotGridData';
 import { renderArcPointIcon } from '../components/ArcPointUI';
 import { getProjectVolumes, VolumeDividerTracker } from '../utils/volumes';
-import { scopeFilter } from '../utils/volumeScope';
+import { scopeFilter, volumeScopeKey } from '../utils/volumeScope';
 import { getOffPageLines, isOffPage } from '../utils/pageZones';
 import { columnTemplate, findEmptyAutoColumns, hiddenColumnsWidth, renderHiddenColumnsHint, updateHiddenColumnsHint } from '../utils/plotgridVolume';
 import { LocationManager } from '../services/LocationManager';
@@ -1014,7 +1014,9 @@ export class PlotgridView extends ItemView {
         if (!this.canvasEl || !this.scrollAreaEl) return;
 
         const projectKey = this.getProjectKey();
-        const preserveScroll = this.renderedProjectKey === projectKey;
+        // fork: a changed volume scope starts at the top like a project switch
+        const renderKey = `${projectKey ?? ''}|${volumeScopeKey(this.app, this.plugin?.sceneManager?.activeProject?.filePath)}`;
+        const preserveScroll = this.renderedProjectKey === renderKey;
         const prevScrollTop = preserveScroll ? this.scrollAreaEl.scrollTop : 0;
         const prevScrollLeft = preserveScroll ? this.scrollAreaEl.scrollLeft : 0;
         const scrollRestoreGeneration = ++this.scrollRestoreGeneration;
@@ -1022,7 +1024,7 @@ export class PlotgridView extends ItemView {
             window.cancelAnimationFrame(this.scrollRestoreFrame);
             this.scrollRestoreFrame = null;
         }
-        this.renderedProjectKey = projectKey;
+        this.renderedProjectKey = renderKey; // fork
 
         this.ensureDefaults();
         this.canvasEl.empty();

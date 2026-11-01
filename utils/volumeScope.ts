@@ -27,9 +27,61 @@ export function getVolumeScope(app: App, projectFilePath: string | undefined | n
     return typeof v === 'string' ? v : '';
 }
 
+/** Set by setVolumeScope, consumed by the next refreshOpenViews: views start at the top. */
+let scrollResetPending = false;
+
+/**
+ * Store the scope for the CURRENT project and refresh all views. Ids that the
+ * current project does not define (e.g. from a dropdown that still showed the
+ * previous book) are rejected, so no foreign id lands under this project's key.
+ */
 export function setVolumeScope(plugin: SceneCardsPlugin, id: string): void {
-    plugin.app.saveLocalStorage(storageKey(plugin.sceneManager?.activeProject?.filePath), id);
-    plugin.refreshOpenViews();
+    const projectFilePath = plugin.sceneManager?.activeProject?.filePath;
+    if (id && !getProjectVolumes(plugin.app, projectFilePath).some(v => v.id === id)) {
+        syncVolumeScopeSelects(plugin);
+        return;
+    }
+    if (id !== getVolumeScope(plugin.app, projectFilePath)) scrollResetPending = true;
+    plugin.app.saveLocalStorage(storageKey(projectFilePath), id);
+    syncVolumeScopeSelects(plugin);
+    void plugin.refreshOpenViews();
+}
+
+/** Clear the stored scope of a project ("All volumes"). */
+export function clearVolumeScope(app: App, projectFilePath: string | undefined | null): void {
+    app.saveLocalStorage(storageKey(projectFilePath), '');
+}
+
+/** Clear the stored scope if it points to the given (deleted) volume id. */
+export function clearVolumeScopeIfId(app: App, projectFilePath: string | undefined | null, id: string): void {
+    if (id && getVolumeScope(app, projectFilePath) === id) {
+        clearVolumeScope(app, projectFilePath);
+        scrollResetPending = true;
+    }
+}
+
+/**
+ * True once after the volume scope changed: refreshOpenViews then scrolls the
+ * views to the top instead of restoring the old position.
+ */
+export function consumeVolumeScopeScrollReset(): boolean {
+    const pending = scrollResetPending;
+    scrollResetPending = false;
+    return pending;
+}
+
+/**
+ * New volume id that was never used in this project: max numeric suffix of
+ * the existing ids, of ids retired in this editing session and of the stored
+ * scope id, plus 1. A deleted `v3` is therefore never handed out again.
+ */
+export function nextVolumeId(existingIds: Iterable<string>, retiredIds: Iterable<string> = [], scopeId = ''): string {
+    let max = 0;
+    for (const id of [...existingIds, ...retiredIds, scopeId]) {
+        const m = /^v(\d+)$/.exec(id ?? '');
+        if (m) max = Math.max(max, Number(m[1]));
+    }
+    return `v${max + 1}`;
 }
 
 /** The scoped volume, or undefined for "All volumes" / unknown id. */
@@ -64,10 +116,45 @@ export function scopeFilter<T extends SceneFilter | undefined>(
  * `keepUnassigned` is false (Statistics: count only the volume's own scenes).
  */
 export function inVolumeScope(app: App, projectFilePath: string | undefined | null, scene: Scene, keepUnassigned = true): boolean {
+    return volumeScopePredicate(app, projectFilePath, keepUnassigned)(scene);
+}
+
+/**
+ * Same rule as inVolumeScope, but the scope (local storage + `volumes:`) is
+ * resolved once. Use it outside loops: `scenes.filter(volumeScopePredicate(...))`.
+ */
+export function volumeScopePredicate(
+    app: App,
+    projectFilePath: string | undefined | null,
+    keepUnassigned = true,
+): (scene: Scene) => boolean {
     const vol = getScopedVolume(app, projectFilePath);
-    if (!vol) return true;
-    if (scene.act === undefined || scene.act === null || String(scene.act) === '' || scene.corkboardNote) return keepUnassigned;
-    return getVolumeForAct([vol], scene.act) !== undefined;
+    if (!vol) return () => true;
+    const acts = new Set(vol.acts);
+    return (scene: Scene) => {
+        if (scene.act === undefined || scene.act === null || String(scene.act) === '' || scene.corkboardNote) return keepUnassigned;
+        const n = Number(scene.act);
+        return Number.isFinite(n) && acts.has(n);
+    };
+}
+
+/** Scenes of the scoped volume (all scenes without a scope). Entity views: scene lists and counts. */
+export function scopeScenes<T extends Scene>(plugin: SceneCardsPlugin, scenes: T[]): T[] {
+    const inScope = volumeScopePredicate(plugin.app, plugin.sceneManager?.activeProject?.filePath);
+    return scenes.filter(inScope);
+}
+
+/**
+ * "Referenced by" lists: drop scene references outside the scoped volume.
+ * References from characters, locations and codex entries are kept.
+ */
+export function scopeSceneRefs<T extends { type: string; filePath: string }>(plugin: SceneCardsPlugin, refs: T[]): T[] {
+    const inScope = volumeScopePredicate(plugin.app, plugin.sceneManager?.activeProject?.filePath);
+    return refs.filter(ref => {
+        if (ref.type !== 'scene') return true;
+        const scene = plugin.sceneManager?.getScene(ref.filePath);
+        return !scene || inScope(scene);
+    });
 }
 
 /** First act of the scoped volume: default act for scenes created while a volume is selected. */
@@ -105,35 +192,94 @@ export function volumeScopeKey(app: App, projectFilePath: string | undefined | n
     return `vol:${getVolumeScope(app, projectFilePath)}`;
 }
 
+// ── Self-updating dropdowns ─────────────────────────
+// Every rendered dropdown is registered here. syncVolumeScopeSelects updates
+// options, value and visibility of all of them for the CURRENT project, so a
+// view that does not rebuild its toolbar on refresh (Board, Plot Grid,
+// Navigator) never shows a stale volume list or value.
+
+interface ScopeSelect {
+    select: HTMLSelectElement;
+    /** Element hidden when the project has no volumes (select or "Filter by" wrapper). */
+    host: HTMLElement;
+}
+
+const registry = new Set<ScopeSelect>();
+
+function syncOne(entry: ScopeSelect, volumes: VolumeDef[], current: string): void {
+    const { select, host } = entry;
+    const wanted = [{ id: '', title: 'All volumes' }, ...volumes.map(v => ({ id: v.id, title: v.title }))];
+    const same = select.options.length === wanted.length
+        && wanted.every((w, i) => select.options[i].value === w.id && select.options[i].text === w.title);
+    if (!same) {
+        select.empty();
+        for (const w of wanted) select.createEl('option', { text: w.title, value: w.id });
+    }
+    const value = volumes.some(v => v.id === current) ? current : '';
+    if (select.value !== value) select.value = value;
+    host.toggle(volumes.length > 0);
+}
+
+/** Update every rendered volume dropdown to the current project's volumes and scope. */
+export function syncVolumeScopeSelects(plugin: SceneCardsPlugin): void {
+    const projectFilePath = plugin.sceneManager?.activeProject?.filePath;
+    const volumes = getProjectVolumes(plugin.app, projectFilePath);
+    let current = getVolumeScope(plugin.app, projectFilePath);
+    // Stored id of a volume that no longer exists: back to "All volumes", so a
+    // later volume that happens to get the same id is not selected silently.
+    if (current && volumes.length > 0 && !volumes.some(v => v.id === current)) {
+        clearVolumeScope(plugin.app, projectFilePath);
+        current = '';
+    }
+    for (const entry of [...registry]) {
+        if (!entry.select.isConnected) { registry.delete(entry); continue; }
+        syncOne(entry, volumes, current);
+    }
+}
+
 /**
- * Toolbar dropdown "All volumes / Volume 1 / …". Rendered only when the
- * project defines volumes. Changing it re-renders every open StoryLine view.
+ * Keep the dropdowns current when the project file's `volumes:` change
+ * (added, renamed, deleted), also on startup when the metadata cache becomes
+ * ready after a view was opened. Call once in onload.
  */
-export function renderVolumeScopeSelect(parent: HTMLElement, plugin: SceneCardsPlugin): void {
-    const volumes = getProjectVolumes(plugin.app, plugin.sceneManager?.activeProject?.filePath);
-    if (volumes.length === 0) return;
+export function registerVolumeScopeSync(plugin: SceneCardsPlugin): void {
+    plugin.registerEvent(plugin.app.metadataCache.on('changed', (file) => {
+        if (file.path === plugin.sceneManager?.activeProject?.filePath) syncVolumeScopeSelects(plugin);
+    }));
+    plugin.registerEvent(plugin.app.metadataCache.on('resolved', () => syncVolumeScopeSelects(plugin)));
+}
+
+function createScopeSelect(parent: HTMLElement, plugin: SceneCardsPlugin, host?: HTMLElement): HTMLSelectElement {
     const select = parent.createEl('select', {
         cls: 'dropdown sl-km-volume-scope',
         attr: { 'aria-label': 'Volume' },
     });
-    select.createEl('option', { text: 'All volumes', value: '' });
-    for (const v of volumes) select.createEl('option', { text: v.title, value: v.id });
-    const current = getVolumeScope(plugin.app, plugin.sceneManager?.activeProject?.filePath);
-    select.value = volumes.some(v => v.id === current) ? current : '';
+    const entry: ScopeSelect = { select, host: host ?? select };
+    registry.add(entry);
+    const projectFilePath = plugin.sceneManager?.activeProject?.filePath;
+    syncOne(entry, getProjectVolumes(plugin.app, projectFilePath), getVolumeScope(plugin.app, projectFilePath));
     select.addEventListener('keydown', (e: KeyboardEvent) => e.stopPropagation());
     select.addEventListener('change', () => setVolumeScope(plugin, select.value));
+    return select;
+}
+
+/**
+ * Toolbar dropdown "All volumes / Volume 1 / …". Always rendered, but hidden
+ * while the project defines no volumes; it shows up by itself as soon as
+ * volumes exist. Changing it re-renders every open StoryLine view.
+ */
+export function renderVolumeScopeSelect(parent: HTMLElement, plugin: SceneCardsPlugin): void {
+    createScopeSelect(parent, plugin);
 }
 
 /**
  * Filter-bar version: "Filter by [Volume ▾]" at the very left of the filter
- * bar (Board, Manuscript, Plot Grid). Rendered only when volumes exist.
+ * bar (Board, Manuscript, Plot Grid). Hidden while no volumes exist.
  */
 export function renderVolumeFilterBarStart(bar: HTMLElement, plugin: SceneCardsPlugin): void {
-    const volumes = getProjectVolumes(plugin.app, plugin.sceneManager?.activeProject?.filePath);
-    if (volumes.length === 0) return;
-    const wrap = createDiv('sl-km-filter-by');
+    const wrap = bar.createDiv('sl-km-filter-by');
     wrap.createSpan({ cls: 'sl-km-filter-by-label', text: 'Filter by' });
-    renderVolumeScopeSelect(wrap, plugin);
+    createScopeSelect(wrap, plugin, wrap);
     bar.prepend(wrap);
 }
 

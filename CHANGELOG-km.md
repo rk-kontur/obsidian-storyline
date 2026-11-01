@@ -2,6 +2,62 @@
 
 Changes of this fork compared to the original StoryLine plugin by Jan Sandström. Each `## <version>` section is used as the initial text of the matching GitHub release; texts edited on GitHub (e.g. with screenshots) are never overwritten. Every release also carries `storyline-km-source.zip` (all source files that are new or changed compared to the original, without `main.js`) and `storyline-km.patch` (the full diff against the original).
 
+## 1.11.8-km.15
+
+**Volume selector: always up to date, in every view, also in Characters, Locations and Codex**
+
+### The volume dropdown no longer goes stale
+
+- Board, Plot Grid and Navigator built their volume dropdown only once, when the view opened. After picking a volume in another view, the dropdown still showed the old value, and **All volumes** could not be picked again. After switching books in series mode it still listed the previous book's volumes, and picking one stored a foreign volume id for the new book. Added or renamed volumes did not show up.
+- All volume dropdowns (Board, Manuscript, Plot Grid, Timeline, Subway, Statistics, Navigator, Characters, Locations, Codex) now update themselves: options, title and selected value always follow the current project, after every refresh, on project switch and as soon as the `volumes:` of the project file change.
+- The Navigator dropdown also appears when Obsidian starts before the project's metadata is ready; it shows up by itself once the volumes are known.
+- A dropdown can no longer store a volume id that the current project does not define.
+
+### Deleted volumes do not come back as the selection
+
+- Deleting the selected volume in **Manage story structure** → **Volumes** resets the selection to **All volumes**.
+- New volumes get an id that was never used in the project (highest number so far + 1, including deleted ones and the stored selection), so a new volume is never selected silently because it inherited the id of a deleted one.
+- A stored selection that points to a volume that no longer exists (e.g. removed by hand in the project file) is reset to **All volumes**.
+
+### Faster scene lists with a volume selected
+
+- The volume selection is now resolved once per render instead of once per scene. This makes typing in the Navigator search and opening Statistics faster in large projects.
+
+### Views start at the top after a volume change
+
+- When the volume selection changes, all views open at the top of the new volume instead of jumping to the old scroll position. Normal refreshes (edits, saves) keep the scroll position as before.
+
+### Characters, Locations and Codex follow the volume selection
+
+- The **Characters**, **Locations** and **Codex** views now show the same volume dropdown in their toolbar, so the volume can be switched from there too.
+- With a volume selected, they count and list only the scenes of that volume: scene counts and POV counts on character and location cards, the scene list, POV/presence stats, gaps and intensity curve in the character side panel, the scene list and stats of a location or world, the Story graph, and the scenes in **Referenced by** (references from characters, locations and codex entries stay). Scenes without an act stay visible in every volume, as in the other views.
+- The "may need review" warning of a modified codex entry still lists all affected scenes, so none is missed.
+
+<!-- screenshot: Characters view toolbar with the volume dropdown -->
+<!-- screenshot: Codex entry, Referenced by limited to the selected volume -->
+
+**How and where to use:**
+
+1. Define volumes in **Manage story structure** → **Volumes** (command **Manage volumes**), if not done yet.
+2. Pick a volume in the volume dropdown of any view: the **Filter by** dropdown at the left of the filter bar (Board, Manuscript, Plot Grid) or the dropdown in the toolbar (Timeline, Subway, Statistics, Navigator, Characters, Locations, Codex).
+3. All other open views switch to that volume right away and show the same value, and start at the top. Pick **All volumes** in any of them to show everything again.
+4. Open **Characters**, **Locations** or **Codex** and select an entry: the scene lists and **Referenced by** show only scenes of the selected volume.
+5. Delete a volume in **Manage story structure** → **Volumes** (× at the end of its row): if it was selected, the views go back to **All volumes**. **+ Add volume** creates a volume with a fresh id.
+
+**Files:**
+
+- `utils/volumeScope.ts` (self-updating dropdown registry `syncVolumeScopeSelects` / `registerVolumeScopeSync`, `volumeScopePredicate`, `scopeScenes`, `scopeSceneRefs`, `clearVolumeScope`, `clearVolumeScopeIfId`, `nextVolumeId`, scroll reset after a volume change)
+- `components/VolumesEditor.ts`
+- `services/ForkCommands.ts`
+- `main.ts`
+- `views/PlotgridView.ts`
+- `views/NavigatorView.ts`
+- `views/StatsView.ts`
+- `views/CharacterView.ts`
+- `views/LocationView.ts`
+- `views/CodexView.ts`
+- `CHANGELOG-km.md`
+
 ## 1.11.8-km.14
 
 **Plotlines and off page: delete and rename show what is really affected, off page status follows**

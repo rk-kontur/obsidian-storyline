@@ -3,11 +3,13 @@
 // ═══════════════════════════════════════════════════════
 //
 // Registered with one call from main.ts onload: registerForkCommands(this).
+// Also registers the fork's onload event hooks (volume dropdown sync).
 // Commands can get a hotkey in Settings → Hotkeys.
 
 import type SceneCardsPlugin from '../main';
 import { BOARD_VIEW_TYPE, TIMELINE_VIEW_TYPE } from '../constants';
 import { setNextStructureSection, type StructureSection } from '../components/StructureModalSections';
+import { registerVolumeScopeSync } from '../utils/volumeScope';
 
 interface HasStructureModal { openStructureModal(): void }
 
@@ -40,4 +42,6 @@ export function registerForkCommands(plugin: SceneCardsPlugin): void {
         name: 'Manage volumes',
         callback: () => { void openStructureDialog(plugin, 'volumes'); },
     });
+    // Volume dropdowns follow changes of the project file's `volumes:`
+    registerVolumeScopeSync(plugin);
 }

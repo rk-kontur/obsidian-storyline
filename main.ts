@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-return, @typescript-eslint/no-floating-promises, @typescript-eslint/no-misused-promises, @typescript-eslint/no-unnecessary-type-assertion, no-useless-escape -- Obsidian's API surface and several untyped third-party libraries force dynamic dispatch; floating promises are intentional in DOM/event handlers; matching enable at end of file */
 import { addIcon, App, ButtonComponent, DropdownComponent, FuzzySuggestModal, ItemView, Modal, Notice, Platform, Plugin, Setting, TFile, TextComponent, ToggleComponent, WorkspaceLeaf, normalizePath, parseYaml, setIcon } from 'obsidian';
 import { registerForkCommands } from './services/ForkCommands';
+import { consumeVolumeScopeScrollReset, syncVolumeScopeSelects } from './utils/volumeScope'; // fork: shared volume scope
 import { SceneCardsSettings, SceneCardsSettingTab, DEFAULT_SETTINGS, migrateSectionStateKeys } from './settings';
 import { asRecord, isRecord } from './utils/narrow';
 import type { FilterPreset } from './models/Scene';
@@ -2639,6 +2640,9 @@ export default class SceneCardsPlugin extends Plugin {
         const isCurrentRefresh = (): boolean =>
             refreshGeneration === this.openViewsRefreshGeneration
             && (this.sceneManager?.activeProject?.filePath ?? null) === projectKey;
+        // fork: volume dropdowns follow project and scope; a changed volume starts at the top
+        syncVolumeScopeSelects(this);
+        const scrollToTop = consumeVolumeScopeScrollReset();
 
         // Issue #279 — external sync tools can add, replace, or remove files
         // without leaving SceneManager's in-memory index in a usable state.
@@ -2726,7 +2730,8 @@ export default class SceneCardsPlugin extends Plugin {
                 // its canvas asynchronously. Restoring it here as well lets
                 // stale refresh callbacks move it back to an older position.
                 const ownsScrollState = viewType !== PLOTGRID_VIEW_TYPE;
-                const scrollState = ownsScrollState && viewRoot ? this.captureViewScrollState(viewRoot) : [];
+                const scrollState = (ownsScrollState && viewRoot ? this.captureViewScrollState(viewRoot) : [])
+                    .map(s => scrollToTop ? { ...s, top: 0, left: 0 } : s); // fork: volume changed
                 const view = leaf.view as unknown as { refresh?: () => void | Promise<void> };
                 if (view && typeof view.refresh === 'function') {
                     await view.refresh();

@@ -3,6 +3,7 @@ import * as obsidian from 'obsidian';
 import { SceneManager } from '../services/SceneManager';
 import { CharacterManager } from '../services/CharacterManager';
 import { renderViewSwitcher } from '../components/ViewSwitcher';
+import { renderVolumeScopeSelect, scopeSceneRefs, scopeScenes } from '../utils/volumeScope'; // fork: shared volume scope
 import { RelationshipMap } from '../components/RelationshipMap';
 import { StoryGraph } from '../components/StoryGraph';
 import { pickImage as pickImageModal, resolveImagePath } from '../components/ImagePicker';
@@ -172,6 +173,7 @@ export class CharacterView extends ItemView {
         renderViewSwitcher(toolbar, CHARACTER_VIEW_TYPE, this.plugin, this.leaf);
 
         const controls = toolbar.createDiv('story-line-toolbar-controls');
+        renderVolumeScopeSelect(controls, this.plugin); // fork: shared volume scope
 
         // ── Codex category tabs ─────────────────────
         renderCodexCategoryTabs(container, {
@@ -356,7 +358,7 @@ export class CharacterView extends ItemView {
 
         let fileCharacters = this.characterManager.getAllCharacters();
         const sceneCharNames = this.sceneManager.queryService.getAllCharacters();
-        const scenes = this.sceneManager.getAllScenes().filter(scene => !scene.inactive);
+        const scenes = scopeScenes(this.plugin, this.sceneManager.getAllScenes().filter(scene => !scene.inactive)); // fork: volume scope
 
         // Build alias map: lowered alias → canonical name
         const aliasMap = this.characterManager.buildAliasMap(this.plugin.settings.characterAliases);
@@ -1009,7 +1011,7 @@ export class CharacterView extends ItemView {
         container.empty();
         container.createEl('h3', { text: 'Story graph' });
 
-        const scenes = this.sceneManager.getAllScenes().filter(scene => !scene.inactive);
+        const scenes = scopeScenes(this.plugin, this.sceneManager.getAllScenes().filter(scene => !scene.inactive)); // fork: volume scope
         const characters = this.characterManager.getAllCharacters();
         const scanner = this.plugin.linkScanner;
         // Ensure scan results are up to date
@@ -2962,10 +2964,10 @@ export class CharacterView extends ItemView {
     // ── Scene side panel ───────────────────────────────
 
     private renderScenePanel(container: HTMLElement, characterName: string): void {
-        const scenes = this.sceneManager.queryService.getFilteredScenes(
+        const scenes = scopeScenes(this.plugin, this.sceneManager.queryService.getFilteredScenes( // fork: volume scope
             undefined,
             { field: 'sequence', direction: 'asc' }
-        );
+        ));
 
         // Build alias set for this character (full name + all aliases)
         const aliasMap = this.characterManager.buildAliasMap(this.plugin.settings.characterAliases);
@@ -3164,8 +3166,8 @@ export class CharacterView extends ItemView {
 
     private renderReferencesPanel(container: HTMLElement, entityName: string): void {
         const index = this.plugin.linkScanner.buildEntityIndex();
-        const refs = index.get(entityName.toLowerCase());
-        if (!refs || refs.length === 0) return;
+        const refs = scopeSceneRefs(this.plugin, index.get(entityName.toLowerCase()) ?? []); // fork: volume scope
+        if (refs.length === 0) return;
 
         const section = container.createDiv('character-references-panel');
         section.createEl('h3', { text: 'Referenced by' });

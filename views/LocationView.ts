@@ -12,6 +12,7 @@ import {
 import { SceneManager } from '../services/SceneManager';
 import { LocationManager } from '../services/LocationManager';
 import { renderViewSwitcher } from '../components/ViewSwitcher';
+import { renderVolumeScopeSelect, scopeSceneRefs, scopeScenes } from '../utils/volumeScope'; // fork: shared volume scope
 import { pickImage as pickImageModal, resolveImagePath } from '../components/ImagePicker';
 import { AddFieldModal } from '../components/AddFieldModal';
 import {
@@ -154,6 +155,7 @@ export class LocationView extends ItemView {
         renderViewSwitcher(toolbar, LOCATION_VIEW_TYPE, this.plugin, this.leaf);
 
         const controls = toolbar.createDiv('story-line-toolbar-controls');
+        renderVolumeScopeSelect(controls, this.plugin); // fork: shared volume scope
 
         // ── Codex category tabs ─────────────────────
         renderCodexCategoryTabs(container, {
@@ -273,7 +275,7 @@ export class LocationView extends ItemView {
 
         const allWorlds = this.locationManager.getAllWorlds();
         const allOrphans = this.locationManager.getOrphanLocations();
-        const scenes = this.sceneManager.getAllScenes().filter(scene => !scene.inactive);
+        const scenes = scopeScenes(this.plugin, this.sceneManager.getAllScenes().filter(scene => !scene.inactive)); // fork: volume scope
 
         // Filter worlds: show a world if its name OR any child location name matches
         let worlds = q ? allWorlds.filter(w => {
@@ -1994,7 +1996,7 @@ export class LocationView extends ItemView {
 
     private renderWorldSidePanel(container: HTMLElement, world: StoryWorld): void {
         const locations = this.locationManager.getLocationsForWorld(world.name);
-        const scenes = this.sceneManager.getAllScenes().filter(scene => !scene.inactive);
+        const scenes = scopeScenes(this.plugin, this.sceneManager.getAllScenes().filter(scene => !scene.inactive)); // fork: volume scope
 
         // Location count
         const statsBox = container.createDiv('location-side-stats');
@@ -2032,10 +2034,10 @@ export class LocationView extends ItemView {
     }
 
     private renderLocationSidePanel(container: HTMLElement, loc: StoryLocation): void {
-        const scenes = this.sceneManager.queryService.getFilteredScenes(
+        const scenes = scopeScenes(this.plugin, this.sceneManager.queryService.getFilteredScenes( // fork: volume scope
             undefined,
             { field: 'sequence', direction: 'asc' }
-        );
+        ));
         const locLower = loc.name.toLowerCase();
         const locScenes = scenes.filter(s => s.location?.toLowerCase() === locLower);
 
@@ -2139,8 +2141,8 @@ export class LocationView extends ItemView {
 
     private renderReferencesPanel(container: HTMLElement, entityName: string): void {
         const index = this.plugin.linkScanner.buildEntityIndex();
-        const refs = index.get(entityName.toLowerCase());
-        if (!refs || refs.length === 0) return;
+        const refs = scopeSceneRefs(this.plugin, index.get(entityName.toLowerCase()) ?? []); // fork: volume scope
+        if (refs.length === 0) return;
 
         const section = container.createDiv('location-references-panel');
         section.createEl('h3', { text: 'Referenced by' });

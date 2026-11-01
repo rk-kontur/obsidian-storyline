@@ -3,7 +3,7 @@ import { SceneManager } from '../services/SceneManager';
 import { renderVolumeStatsSection } from '../components/VolumeStatsSection';
 import { getProjectVolumes } from '../utils/volumes';
 import { openStructureDialog } from '../services/ForkCommands';
-import { getVolumeScope, inVolumeScope, renderVolumeScopeSelect, scopeFilter } from '../utils/volumeScope';
+import { getVolumeScope, renderVolumeScopeSelect, scopeFilter, volumeScopePredicate } from '../utils/volumeScope';
 import { adjustOffPageWarnings, computeOffPageCoverage, offPageCardValue, renderOffPageCoverage, type OffPageLineCoverage } from '../components/OffPageStatsSection';
 import { getOffPageLines } from '../utils/pageZones';
 import { getStatsScope, scopedDeadline, scopedWordGoal, statsHeading, validateForScope, withLinkPartners } from '../utils/volumeStatsScope';
@@ -115,7 +115,7 @@ export class StatsView extends ItemView {
         const projectPath = this.sceneManager.activeProject?.filePath;
         const projectScenes = this.sceneManager.getAllScenes()
             .filter(scene => !scene.inactive && !scene.corkboardNote);
-        const allScenes = projectScenes.filter(scene => inVolumeScope(this.app, projectPath, scene, false));
+        const allScenes = projectScenes.filter(volumeScopePredicate(this.app, projectPath, false));
         const isScoped = allScenes.length !== projectScenes.length;
         const stats = this.sceneManager.queryService.getStatistics(this.plugin.settings.excludeArcAnchorFromWordcount ?? true,
             isScoped ? allScenes : undefined);
@@ -396,7 +396,7 @@ export class StatsView extends ItemView {
         if (cpm > 0 && isScriptioContinuaLocale(locale)) {
             // Sum CJK chars across all scenes (cheaper than re-tokenising).
             const scenes = (this.plugin.sceneManager?.getAllScenes?.() ?? [])
-                .filter(sc => inVolumeScope(this.app, this.sceneManager.activeProject?.filePath, sc)); // fork: volume scope
+                .filter(volumeScopePredicate(this.app, this.sceneManager.activeProject?.filePath)); // fork: volume scope
             let chars = 0;
             for (const s of scenes) if (s.body) chars += countReadingCharacters(s.body);
             readMinutes = chars > 0 ? Math.round(chars / cpm) : Math.round(stats.totalWords / wpm);

@@ -10,6 +10,7 @@ import { CodexManager } from '../services/CodexManager';
 import { CodexEntry, CodexCategoryDef, CodexFieldCategory, CodexFieldDef, BUILTIN_CODEX_CATEGORIES, makeCustomCodexCategory, CODEX_ICON_OPTIONS } from '../models/Codex';
 import { CODEX_VIEW_TYPE, CHARACTER_VIEW_TYPE, LOCATION_VIEW_TYPE } from '../constants';
 import { renderViewSwitcher } from '../components/ViewSwitcher';
+import { renderVolumeScopeSelect, scopeSceneRefs } from '../utils/volumeScope'; // fork: shared volume scope
 import { applyMobileClass } from '../components/MobileAdapter';
 import { pickImage as pickImageModal, resolveImagePath } from '../components/ImagePicker';
 import { AddFieldModal } from '../components/AddFieldModal';
@@ -232,6 +233,7 @@ export class CodexView extends ItemView {
 
         // ── Controls row ───────────────────────────────
         const controls = toolbar.createDiv('story-line-toolbar-controls');
+        renderVolumeScopeSelect(controls, this.plugin); // fork: shared volume scope
 
         // Manage categories button (icon-only)
         const addCatBtn = controls.createEl('button', {
@@ -1974,7 +1976,7 @@ export class CodexView extends ItemView {
 
     private renderReferencesPanel(container: HTMLElement, entry: CodexEntry): void {
         const index = this.plugin.linkScanner.buildEntityIndex();
-        const refs = index.get(entry.name.toLowerCase()) ?? [];
+        const refs = scopeSceneRefs(this.plugin, index.get(entry.name.toLowerCase()) ?? []); // fork: volume scope
         const section = container.createDiv('codex-references-panel');
         const header = section.createDiv('codex-references-header');
         header.createEl('h3', { text: 'Referenced by' });

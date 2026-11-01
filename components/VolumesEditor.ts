@@ -8,6 +8,7 @@
 import { Notice, TFile } from 'obsidian';
 import type { App } from 'obsidian';
 import { getProjectVolumes, type VolumeDef } from '../utils/volumes';
+import { clearVolumeScopeIfId, getVolumeScope, nextVolumeId } from '../utils/volumeScope';
 
 interface EditableVolume {
     id: string;
@@ -85,6 +86,9 @@ export function renderVolumesEditor(
     const volumes: EditableVolume[] = getProjectVolumes(app, projectFilePath)
         .map((v: VolumeDef) => ({ ...v, acts: [...v.acts] }));
 
+    // Ids deleted in this session are never handed out again
+    const retiredIds = new Set<string>();
+
     const list = container.createDiv('sl-km-volumes-list');
     const warn = container.createDiv('sl-km-volumes-warning');
     let saveTimer: number | null = null;
@@ -140,7 +144,14 @@ export function renderVolumesEditor(
             deadline.addEventListener('change', () => { v.deadline = deadline.value || undefined; scheduleSave(); });
 
             const del = row.createEl('button', { cls: 'clickable-icon structure-remove', text: '×', attr: { 'aria-label': `Remove ${v.title}` } });
-            del.addEventListener('click', () => { volumes.splice(i, 1); scheduleSave(); render(); });
+            del.addEventListener('click', () => {
+                volumes.splice(i, 1);
+                retiredIds.add(v.id);
+                // The volume selection must not point to a deleted volume
+                clearVolumeScopeIfId(app, projectFilePath, v.id);
+                scheduleSave();
+                render();
+            });
 
             row.querySelectorAll('input').forEach(inp => inp.addEventListener('keydown', (e: KeyboardEvent) => e.stopPropagation()));
         });
@@ -159,15 +170,14 @@ export function renderVolumesEditor(
     };
 
     const addRow = container.createDiv('structure-add-row sl-km-volumes-add');
+    // eslint-disable-next-line obsidianmd/ui/sentence-case -- the leading "+" is intentional
     const addBtn = addRow.createEl('button', { cls: 'mod-cta', text: '+ Add volume' });
     addBtn.addEventListener('click', () => {
         const used = volumes.flatMap(v => v.acts);
         const lastSize = volumes.length ? volumes[volumes.length - 1].acts.length : 4;
         const start = used.length ? Math.max(...used) + 1 : (getDefinedActs().filter(a => a > 0 && a !== 99)[0] ?? 1);
-        const ids = new Set(volumes.map(v => v.id));
-        let n = volumes.length + 1;
-        while (ids.has(`v${n}`)) n++;
-        volumes.push({ id: `v${n}`, title: `Volume ${volumes.length + 1}`, acts: toRange(start, start + Math.max(1, lastSize) - 1) });
+        const id = nextVolumeId(volumes.map(v => v.id), retiredIds, getVolumeScope(app, projectFilePath));
+        volumes.push({ id, title: `Volume ${volumes.length + 1}`, acts: toRange(start, start + Math.max(1, lastSize) - 1) });
         scheduleSave();
         render();
     });

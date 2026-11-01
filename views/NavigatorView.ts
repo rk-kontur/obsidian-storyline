@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-floating-promises, @typescript-eslint/no-misused-promises, @typescript-eslint/no-unnecessary-type-assertion -- Obsidian's API surface and several untyped third-party libraries force dynamic dispatch; floating promises are intentional in DOM/event handlers; matching enable at end of file */
 import { ItemView, WorkspaceLeaf, Menu, TFile, setIcon } from 'obsidian';
-import { inVolumeScope, renderVolumeScopeSelect } from '../utils/volumeScope';
+import { renderVolumeScopeSelect, volumeScopePredicate } from '../utils/volumeScope';
 import { getProjectVolumes, VolumeDividerTracker } from '../utils/volumes';
 import type SceneCardsPlugin from '../main';
 import { ManuscriptView } from './ManuscriptView';
@@ -331,7 +331,7 @@ export class NavigatorView extends ItemView {
 
         let scenes = this.sceneManager.getAllScenes().filter(s => !s.corkboardNote && !s.inactive);
         // fork: shared volume scope
-        scenes = scenes.filter(s => inVolumeScope(this.app, this.sceneManager.activeProject?.filePath, s));
+        scenes = scenes.filter(volumeScopePredicate(this.app, this.sceneManager.activeProject?.filePath));
 
         // Plotline filter
         if (this.plotlineFilter) {
