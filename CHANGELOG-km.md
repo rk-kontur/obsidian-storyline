@@ -12,6 +12,14 @@ Changes of this fork compared to the original StoryLine plugin by Jan Sandström
 - Useful for Story Grid conventions and obligatory scenes: put them as Arc Points on their own line (e.g. `Genre: Thriller`) and link each to the scene that delivers it.
 - With the "Arc Points" filter (scenes hidden), Arc Points fall back to their own stations.
 
+**How and where to use:**
+
+1. Open any view with the Inspector (Board, Timeline, Plot Grid) and click the Arc Point scene. The Inspector opens on the right.
+2. Make sure **Arc point** is ticked. Directly below it, the row **Realized by** appears.
+3. Click **Choose…** and pick the scene that tells this stage (search by title). Click **Change** to pick another one, **×** to remove the link.
+4. Open the **Plotlines** view in **Subway** mode: the diamond now sits on the Arc Point's line at the station of the linked scene, joined by the vertical connector.
+5. Alternatively type it by hand in the Arc Point's frontmatter: `realizedBy: "[[Funeral]]"`.
+
 **Files:**
 
 - `utils/arcRealization.ts` (new)
@@ -29,6 +37,13 @@ Changes of this fork compared to the original StoryLine plugin by Jan Sandström
 - Setup/payoff links are read from both sides (`payoff_scenes` on the setup, `setup_scenes` on the payoff), matched by scene title like the built-in Validator. `[[wikilinks]]` are accepted.
 - Only shown when the project file defines `volumes:`.
 
+**How and where to use:**
+
+1. Define `volumes:` in the project file (see 1.11.8-km.4).
+2. Link setups and payoffs as usual in the Inspector (Setup / Payoff fields).
+3. Open the **Statistics** view. In the **Volumes** section at the top, scroll to **Open setups at end of volume**.
+4. Expand a volume to see its open setups and where each payoff lies. Click a setup to open the scene.
+
 **Files:**
 
 - `utils/volumeSetups.ts` (new)
@@ -45,6 +60,13 @@ Changes of this fork compared to the original StoryLine plugin by Jan Sandström
 - **Goals per volume:** `wordGoal` and `deadline` from the `volumes:` definition are evaluated there.
 - **Export per volume:** The export dialog offers a "Volume" choice for Manuscript and Outline. Only the acts of the chosen volume are exported.
 - Everything appears only when the project file defines `volumes:`.
+
+**How and where to use:**
+
+1. Define `volumes:` in the project file (see 1.11.8-km.4).
+2. **Filter:** In Board, Manuscript or Plot Grid open the filter panel (funnel icon). Below **Act** you find **Volume**. Click a volume chip.
+3. **Statistics and goals:** Open the **Statistics** view. The **Volumes** table is at the top. Add `wordGoal` and `deadline` to a volume to get progress and words per day.
+4. **Export:** Command palette → **StoryLine: Export project**, choose content **Manuscript** or **Outline**, then pick a volume under **Volume**.
 
 **Files:**
 
@@ -76,6 +98,13 @@ Changes of this fork compared to the original StoryLine plugin by Jan Sandström
 - **Volume dividers** in the Subway map (solid line with volume title), Timeline (linear and swimlanes) and Plot Grid.
 - Without `volumes:` the plugin behaves exactly like the original.
 
+**How and where to use:**
+
+1. Open your project file (the note with `type: storyline` in the project folder).
+2. Add a `volumes:` block to its frontmatter as shown above. Use your global act numbers (e.g. volume 2 = acts 5–8).
+3. Open the **Plotlines** view (Subway mode), **Timeline** or **Plot Grid**: a volume band appears where each volume starts.
+4. Tip: give acts per-volume names with the existing `actLabels:` in the project file, e.g. `5: "Volume 2 · Act 1"`.
+
 **Files:**
 
 - `utils/volumes.ts` (new)
@@ -92,6 +121,13 @@ Changes of this fork compared to the original StoryLine plugin by Jan Sandström
 - **Timeline:** New "All / Scenes / Arc Points" filter in the toolbar. The choice is remembered per vault.
 - **Plot Grid:** Linked Arc Point scenes show a diamond in the mini card and in the row header.
 
+**How and where to use:**
+
+1. Mark a scene as Arc Point (Inspector → **Arc point** checkbox).
+2. Open the **Timeline** view: the card shows the **◆ Arc Point** badge.
+3. Use the **All / Scenes / Arc Points** buttons in the Timeline toolbar to filter.
+4. Open the **Plot Grid**: linked Arc Point scenes show a small diamond next to the title and in the row header.
+
 **Files:**
 
 - `components/ArcPointUI.ts` (new)
@@ -105,6 +141,11 @@ Changes of this fork compared to the original StoryLine plugin by Jan Sandström
 - Plotline colours shifted whenever the Arc Point filter was toggled or a plotline was hidden. The colour now depends on all plotlines of the project, not only the visible ones. Affects lines, tag pills and the list view.
 - The release workflow can be started manually and sets the tag itself.
 
+**How and where to use:**
+
+1. Open the **Plotlines** view in **Subway** mode.
+2. Toggle **All / Scenes / Arc Points** or hide a plotline: the colours of the remaining plotlines stay the same.
+
 **Files:**
 
 - `views/StorylineView.ts` (colour index)
@@ -115,6 +156,11 @@ Changes of this fork compared to the original StoryLine plugin by Jan Sandström
 **First fork version**
 
 - Own plugin id `storyline-km`, so the fork can be installed next to the original. Never enable both at the same time.
+
+**How and where to use:**
+
+1. Install BRAT, add the beta plugin `rk-kontur/obsidian-storyline`.
+2. In Settings → Community plugins, disable **StoryLine** and enable the fork (id `storyline-km`). Switch back the same way.
 
 **Files:**
 
