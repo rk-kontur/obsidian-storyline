@@ -2,6 +2,7 @@
 import { openConfirmModal } from '../components/ConfirmModal';
 import { SceneManager } from '../services/SceneManager';
 import { SceneCardComponent } from '../components/SceneCard';
+import { getProjectVolumes, VolumeDividerTracker } from '../utils/volumes';
 import { ArcFilterMode, arcFilterQuery, loadArcFilter, renderArcFilterToggle, renderArcPointBadge, saveArcFilter } from '../components/ArcPointUI';
 import { InspectorComponent } from '../components/Inspector';
 import { QuickAddModal } from '../components/QuickAddModal';
@@ -518,8 +519,10 @@ export class TimelineView extends ItemView {
             }
         }
 
+        const volumeTracker = new VolumeDividerTracker(getProjectVolumes(this.app, this.sceneManager.activeProject?.filePath));
         const renderTLItem = (item: TLItem) => {
             if (item.kind === 'divider') {
+                volumeTracker.renderBefore(track, item.actNum);
                 const divider = track.createDiv('timeline-act-divider');
                 divider.createSpan({ cls: 'timeline-act-label', text: item.actLabel });
                 if (item.actNum !== undefined) {
@@ -695,8 +698,10 @@ export class TimelineView extends ItemView {
         }
 
         // 5. Render each row
+        const volumeTracker = new VolumeDividerTracker(getProjectVolumes(this.app, this.sceneManager.activeProject?.filePath));
         for (const row of rows) {
             if (row.type === 'act-divider') {
+                volumeTracker.renderBefore(grid, row.actNum, '1 / -1');
                 // Act divider spans the full width
                 const divider = grid.createDiv('swimlane-act-divider');
                 divider.setCssStyles({ gridColumn: `1 / -1` });

@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-floating-promises, @typescript-eslint/no-misused-promises, @typescript-eslint/no-unnecessary-type-assertion -- Obsidian's API surface and several untyped third-party libraries force dynamic dispatch; floating promises are intentional in DOM/event handlers; matching enable at end of file */
 import { ButtonComponent, ItemView, Menu, MenuItem, Modal, Notice, Setting, TFile, TextComponent, WorkspaceLeaf } from 'obsidian';
+import { drawSubwayVolumeMarker, getProjectVolumes, VolumeDividerTracker } from '../utils/volumes';
 import * as obsidian from 'obsidian';
 import { Scene } from '../models/Scene';
 import { SceneManager } from '../services/SceneManager';
@@ -516,11 +517,26 @@ export class StorylineView extends ItemView {
             acts.get(act)!.push(col);
         });
 
+        const volumeTracker = new VolumeDividerTracker(getProjectVolumes(this.app, this.sceneManager.activeProject?.filePath));
         const actEntries = [...acts.entries()].sort((a, b) => a[0] - b[0]);
         for (let ai = 0; ai < actEntries.length; ai++) {
             const [actNum, cols] = actEntries[ai];
             const minCol = Math.min(...cols);
             const maxCol = Math.max(...cols);
+
+            // Volume marker (fork): solid line + title when a new volume starts
+            const startedVolume = volumeTracker.next(actNum);
+            if (startedVolume) {
+                drawSubwayVolumeMarker(svg, activeDocument, {
+                    x: colX(minCol) - SCENE_SPACING / 2,
+                    labelX: colX(minCol) - SCENE_SPACING / 2 + 8,
+                    labelY: TOP_MARGIN - 40,
+                    y1: TOP_MARGIN - 50,
+                    y2: trackBottom,
+                    title: startedVolume.title,
+                    drawLine: ai > 0,
+                });
+            }
 
             // Act label
             const centerX = (colX(minCol) + colX(maxCol)) / 2;
@@ -535,7 +551,7 @@ export class StorylineView extends ItemView {
             svg.appendChild(actLabel);
 
             // Vertical divider line before this act group (clear, visible)
-            if (ai > 0) {
+            if (ai > 0 && !startedVolume) {
                 const divX = colX(minCol) - SCENE_SPACING / 2;
                 const line = activeDocument.createElementNS(svgNS, 'line');
                 line.setAttribute('x1', String(divX));

@@ -3,6 +3,7 @@ import { App, ItemView, WorkspaceLeaf, Menu, Modal, TFile, Notice, MarkdownRende
 import * as obsidian from 'obsidian';
 import { CellData, ColumnMeta, RowMeta, PlotGridData } from '../models/PlotGridData';
 import { renderArcPointIcon } from '../components/ArcPointUI';
+import { getProjectVolumes, VolumeDividerTracker } from '../utils/volumes';
 import { LocationManager } from '../services/LocationManager';
 import type { SceneFilter, SortConfig } from '../models/Scene';
 import { SceneManager } from '../services/SceneManager';
@@ -1372,6 +1373,7 @@ export class PlotgridView extends ItemView {
             });
         }
 
+        const volumeTracker = new VolumeDividerTracker(getProjectVolumes(this.app, this.plugin?.sceneManager?.activeProject?.filePath));
         for (const ri of rowIndices) {
             if (!visibleRows.has(ri)) continue; // skip filtered-out rows
             // ── Act/chapter dividers ──
@@ -1379,6 +1381,9 @@ export class PlotgridView extends ItemView {
             if (divs) {
                 const colCount = this.data.columns.length + 1;
                 for (const d of divs) {
+                    if (d.type === 'act') {
+                        volumeTracker.renderBefore(this.canvasEl, d.key.slice(4), `1 / ${colCount + 1}`);
+                    }
                     const divEl = this.canvasEl.createDiv(`plot-grid-divider plot-grid-divider-${d.type}`);
                     const isCollapsed = this.data.collapsedSections?.[d.key] === true;
                     divEl.setCssStyles({

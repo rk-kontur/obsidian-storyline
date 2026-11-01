@@ -13873,3 +13873,29 @@ body.sl-focus-active-global.sl-focus-dim-text .markdown-source-view.mod-cm6 .cm-
 .sl-series-delete:hover {
     color: var(--text-error);
 }
+
+/* ═══════════════════════════════════════════════════════
+   Fork storyline-km: eigene Styles (Volumes, Arc Points)
+   ═══════════════════════════════════════════════════════ */
+
+.sl-km-volume-divider {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 18px 0 6px;
+    padding: 6px 10px;
+    border-top: 3px solid var(--text-muted);
+    background: var(--background-secondary);
+    font-size: 1.05em;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--text-accent);
+}
+
+.plot-grid-canvas > .sl-km-volume-divider {
+    margin: 0;
+    position: sticky;
+    left: 0;
+    z-index: 8;
+}
