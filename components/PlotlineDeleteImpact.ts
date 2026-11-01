@@ -45,6 +45,8 @@ export interface TagImpact {
     /** Affected scenes the Plotlines view never lists, but which lose the tag too */
     inactive: number;
     notes: number;
+    /** Scenes in the selection that are neither inactive nor corkboard notes */
+    visibleInSelection: number;
     selectionTitle?: string;
     groups: TagImpactGroup[];
 }
@@ -68,13 +70,16 @@ const bySequence = (a: Scene, b: Scene) =>
  */
 export function computeTagImpact(volumes: VolumeDef[], scoped: VolumeDef | undefined, allScenes: Scene[], tag: string): TagImpact {
     const affected = allScenes.filter(s => s.tags?.includes(tag)).sort(bySequence);
-    const groups: TagImpactGroup[] = volumes.map(v => ({ id: v.id, kind: 'volume', title: v.title, scenes: [], isSelection: scoped?.id === v.id }));
+    // Grouped by index, not id: duplicate ids in hand-written YAML stay apart.
+    // The selection is the first volume with the scoped id, like getScopedVolume.
+    const selIdx = scoped ? volumes.findIndex(v => v.id === scoped.id) : -1;
+    const groups: TagImpactGroup[] = volumes.map((v, idx) => ({ id: v.id, kind: 'volume', title: v.title, scenes: [], isSelection: idx === selIdx }));
     const unassigned: TagImpactGroup = { id: '#unassigned', kind: 'unassigned', title: 'No act', scenes: [], isSelection: !!scoped };
     const outside: TagImpactGroup = { id: '#outside', kind: 'outside', title: 'Not in a volume', scenes: [], isSelection: false };
     for (const s of affected) {
         if (isUnassigned(s)) { unassigned.scenes.push(s); continue; }
         const v = hasAct(s) ? getVolumeForAct(volumes, s.act) : undefined;
-        const g = v ? groups.find(x => x.id === v.id) : undefined;
+        const g = v ? groups[volumes.indexOf(v)] : undefined;
         (g ?? outside).scenes.push(s);
     }
     const all = [...groups, unassigned, outside];
@@ -93,8 +98,10 @@ export function computeTagImpact(volumes: VolumeDef[], scoped: VolumeDef | undef
         inVolumes: hit.reduce((n, g) => n + g.scenes.length, 0),
         volumesHit: hit.length,
         unassigned: unassigned.scenes.length,
-        inactive: affected.filter(s => s.inactive).length,
+        inactive: affected.filter(s => s.inactive && !s.corkboardNote).length,
         notes: affected.filter(s => s.corkboardNote).length,
+        visibleInSelection: (scoped ? all.filter(g => g.isSelection).flatMap(g => g.scenes) : affected)
+            .filter(s => !s.inactive && !s.corkboardNote).length,
         selectionTitle: scoped?.title,
         groups: volumes.length ? used : [],
     };
@@ -104,17 +111,27 @@ const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one :
 
 function sceneLabel(s: Scene): string {
     const act = hasAct(s) ? `${String(s.act)}-` : '';
-    return `${act}${s.sequence ?? ''} ${s.title || s.filePath}`.trim();
+    const mark = s.corkboardNote ? ' (note)' : s.inactive ? ' (inactive)' : '';
+    return `${act}${s.sequence ?? ''} ${s.title || s.filePath}`.trim() + mark;
 }
 
 /** Replaces the single-sentence text of the upstream "Delete plotline" dialog. */
-export function renderTagDeleteImpact(parent: HTMLElement, app: App, projectFilePath: string | undefined | null, allScenes: Scene[], tag: string): void {
+export function renderTagDeleteImpact(
+    parent: HTMLElement,
+    app: App,
+    projectFilePath: string | undefined | null,
+    allScenes: Scene[],
+    tag: string,
+    /** Scenes the calling view lists for this plotline (after its own filters) */
+    listedCount?: number,
+): void {
     const volumes = getProjectVolumes(app, projectFilePath);
     const scoped = getScopedVolume(app, projectFilePath);
     const i = computeTagImpact(volumes, scoped, allScenes, tag);
 
     if (scoped) {
-        const noAct = i.inSelectionUnassigned ? `, ${i.inSelectionUnassigned} of them without an act` : '';
+        const u = i.inSelectionUnassigned;
+        const noAct = !u ? '' : u === i.inSelection ? (u === 1 ? ', without an act' : ', all without an act') : `, including ${u} without an act`;
         parent.createEl('p', {
             text: i.inSelection
                 ? `The plotline "${tag}" has ${plural(i.inSelection, 'scene', 'scenes')} in the current selection (${i.selectionTitle}${noAct}).`
@@ -145,6 +162,8 @@ export function renderTagDeleteImpact(parent: HTMLElement, app: App, projectFile
     const hidden: string[] = [];
     if (i.inactive) hidden.push(plural(i.inactive, 'inactive scene', 'inactive scenes'));
     if (i.notes) hidden.push(plural(i.notes, 'corkboard note', 'corkboard notes'));
+    const filtered = listedCount !== undefined ? i.visibleInSelection - listedCount : 0;
+    if (filtered > 0) hidden.push(`${plural(filtered, 'scene', 'scenes')} hidden by the current filter (e.g. Arc Points)`);
     if (hidden.length) {
         parent.createEl('p', {
             cls: 'setting-item-description',

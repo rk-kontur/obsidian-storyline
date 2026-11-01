@@ -1215,8 +1215,7 @@ export class StorylineView extends ItemView {
         const modal = new Modal(this.app);
         modal.titleEl.setText('Delete plotline');
         // fork: the tag is removed project-wide; show the real impact per volume
-        void sceneCount;
-        renderTagDeleteImpact(modal.contentEl, this.app, this.sceneManager.activeProject?.filePath, this.sceneManager.getAllScenes(), plotline);
+        renderTagDeleteImpact(modal.contentEl, this.app, this.sceneManager.activeProject?.filePath, this.sceneManager.getAllScenes(), plotline, sceneCount);
 
         new Setting(modal.contentEl)
             .addButton((btn: ButtonComponent) => {

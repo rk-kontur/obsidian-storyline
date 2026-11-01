@@ -9,9 +9,9 @@ Changes of this fork compared to the original StoryLine plugin by Jan Sandström
 - Deleting a plotline removes its tag from **every** scene of the project. With a volume selected, the dialog used to count only the scenes of that volume, so it promised far fewer changes than it made.
 - The dialog now says how many scenes carry the plotline in the current selection, and warns how many **more** scenes in how many **other volumes** will lose the tag as well.
 - Below, one column per volume lists every affected scene side by side; the selected volume is highlighted.
-- Two extra columns when needed: **No act** (scenes without an act; they are visible under every volume selection and count as part of it) and **Not in a volume** (acts that belong to no volume, or an empty `act:`).
-- Inactive scenes and corkboard notes are counted too, because the tag is removed from them as well; the dialog names them in an extra line.
-- Without volumes, the dialog shows the correct total for the whole project, as before.
+- Two extra columns when needed: **No act** (scenes without an act; they are visible under every volume selection and count as part of it) and **Not in a volume** (acts that belong to no volume, or an empty or blank `act:`).
+- Inactive scenes, corkboard notes and scenes hidden by the current filter (e.g. Arc Points) are counted too, because the tag is removed from them as well; the dialog names them in an extra line and marks them in the lists.
+- Without volumes, the dialog shows the total for the whole project (including inactive scenes and corkboard notes, which the upstream count left out).
 
 <!-- screenshot: Delete plotline dialog with one column per volume -->
 
