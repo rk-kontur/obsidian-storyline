@@ -5,7 +5,7 @@ import { CellData, ColumnMeta, RowMeta, PlotGridData } from '../models/PlotGridD
 import { renderArcPointIcon } from '../components/ArcPointUI';
 import { getProjectVolumes, VolumeDividerTracker } from '../utils/volumes';
 import { scopeFilter } from '../utils/volumeScope';
-import { getOffPageLines } from '../utils/pageZones';
+import { getOffPageLines, isOffPage } from '../utils/pageZones';
 import { columnTemplate, findEmptyAutoColumns, hiddenColumnsWidth, renderHiddenColumnsHint, updateHiddenColumnsHint } from '../utils/plotgridVolume';
 import { LocationManager } from '../services/LocationManager';
 import type { SceneFilter, SortConfig } from '../models/Scene';
@@ -1095,7 +1095,7 @@ export class PlotgridView extends ItemView {
         // fork: plotline columns marked off page are tinted
         const kmOffPage = getOffPageLines(this.app, this.plugin?.sceneManager?.activeProject?.filePath);
         const kmOffPageCols = new Set<number>();
-        this.data.columns.forEach((c, ci) => { if (c.sourceKind === 'tags' && c.sourceId && kmOffPage.has(c.sourceId)) kmOffPageCols.add(ci); });
+        this.data.columns.forEach((c, ci) => { if (c.sourceKind === 'tags' && c.sourceId && isOffPage(kmOffPage, c.sourceId)) kmOffPageCols.add(ci); });
 
         // fork: with a volume selected, hide auto columns that are empty in the visible rows
         const kmScoped = scopedFilter !== this.currentFilter;

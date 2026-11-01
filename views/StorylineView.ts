@@ -3,7 +3,7 @@ import { ButtonComponent, ItemView, Menu, MenuItem, Modal, Notice, Setting, TFil
 import { aliasRealizedColumns, drawRealizedLinks, removeRealizedStations, resolveRealizations, splitRealizedLanes } from '../utils/arcRealization';
 import { renderVolumeScopeSelect, scopeFilter } from '../utils/volumeScope';
 import { renderTagDeleteImpact, renderTagRenameImpact } from '../components/PlotlineDeleteImpact';
-import { addZoneMenuItem, attachZoneMenu, drawOffPageBand, getOffPageLines, orderByZone, renderOffPageLabelBand, renderZoneHeader, renderZoneListHeading, transferOffPage, ZONE_GAP } from '../utils/pageZones';
+import { addZoneMenuItem, attachZoneMenu, drawOffPageBand, getOffPageLines, isOffPage, orderByZone, renderOffPageLabelBand, renderZoneHeader, renderZoneListHeading, transferOffPage, ZONE_GAP } from '../utils/pageZones';
 import { drawSubwayVolumeMarker, getProjectVolumes, getVolumeForAct, VolumeDividerTracker } from '../utils/volumes';
 import * as obsidian from 'obsidian';
 import { Scene } from '../models/Scene';
@@ -621,7 +621,7 @@ export class StorylineView extends ItemView {
                 fontFamily: 'var(--font-interface)',
             });
             lblDiv.textContent = this.formatPlotlineName(pk);
-            attachZoneMenu(lblDiv, this.app, projectPath, pk, offPageLines.has(pk), () => this.refresh()); // fork: on / off page
+            attachZoneMenu(lblDiv, this.app, projectPath, pk, isOffPage(offPageLines, pk), () => this.refresh()); // fork: on / off page
 
             if (cols.length === 0) continue;
 

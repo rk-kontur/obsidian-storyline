@@ -11,10 +11,12 @@
 //
 //   offPageLines: [mark, politics]
 //
-// Entries follow the plotline tag rule (lowercase, spaces become dashes), so
-// a hand-written `[Mark, Politics]` or `offPageLines: mark, politics` works
-// too; it is written back as a normalized list on the next change. Renaming
-// or deleting a plotline updates the list (transferOffPage).
+// Entries and scene tags are compared after the plotline tag rule
+// (lowercase, spaces become dashes; isOffPage), so `[Mark, Politics]`,
+// `[mark, politics]` and `offPageLines: mark, politics` all mark the
+// plotlines `Mark` / `mark` and `Politics` / `politics`. The list is written
+// back normalized on the next change. Renaming or deleting a plotline updates
+// it (transferOffPage).
 //
 // The Subway map shows on-page lines first and the off-page lines below in
 // their own tinted band. Without `offPageLines` nothing changes.
@@ -49,6 +51,11 @@ export function getOffPageLines(app: App, projectFilePath: string | undefined | 
     return new Set(parseOffPageValue(app.metadataCache.getFileCache(file)?.frontmatter?.[OFF_PAGE_KEY]));
 }
 
+/** Is `tag` (a raw scene tag / plotline key) marked off page? */
+export function isOffPage(offPage: Set<string>, tag: string): boolean {
+    return offPage.size > 0 && offPage.has(normalizePlotlineTag(tag));
+}
+
 /** Pure update of the list: mark `line` off page (or on page again). */
 export function withOffPage(current: string[], line: string, off: boolean): string[] {
     const tag = normalizePlotlineTag(line);
@@ -73,7 +80,10 @@ async function updateOffPage(app: App, projectFilePath: string | undefined | nul
     const file = app.vault.getAbstractFileByPath(projectFilePath);
     if (!(file instanceof TFile)) return;
     await app.fileManager.processFrontMatter(file, (fm: Record<string, unknown>) => {
-        const next = update(parseOffPageValue(fm[OFF_PAGE_KEY]));
+        const current = parseOffPageValue(fm[OFF_PAGE_KEY]);
+        const next = update(current);
+        // Nothing changed: leave the value as written by hand
+        if (next.length === current.length && next.every((l, i) => l === current[i])) return;
         if (next.length) fm[OFF_PAGE_KEY] = next; else delete fm[OFF_PAGE_KEY];
     });
 }
@@ -84,7 +94,6 @@ export async function setOffPage(app: App, projectFilePath: string | undefined |
 
 /** Hook for renaming (`newTag`) or deleting (`newTag` null) a plotline. */
 export async function transferOffPage(app: App, projectFilePath: string | undefined | null, oldTag: string, newTag: string | null): Promise<void> {
-    if (!getOffPageLines(app, projectFilePath).has(normalizePlotlineTag(oldTag))) return;
     await updateOffPage(app, projectFilePath, current => withTransferredOffPage(current, oldTag, newTag));
 }
 
@@ -95,8 +104,8 @@ export async function transferOffPage(app: App, projectFilePath: string | undefi
  */
 export function orderByZone(keys: string[], offPage: Set<string>): { keys: string[]; split: number } {
     if (offPage.size === 0) return { keys, split: -1 };
-    const on = keys.filter(k => !offPage.has(k));
-    const off = keys.filter(k => offPage.has(k));
+    const on = keys.filter(k => !isOffPage(offPage, k));
+    const off = keys.filter(k => isOffPage(offPage, k));
     return { keys: [...on, ...off], split: off.length ? on.length : -1 };
 }
 
@@ -130,7 +139,7 @@ export function addZoneMenuItem(
     projectFilePath: string | undefined | null,
     line: string,
     onChanged: () => void,
-    isOff: boolean = getOffPageLines(app, projectFilePath).has(normalizePlotlineTag(line)),
+    isOff: boolean = isOffPage(getOffPageLines(app, projectFilePath), line),
 ): void {
     menu.addItem(item => item
         .setTitle(isOff ? 'Move to on page' : 'Move to off page')

@@ -14,9 +14,13 @@ import type { App } from 'obsidian';
 import type { Scene } from '../models/Scene';
 import type { PlotWarning } from '../services/Validator';
 import { resolveRealizingScene } from '../utils/arcRealization';
+import { normalizePlotlineTag } from '../utils/pageZones';
 
 export interface OffPageLineCoverage {
+    /** Display name: the scene tag as written, or the normalized entry if spelled several ways */
     line: string;
+    /** Raw scene tags that match this entry (the names the Validator uses) */
+    names: string[];
     /** Arc Points on this line (within the current scope) */
     stages: Scene[];
     realized: { arc: Scene; scene: Scene }[];
@@ -32,13 +36,21 @@ export function computeOffPageCoverage(
     projectScenes: Scene[],
 ): OffPageLineCoverage[] {
     if (offPageLines.size === 0) return [];
+    // Entries are normalized (pageZones); scene tags may be written by hand ("Mark")
+    const rawNames = new Map<string, Set<string>>();
+    for (const t of projectScenes.flatMap(s => s.tags ?? [])) {
+        const key = normalizePlotlineTag(t);
+        if (!rawNames.has(key)) rawNames.set(key, new Set());
+        rawNames.get(key)!.add(t);
+    }
     // Ignore orphaned entries (hand-edited or left over): only lines that exist as a tag
-    const known = new Set(projectScenes.flatMap(s => s.tags ?? []));
-    const lines = [...offPageLines].filter(l => known.has(l));
+    const lines = [...offPageLines].filter(l => rawNames.has(l));
     if (lines.length === 0) return [];
     const targets = projectScenes.filter(s => !s.arcAnchor);
-    return lines.sort((a, b) => a.localeCompare(b)).map(line => {
-        const onLine = scopedScenes.filter(s => s.tags?.includes(line));
+    return lines.sort((a, b) => a.localeCompare(b)).map(key => {
+        const names = [...(rawNames.get(key) ?? [])];
+        const line = names.length === 1 ? names[0] : key;
+        const onLine = scopedScenes.filter(s => s.tags?.some(t => normalizePlotlineTag(t) === key));
         const stages = onLine.filter(s => s.arcAnchor)
             .sort((a, b) => (Number(a.act) || 0) - (Number(b.act) || 0) || (a.sequence ?? 0) - (b.sequence ?? 0));
         const realized: { arc: Scene; scene: Scene }[] = [];
@@ -47,7 +59,7 @@ export function computeOffPageCoverage(
             const scene = resolveRealizingScene(app, arc, targets);
             if (scene) realized.push({ arc, scene }); else open.push(arc);
         }
-        return { line, stages, realized, open, scenes: onLine.length - stages.length };
+        return { line, names, stages, realized, open, scenes: onLine.length - stages.length };
     });
 }
 
@@ -67,7 +79,7 @@ const MAX_WARNING_TITLES = 5;
  */
 export function adjustOffPageWarnings(warnings: PlotWarning[], coverage: OffPageLineCoverage[]): PlotWarning[] {
     if (coverage.length === 0) return warnings;
-    const lines = coverage.map(c => c.line);
+    const lines = coverage.flatMap(c => c.names);
     const kept = warnings.filter(w => !(w.category === 'Plotlines' && lines.some(l => w.message.startsWith(`Plotline "${l}"`))));
     for (const c of coverage) {
         if (c.open.length === 0) continue;

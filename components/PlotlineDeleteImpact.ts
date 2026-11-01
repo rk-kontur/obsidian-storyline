@@ -59,6 +59,10 @@ export interface TagImpact {
 const isUnassigned = (s: Scene) => s.act === undefined || String(s.act) === '';
 const hasAct = (s: Scene) => s.act !== undefined && s.act !== null && String(s.act).trim() !== '';
 
+/** The volume scope rule of scopeFilter / SceneQueryService.matchesFilter. */
+const inScope = (vol: VolumeDef, s: Scene) =>
+    [...vol.acts.map(String), ''].includes(s.act !== undefined ? String(s.act) : '');
+
 const bySequence = (a: Scene, b: Scene) =>
     (Number(a.act) || 0) - (Number(b.act) || 0) || (a.sequence ?? 0) - (b.sequence ?? 0);
 
@@ -78,9 +82,13 @@ export function computeTagImpact(volumes: VolumeDef[], scoped: VolumeDef | undef
     const outside: TagImpactGroup = { id: '#outside', kind: 'outside', title: 'Not in a volume', scenes: [], isSelection: false };
     for (const s of affected) {
         if (isUnassigned(s)) { unassigned.scenes.push(s); continue; }
+        // Selection membership uses exactly the scope rule (string compare), so
+        // "01" or " 2" is not in the selection when the views hide it.
+        if (scoped && inScope(scoped, s)) { (groups[selIdx] ?? outside).scenes.push(s); continue; }
+        // Otherwise getVolumeForAct only picks the column (never the selection)
         const v = hasAct(s) ? getVolumeForAct(volumes, s.act) : undefined;
         const g = v ? groups[volumes.indexOf(v)] : undefined;
-        (g ?? outside).scenes.push(s);
+        (g && !g.isSelection ? g : outside).scenes.push(s);
     }
     const all = [...groups, unassigned, outside];
     const used = all.filter(g => g.scenes.length > 0 || (g.kind === 'volume' && g.isSelection));
@@ -108,6 +116,20 @@ export function computeTagImpact(volumes: VolumeDef[], scoped: VolumeDef | undef
 }
 
 const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
+
+/** "Included: N inactive scenes, N corkboard notes …" (shared by delete and rename). */
+function renderIncludedLine(parent: HTMLElement, i: TagImpact, effect: string, listedCount?: number): void {
+    const hidden: string[] = [];
+    if (i.inactive) hidden.push(plural(i.inactive, 'inactive scene', 'inactive scenes'));
+    if (i.notes) hidden.push(plural(i.notes, 'corkboard note', 'corkboard notes'));
+    const filtered = listedCount !== undefined ? i.visibleInSelection - listedCount : 0;
+    if (filtered > 0) hidden.push(`${plural(filtered, 'scene', 'scenes')} hidden by the scene / Arc Point filter`);
+    if (!hidden.length) return;
+    parent.createEl('p', {
+        cls: 'setting-item-description',
+        text: `Included: ${hidden.join(', ')}. This view does not list them, but ${effect}.`,
+    });
+}
 
 function sceneLabel(s: Scene): string {
     const act = hasAct(s) ? `${String(s.act)}-` : '';
@@ -159,17 +181,7 @@ export function renderTagDeleteImpact(
         if (parts.length > 1) parent.createEl('p', { text: `Affected: ${parts.join(', ')}.` });
     }
 
-    const hidden: string[] = [];
-    if (i.inactive) hidden.push(plural(i.inactive, 'inactive scene', 'inactive scenes'));
-    if (i.notes) hidden.push(plural(i.notes, 'corkboard note', 'corkboard notes'));
-    const filtered = listedCount !== undefined ? i.visibleInSelection - listedCount : 0;
-    if (filtered > 0) hidden.push(`${plural(filtered, 'scene', 'scenes')} hidden by the current filter (e.g. Arc Points)`);
-    if (hidden.length) {
-        parent.createEl('p', {
-            cls: 'setting-item-description',
-            text: `Included: ${hidden.join(', ')}. This view does not list them, but they lose the tag too.`,
-        });
-    }
+    renderIncludedLine(parent, i, 'they lose the tag too', listedCount);
     parent.createEl('p', { cls: 'setting-item-description', text: 'The scenes themselves will not be deleted.' });
 
     if (i.groups.length === 0) return;
@@ -203,6 +215,7 @@ export function renderTagRenameImpact(
             cls: 'setting-item-description',
             text: `${plural(i.total, 'scene gets', 'scenes get')} the new name.`,
         });
+        renderIncludedLine(parent, i, 'they get the new name too');
         return;
     }
     parent.createEl('p', {
@@ -218,4 +231,5 @@ export function renderTagRenameImpact(
             text: `${plural(i.elsewhere, 'more scene', 'more scenes')} ${i.elsewhere === 1 ? 'is' : 'are'} renamed as well: ${where.join(', ')}.`,
         });
     }
+    renderIncludedLine(parent, i, 'they get the new name too');
 }

@@ -11,15 +11,16 @@ Changes of this fork compared to the original StoryLine plugin by Jan Sandström
 - Deleting a plotline removes its tag from **every** scene of the project. With a volume selected, the dialog used to count only the scenes of that volume, so it promised far fewer changes than it made.
 - The dialog now says how many scenes carry the plotline in the current selection, and warns how many **more** scenes in how many **other volumes** will lose the tag as well.
 - Below, one column per volume lists every affected scene side by side; the selected volume is highlighted.
-- Two extra columns when needed: **No act** (scenes without an act; they are visible under every volume selection and count as part of it) and **Not in a volume** (acts that belong to no volume, or an empty or blank `act:`).
-- Inactive scenes, corkboard notes and scenes hidden by the current filter (e.g. Arc Points) are counted too, because the tag is removed from them as well; the dialog names them in an extra line and marks them in the lists.
+- Two extra columns when needed: **No act** (scenes without an act; they are visible under every volume selection and count as part of it) and **Not in a volume** (acts that belong to no volume, an empty or blank `act:`, or an act written differently from the volume's list, e.g. `"01"`, which the views also hide under that volume).
+- Which scenes count as "in the current selection" follows exactly the rule the views use for the volume selection, also when two volumes share an act.
+- Inactive scenes, corkboard notes and scenes hidden by the scene / Arc Point filter are counted too, because the tag is removed from them as well; the dialog names them in an extra line and marks them in the lists.
 - Without volumes, the dialog shows the total for the whole project (including inactive scenes and corkboard notes, which the upstream count left out).
 
 <!-- screenshot: Delete plotline dialog with one column per volume -->
 
 ### "Rename plotline" states the impact too
 
-- Renaming also changes the tag in every scene of the project. With a volume selected, the dialog says how many scenes in the current selection get the new name, and warns how many **more** scenes in other volumes (or outside any volume) are renamed as well. Without volumes it gives the total.
+- Renaming also changes the tag in every scene of the project. With a volume selected, the dialog says how many scenes in the current selection get the new name, and warns how many **more** scenes in other volumes (or outside any volume) are renamed as well. Without volumes it gives the total. Like the delete dialog, it names included inactive scenes and corkboard notes, which the list does not show but which are renamed too.
 - Renaming a plotline to a name a scene already carries no longer gives that scene the tag twice (upstream bug).
 
 <!-- screenshot: Rename plotline dialog with the impact sentence -->
@@ -33,9 +34,11 @@ Changes of this fork compared to the original StoryLine plugin by Jan Sandström
 ### Off page status is kept on rename and delete
 
 - Renaming an off page plotline moves its off page status to the new name; deleting a plotline removes it from `offPageLines` in the project file. Before, the old name stayed in the list and the renamed line jumped back to on page.
-- `offPageLines` entries follow the plotline tag rule (lowercase, spaces become dashes), so hand-written `[Mark, Politics]` matches the plotlines `mark` and `politics`. A comma separated value (`offPageLines: mark, politics`) is read as well and is no longer wiped when a line is moved; it is written back as a list.
+- `offPageLines` entries and scene tags are compared after the plotline tag rule (lowercase, spaces become dashes), on both sides. So `[Mark, Politics]` and `[mark, politics]` both mark the plotlines `Mark` / `mark` and `Politics` / `politics`, and a hand-written scene tag such as `Main Mystery` matches `main-mystery`. This works in the Subway map, the Plotlines list, the Timeline swimlanes, the Plot Grid and Statistics.
+- A comma separated value (`offPageLines: mark, politics`) is read as well and is no longer wiped when a line is moved. When a line is moved, renamed or deleted, the list is written back in normalized form (`[mark, politics]`); otherwise it is left as written.
 - Statistics ignore entries in `offPageLines` that no longer exist as a tag in any scene.
 - The off page warning in Statistics lists at most 5 open stages per line, followed by "and N more".
+- The hint at the top of the **Off page coverage** section in Statistics now reads "Stages (arc points) on off page lines and whether they are already told in a scene (link them in the inspector)." (sentence case, as Obsidian's guidelines require).
 
 **How and where to use:**
 
@@ -48,9 +51,10 @@ Changes of this fork compared to the original StoryLine plugin by Jan Sandström
 **Files:**
 
 - `components/PlotlineDeleteImpact.ts` (new: impact per volume and dialog texts for delete and rename)
-- `utils/pageZones.ts` (shared parser and tag normalization for `offPageLines`, rename/delete hook `transferOffPage`, menu entry `addZoneMenuItem`)
-- `components/OffPageStatsSection.ts` (ignore orphaned entries, cap warning titles)
-- `views/StorylineView.ts` (+9: delete and rename dialogs, off page hooks, list view context menu entry)
+- `utils/pageZones.ts` (shared parser and tag normalization for `offPageLines`, `isOffPage`, rename/delete hook `transferOffPage`, menu entry `addZoneMenuItem`)
+- `components/OffPageStatsSection.ts` (match scene tags normalized, ignore orphaned entries, cap warning titles, hint text)
+- `views/StorylineView.ts` (+8: delete and rename dialogs, off page hooks, list view context menu entry)
+- `views/PlotgridView.ts` (1 line: off page check uses `isOffPage`)
 - `services/SceneManager.ts` (+2: no duplicate tag on rename)
 - `styles.css` (fork section: columns)
 
