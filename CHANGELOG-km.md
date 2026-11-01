@@ -2,6 +2,24 @@
 
 Changes of this fork compared to the original StoryLine plugin by Jan Sandström. Each `## <version>` section is used automatically as the text of the matching GitHub release. Every release also carries `storyline-km-source.zip` (all source files that are new or changed compared to the original, without `main.js`) and `storyline-km.patch` (the full diff against the original).
 
+## 1.11.8-km.7
+
+**Arc Points: "Realized by" links a stage to the scene that tells it**
+
+- An Arc Point is a stage a character goes through, not a scene. That stage is often told in another scene, even another character's (e.g. Mark's "goes home for the funeral" is told in a Yasemin scene where she sees him there).
+- **Inspector:** Arc Points get a "Realized by" row below the Arc Point checkbox. "Choose…" picks the scene, "×" removes the link. Stored as `realizedBy: "[[Scene]]"` in the Arc Point's frontmatter.
+- **Subway map:** A linked Arc Point no longer gets its own station. Its diamond sits on its own lines at the station of the linked scene, and the interchange connector joins both lines. Unlinked Arc Points stay where they are, so open diamonds show stages that are not told yet.
+- Useful for Story Grid conventions and obligatory scenes: put them as Arc Points on their own line (e.g. `Genre: Thriller`) and link each to the scene that delivers it.
+- With the "Arc Points" filter (scenes hidden), Arc Points fall back to their own stations.
+
+**Files:**
+
+- `utils/arcRealization.ts` (new)
+- `components/RealizedByControl.ts` (new)
+- `components/Inspector.ts` (+3)
+- `views/StorylineView.ts` (+6)
+- `styles.css` (fork section)
+
 ## 1.11.8-km.6
 
 **Report: open setups at the end of each volume**

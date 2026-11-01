@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-floating-promises, @typescript-eslint/no-misused-promises, @typescript-eslint/no-unnecessary-type-assertion -- Obsidian's API surface and several untyped third-party libraries force dynamic dispatch; floating promises are intentional in DOM/event handlers; matching enable at end of file */
 import { ButtonComponent, ItemView, Menu, MenuItem, Modal, Notice, Setting, TFile, TextComponent, WorkspaceLeaf } from 'obsidian';
+import { aliasRealizedColumns, removeRealizedStations, resolveRealizations } from '../utils/arcRealization';
 import { drawSubwayVolumeMarker, getProjectVolumes, VolumeDividerTracker } from '../utils/volumes';
 import * as obsidian from 'obsidian';
 import { Scene } from '../models/Scene';
@@ -424,6 +425,9 @@ export class StorylineView extends ItemView {
         // Sort by act → chapter → sequence so e.g. "01-01-02" comes before "01-02-01".
         // Sorting by sequence alone caused chapter nesting to be ignored (issue #96).
         orderedScenes.sort((a, b) => compareScenesByActChapter(a, b, (x, y) => (x.sequence ?? 0) - (y.sequence ?? 0)));
+        // Arc Points with `realizedBy` share the station of their realizing scene (fork)
+        const realizations = resolveRealizations(this.app, orderedScenes);
+        removeRealizedStations(orderedScenes, realizations);
 
         if (orderedScenes.length === 0) {
             this.renderListView(content, scenes, plotlines, plotlineKeys);
@@ -432,6 +436,7 @@ export class StorylineView extends ItemView {
 
         const colOf = new Map<string, number>();
         orderedScenes.forEach((s, i) => colOf.set(s.filePath, i));
+        const realizedLaneScene = aliasRealizedColumns(colOf, realizations);
 
         const numCols = orderedScenes.length;
         const numLanes = plotlineKeys.length;
@@ -658,7 +663,7 @@ export class StorylineView extends ItemView {
 
             for (const col of cols) {
                 const x = colX(col);
-                const scene = orderedScenes[col];
+                const scene = realizedLaneScene.get(`${pk}|${col}`) ?? orderedScenes[col];
 
                 // Node shape: diamond for Arc Points, circle for regular scenes
                 const isArcPoint = !!scene.arcAnchor;

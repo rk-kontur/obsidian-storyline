@@ -13960,3 +13960,14 @@ body.sl-focus-active-global.sl-focus-dim-text .markdown-source-view.mod-cm6 .cm-
 .sl-km-open-setups summary {
     cursor: pointer;
 }
+
+.sl-km-realized-by {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: wrap;
+}
+
+.sl-km-realized-by-label {
+    font-weight: 600;
+}

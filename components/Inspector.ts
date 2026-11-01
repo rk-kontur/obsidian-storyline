@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-floating-promises, @typescript-eslint/no-misused-promises, @typescript-eslint/no-unused-vars -- Obsidian's API surface and several untyped third-party libraries force dynamic dispatch; floating promises are intentional in DOM/event handlers; matching enable at end of file */
 import { Modal, App, Notice } from 'obsidian';
+import { renderRealizedByControl } from './RealizedByControl';
 import * as obsidian from 'obsidian';
 import { openConfirmModal } from './ConfirmModal';
 import { SplitSceneModal } from './SplitMergeModals';
@@ -493,6 +494,8 @@ export class InspectorComponent {
             await this.sceneManager.updateScene(scene.filePath, { arcAnchor: val });
             scene.arcAnchor = val || undefined;
         });
+        // Arc Point → realizing scene (fork)
+        renderRealizedByControl(this.container, this.plugin.app, scene, () => this.sceneManager.getAllScenes());
 
         // ── Story Date / Time ──
         const dtRow = this.container.createDiv('inspector-section');
