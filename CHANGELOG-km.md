@@ -4,21 +4,18 @@ Changes of this fork compared to the original StoryLine plugin by Jan Sandström
 
 ## 1.12.0-km.6
 
-**Kanban: volume badge no longer overlaps the word count; card colour available to snippets**
+**Kanban: volume badge no longer overlaps the word count**
 
-- **Kanban:** the "V1" volume badge collided with the word count, which upstream places absolutely at the top right of Kanban cards. The badge now comes first in the card header. When the board is grouped by act, the volume bands between the columns already show the volume, so the badge is hidden there. Corkboard cards keep the badge on the right.
-- **Card colour as CSS variable:** every scene card now carries its colour-coding colour (the coloured stripe on the left) as `--sl-km-card-color`. Themes and CSS snippets can reuse it, e.g. to tint the whole card in the plotline colour. Which colour that is follows **Settings → Color coding** (choose **By tag / plotline** for plotline colours).
+- The "V1" volume badge collided with the word count, which upstream places absolutely at the top right of Kanban cards. The badge now comes first in the card header. When the board is grouped by act, the volume bands between the columns already show the volume, so the badge is hidden there. Corkboard cards keep the badge on the right.
 
 <!-- screenshot: Kanban card with volume badge on the left -->
 
 **How and where to use:**
 
-1. Kanban: nothing to do; the badge sits at the start of the card header (or is hidden when grouped by act).
-2. Plotline-coloured cards: set **Settings → StoryLine → Color coding → By tag / plotline**, then use a snippet (e.g. the StoryLine (km) Style Settings snippet, "Tint with the card colour") that reads `--sl-km-card-color`.
+1. Open **Board → Kanban**. Grouped by act: no badge on the cards (the volume bands show the volume). Grouped otherwise: the badge sits at the start of the card header.
 
 **Files:**
 
-- `components/SceneCard.ts` (+1: `--sl-km-card-color`)
 - `styles.css` (fork section: Kanban badge placement)
 
 ## 1.12.0-km.5
