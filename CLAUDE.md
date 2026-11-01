@@ -19,6 +19,7 @@ Fork von PixeroJan/obsidian-storyline (MIT). Obsidian-Plugin in TypeScript, Buil
 - Release: Version in `manifest.json` setzen, auf `km/base` pushen, dann Tag mit exakt dieser Version auf `km/base` setzen (`git tag <version> && git push origin <version>`, oder im Browser Draft a new release mit Target `km/base`, Label None).
 - `.github/workflows/release-km.yml` baut bei jedem Tag `*-km.*`, prüft Tag gegen `manifest.json` und lädt `main.js`, `manifest.json`, `styles.css` ans Release (auch an ein vorhandenes).
 - Ohne Tag-Push: `release-km.yml` manuell starten (workflow_dispatch) auf dem Branch mit der gewünschten Version. Der Workflow legt Tag und Release selbst an. So released auch Claude aus Cloud-Sessions, die keine Tags pushen können.
+- **Jedes Release braucht einen Abschnitt `## <Version>` in `CHANGELOG-km.md`** (vor dem Release anlegen): Was ist neu, wie benutzt man es, unter **Dateien:** alle neuen und geänderten Quelldateien. Der Workflow übernimmt den Abschnitt als Release-Text (auch rückwirkend für ältere Releases) und hängt `storyline-km-source.zip` und `storyline-km.patch` (Unterschied zu `main`) an. `CHANGELOG.md` gehört dem Upstream und wird nicht angefasst.
 - Test über BRAT mit `rk-kontur/obsidian-storyline`.
 
 ## Entwicklung

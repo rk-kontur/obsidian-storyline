@@ -22,6 +22,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
 
       - uses: actions/setup-node@v5
         with:
@@ -57,3 +59,33 @@ jobs:
               --notes "Fork-Build von StoryLine (id storyline-km) für BRAT-Tests."
           fi
           gh release upload "$V" main.js manifest.json styles.css --clobber
+
+      - name: Source bundle (Änderungen gegenüber Upstream)
+        run: |
+          # Alle Quelldateien, die der Fork gegenüber main (= Upstream) neu hat oder ändert,
+          # ohne Build-Ausgabe. Dazu ein Patch für Jan / zum Nachvollziehen.
+          git fetch --no-tags origin main:refs/remotes/origin/main
+          EXCL=(':(exclude)main.js' ':(exclude)package-lock.json')
+          git diff --name-only --diff-filter=AMR origin/main...HEAD -- . "${EXCL[@]}" > changed-files.txt
+          cat changed-files.txt
+          zip -q storyline-km-source.zip -@ < changed-files.txt
+          zip -q storyline-km-source.zip changed-files.txt
+          git diff origin/main...HEAD -- . "${EXCL[@]}" > storyline-km.patch
+
+      - name: Release notes and attachments
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          V: ${{ steps.v.outputs.version }}
+        run: |
+          node .github/scripts/km-release-notes.js notes
+          # Quellpaket und Patch an das aktuelle Release
+          gh release upload "$V" storyline-km-source.zip storyline-km.patch --clobber
+          # Jeder Abschnitt "## <Version>" in CHANGELOG-km.md wird zum Text des Releases
+          for f in notes/*.md; do
+            [ -e "$f" ] || continue
+            v=$(basename "$f" .md)
+            if gh release view "$v" >/dev/null 2>&1; then
+              gh release edit "$v" --notes-file "$f"
+              echo "Notes aktualisiert: $v"
+            fi
+          done
