@@ -98,10 +98,33 @@ export function withLinkPartners(scoped: Scene[], project: Scene[]): Scene[] {
     return [...scoped, ...extra.values()];
 }
 
-/** Validator warnings for the scope, computed with cross-volume link partners. */
-export function validateForScope(scoped: Scene[], project: Scene[]): PlotWarning[] {
-    if (scoped.length === project.length) return Validator.validate(scoped);
+/** Validator category whose warnings are computed with cross-volume link partners. */
+const SETUP_PAYOFF = 'Setup/Payoff';
+/** Categories the Validator reports after Setup/Payoff (Validator.validate order). */
+const AFTER_SETUP_PAYOFF = ['Structure', 'Pacing'];
+
+/**
+ * Validator warnings for the scope.
+ * All checks run on the scoped scenes only, so warnings without scene paths
+ * ("Plotline X has no scenes in Act N", "Act imbalance") describe the volume.
+ * Setup/Payoff is computed with cross-volume link partners (links into other
+ * volumes are not "missing") and kept when it involves a scoped scene.
+ */
+export function validateForScope(
+    scoped: Scene[],
+    project: Scene[],
+    validate: (scenes: Scene[]) => PlotWarning[] = s => Validator.validate(s),
+): PlotWarning[] {
+    if (scoped.length === project.length) return validate(scoped);
     const inScope = new Set(scoped.map(s => s.filePath));
-    return Validator.validate(withLinkPartners(scoped, project))
-        .filter(w => (w.scenePaths ?? []).some(p => inScope.has(p)));
+    const all = validate(scoped);
+    const linked = validate(withLinkPartners(scoped, project))
+        .filter(w => w.category === SETUP_PAYOFF && (w.scenePaths ?? []).some(p => inScope.has(p)));
+    // Keep the Validator's category order: Setup/Payoff goes where it would be
+    let at = all.findIndex(w => w.category === SETUP_PAYOFF);
+    if (at < 0) at = all.findIndex(w => AFTER_SETUP_PAYOFF.includes(w.category));
+    const own = all.filter(w => w.category !== SETUP_PAYOFF);
+    if (at < 0) return [...own, ...linked];
+    const before = all.slice(0, at).filter(w => w.category !== SETUP_PAYOFF).length;
+    return [...own.slice(0, before), ...linked, ...own.slice(before)];
 }

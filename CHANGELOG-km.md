@@ -2,6 +2,68 @@
 
 Changes of this fork compared to the original StoryLine plugin by Jan Sandström. Each `## <version>` section is used as the initial text of the matching GitHub release; texts edited on GitHub (e.g. with screenshots) are never overwritten. Every release also carries `storyline-km-source.zip` (all source files that are new or changed compared to the original, without `main.js`) and `storyline-km.patch` (the full diff against the original).
 
+## 1.11.8-km.16
+
+**Statistics per volume: complete warnings, correct deadlines, one scene set for every section**
+
+### Warnings of the selected volume are complete
+
+- With a volume selected, **Warnings** dropped every warning that does not name scenes: "Plotline X has no scenes in Act N", "Plotline X was last seen in Act N …" and "Act imbalance". They are now computed for the volume's own scenes and shown again.
+- **Setup/Payoff** warnings are still computed together with the linked scenes of other volumes, so a setup in this volume that pays off in a later volume is not reported as missing. Off page lines still replace their act gap warnings with "stages not yet told".
+
+### Volume deadlines match the overview
+
+- The **Volumes** table counted days from UTC midnight. East of UTC it showed **(1 d)** on the deadline day and **(0 d)** the day after instead of **overdue**, and its **Words/day** differed from the overview card.
+- The table now uses the same deadline plan as **Project Overview**, with the same "include weekends" setting: the hint shows the remaining writing days, **(overdue)** after the deadline while words are missing, and nothing once the goal is reached. **Words/day** is the same number as in the overview.
+
+### Volume table
+
+- **Acts** shows ranges correctly: `1, 3` or `1–3, 5` instead of `1–3` for acts that are not contiguous.
+- The **All volumes** row now counts every scene of the project, like the overview with **All volumes** selected. Scenes whose act belongs to no volume are counted and noted, e.g. **All volumes (incl. 4 outside volumes)**. Its goal and deadline follow the overview too: sum of the volume goals (else the project word goal), project deadline (else the latest volume deadline).
+- The section remembers whether it is open or closed.
+- **Open setups at end of volume** follows the act order of the volumes, also when the volumes are not listed in act order in the project file.
+
+### One scene set for every section
+
+- With a volume selected, every section uses the volume's own scenes (scenes without an act are not counted), each with the same active/inactive rule as without a selection. Before, **Tension curve** and **Pacing coach** also counted scenes without an act.
+
+### Writing Trail names the volume total
+
+- With a volume selected, the first card in **Writing Trail** is labelled **Words in volume** (the volume's word count). The other cards (**Net tracked**, **Words added**, **Active days**) are tracked per project as before. Without a selection nothing changes.
+
+### The original layout names the volume
+
+- With the **original** Statistics layout, the view now also shows the heading **Volume 2 statistics** / **Project statistics (all volumes)** above the overview when the project defines volumes.
+
+<!-- screenshot: Statistics in the original layout with the volume heading -->
+<!-- screenshot: Volumes table with "1, 3" acts, deadline hint and "All volumes (incl. N outside volumes)" -->
+<!-- screenshot: Writing Trail with "Words in volume" -->
+
+### "Edit volumes" keeps Statistics open
+
+- **Edit volumes** in Statistics (and the commands **Manage story structure** / **Manage volumes**) replaced the current tab with the Board when neither Board nor Timeline was open. The Board now opens in a new tab and Statistics stays where it is.
+- If the dialog could not be opened, the Volumes section is no longer forced open the next time the dialog opens.
+
+**How and where to use:**
+
+1. Open **Statistics** and pick a volume in the volume dropdown in the toolbar.
+2. Open **Warnings**: plotline gaps and act imbalance inside the volume are listed again; setups that pay off in another volume are not reported.
+3. In the **Volumes** section, check **Acts**, the deadline hint and **Words/day**: they match **Project Overview** for the same volume. Collapse the section; it stays collapsed after a refresh or restart.
+4. Pick **All volumes**: the **All volumes** row shows the same scene and word totals as the overview, with a note for scenes outside every volume.
+5. Open **Writing Trail** with a volume selected: the first card reads **Words in volume**.
+6. In **Settings** → StoryLine → **Statistics view**, choose **Original**: the heading above the overview names the selected volume.
+7. Close Board and Timeline, then click **Edit volumes** in Statistics: the Board opens in a new tab with **Manage story structure** → **Volumes** open, and the Statistics tab stays.
+
+**Files:**
+
+- `utils/volumeStatsScope.ts` (`validateForScope`)
+- `utils/volumeSetups.ts` (`computeOpenSetups`)
+- `components/VolumeStatsSection.ts` (`computeVolumeStats`, `computeTotalRow`, `formatActRanges`, `deadlineHint`, `renderVolumeStatsSection`, `renderOpenSetups`)
+- `components/StructureModalSections.ts` (`clearNextStructureSection`, `enhanceStructureModal`)
+- `services/ForkCommands.ts` (`openStructureDialog`)
+- `views/StatsView.ts`
+- `CHANGELOG-km.md`
+
 ## 1.11.8-km.15
 
 **Volume selector: always up to date, in every view, also in Characters, Locations and Codex**

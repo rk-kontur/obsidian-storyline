@@ -8,27 +8,38 @@
 
 import type SceneCardsPlugin from '../main';
 import { BOARD_VIEW_TYPE, TIMELINE_VIEW_TYPE } from '../constants';
-import { setNextStructureSection, type StructureSection } from '../components/StructureModalSections';
+import { clearNextStructureSection, setNextStructureSection, type StructureSection } from '../components/StructureModalSections';
 import { registerVolumeScopeSync } from '../utils/volumeScope';
 
 interface HasStructureModal { openStructureModal(): void }
 
 /**
  * Open the "Manage story structure" dialog from anywhere: uses an open Board
- * or Timeline view, otherwise opens the Board first.
+ * or Timeline view, otherwise opens the Board in a new tab, so the current
+ * tab (e.g. Statistics) stays where it is.
  */
 export async function openStructureDialog(plugin: SceneCardsPlugin, section?: StructureSection): Promise<void> {
     if (section) setNextStructureSection(plugin.app, section);
     const { workspace } = plugin.app;
     const find = () => workspace.getLeavesOfType(BOARD_VIEW_TYPE)[0] ?? workspace.getLeavesOfType(TIMELINE_VIEW_TYPE)[0];
     let leaf = find();
-    if (!leaf) {
-        await plugin.activateView(BOARD_VIEW_TYPE);
-        leaf = find();
+    try {
+        if (!leaf) {
+            const tab = workspace.getLeaf('tab');
+            await tab.setViewState({ type: BOARD_VIEW_TYPE, active: true });
+            leaf = find();
+        }
+        if (leaf) await leaf.loadIfDeferred(); // deferred tabs have no real view yet
+        const view = leaf?.view as unknown as Partial<HasStructureModal> | undefined;
+        if (view && typeof view.openStructureModal === 'function') {
+            view.openStructureModal();
+            return;
+        }
+    } catch (e) {
+        console.error('StoryLine: could not open the structure dialog', e);
     }
-    if (leaf) await leaf.loadIfDeferred(); // deferred tabs have no real view yet
-    const view = leaf?.view as unknown as Partial<HasStructureModal> | undefined;
-    if (view && typeof view.openStructureModal === 'function') view.openStructureModal();
+    // No dialog opened: do not force the section open on some later, unrelated opening
+    if (section) clearNextStructureSection(plugin.app);
 }
 
 export function registerForkCommands(plugin: SceneCardsPlugin): void {

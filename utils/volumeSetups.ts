@@ -33,7 +33,10 @@ function linkTitle(raw: string): string {
 
 export function computeOpenSetups(volumes: VolumeDef[], scenes: Scene[]): VolumeOpenSetups[] {
     if (volumes.length === 0) return [];
-    const volIndex = new Map(volumes.map((v, i) => [v.id, i]));
+    // Chronology = act order, not the order of the list in the project file
+    const firstAct = (v: VolumeDef) => (v.acts.length ? Math.min(...v.acts) : Infinity);
+    const chrono = volumes.map((v, i) => ({ v, i })).sort((a, b) => firstAct(a.v) - firstAct(b.v) || a.i - b.i).map(x => x.v);
+    const volIndex = new Map(chrono.map((v, i) => [v.id, i]));
     const byTitle = new Map<string, Scene>();
     for (const s of scenes) if (s.title) byTitle.set(s.title, s);
 
@@ -58,7 +61,9 @@ export function computeOpenSetups(volumes: VolumeDef[], scenes: Scene[]): Volume
         return v ? volIndex.get(v.id) : undefined;
     };
 
-    return volumes.map((volume, n) => {
+    // Reported in the project file's order (like the volume table)
+    return volumes.map(volume => {
+        const n = volIndex.get(volume.id)!;
         const open: OpenSetup[] = [];
         for (const [path, payoffTitles] of links) {
             const setup = sceneByPath.get(path);
@@ -67,7 +72,7 @@ export function computeOpenSetups(volumes: VolumeDef[], scenes: Scene[]): Volume
             const payoffs = [...payoffTitles].map(title => {
                 const target = byTitle.get(title);
                 const ti = idxOf(target);
-                return { title, idx: ti, where: target ? (ti !== undefined ? volumes[ti].title : 'no volume') : 'missing' };
+                return { title, idx: ti, where: target ? (ti !== undefined ? chrono[ti].title : 'no volume') : 'missing' };
             });
             const resolved = payoffs.some(p => p.idx !== undefined && p.idx <= n);
             if (!resolved) open.push({ setup, payoffs: payoffs.map(({ title, where }) => ({ title, where })) });

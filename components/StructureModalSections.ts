@@ -46,6 +46,11 @@ export function setNextStructureSection(app: App, section: StructureSection): vo
     app.saveLocalStorage(FORCE_KEY, section);
 }
 
+/** Undo setNextStructureSection when no dialog could be opened. */
+export function clearNextStructureSection(app: App): void {
+    app.saveLocalStorage(FORCE_KEY, null);
+}
+
 export interface StructureModalContext {
     app: App;
     projectFilePath: string | undefined;
@@ -57,7 +62,10 @@ export function enhanceStructureModal(modal: Modal, ctx: StructureModalContext):
     const content = modal.contentEl;
     const children = Array.from(content.children) as HTMLElement[];
     const names = children.filter(el => el.tagName === 'H3').map(h => (h.textContent || '').trim().toLowerCase());
-    if (!names.includes('acts') || !names.includes('chapters')) return; // unknown layout: leave untouched
+    if (!names.includes('acts') || !names.includes('chapters')) { // unknown layout: leave untouched
+        ctx.app.saveLocalStorage(FORCE_KEY, null); // no section to force open
+        return;
+    }
 
     // The real footer is the LAST .structure-close-row ("Done"). Other rows with the
     // same class (e.g. "Apply custom structure") belong to their section.
@@ -91,7 +99,8 @@ export function enhanceStructureModal(modal: Modal, ctx: StructureModalContext):
     const bodies = new Map<StructureSection, HTMLElement>();
     const sectionEls: HTMLElement[] = [];
     for (const s of SECTIONS) {
-        const details = createEl('details', { cls: 'story-line-settings-section' });
+        const details = content.ownerDocument.createElement('details'); // not the global createEl (no-undef)
+        details.addClass('story-line-settings-section');
         details.open = open.has(s.id);
         details.createEl('summary', { text: s.label });
         details.addEventListener('toggle', () => {

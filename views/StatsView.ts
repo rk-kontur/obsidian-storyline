@@ -3,7 +3,7 @@ import { SceneManager } from '../services/SceneManager';
 import { renderVolumeStatsSection } from '../components/VolumeStatsSection';
 import { getProjectVolumes } from '../utils/volumes';
 import { openStructureDialog } from '../services/ForkCommands';
-import { getVolumeScope, renderVolumeScopeSelect, scopeFilter, volumeScopePredicate } from '../utils/volumeScope'; // fork: shared volume scope
+import { getVolumeScope, renderVolumeScopeSelect, volumeScopePredicate } from '../utils/volumeScope'; // fork: shared volume scope
 import { adjustOffPageWarnings, computeOffPageCoverage, offPageCardValue, renderOffPageCoverage, type OffPageLineCoverage } from '../components/OffPageStatsSection';
 import { getOffPageLines } from '../utils/pageZones';
 import { getStatsScope, scopedDeadline, scopedWordGoal, statsHeading, validateForScope, withLinkPartners } from '../utils/volumeStatsScope';
@@ -69,6 +69,8 @@ export class StatsView extends ItemView {
 
     /** fork: coverage of off page lines for the current render */
     private kmOffPage: OffPageLineCoverage[] = [];
+    /** fork: volume scope of the current render (one rule for every section) */
+    private kmInScope: (scene: Scene) => boolean = () => true;
 
     async onOpen(): Promise<void> {
         this.plugin.storyLeaf = this.leaf;
@@ -105,17 +107,21 @@ export class StatsView extends ItemView {
         const redesigned = this.plugin.settings.statsViewMode !== 'original';
         content.toggleClass('sl-stats-redesigned', redesigned);
         content.toggleClass('sl-stats', redesigned);
+        const kmScope = getStatsScope(this.app, this.sceneManager.activeProject?.filePath); // fork: volume scope
         if (redesigned) {
             content.createEl('h2', {
                 cls: 'sl-stats__heading sl-stats-redesigned__heading',
-                text: statsHeading(getStatsScope(this.app, this.sceneManager.activeProject?.filePath)), // fork: volume scope
+                text: statsHeading(kmScope), // fork: volume scope
             });
+        } else if (kmScope.volumes.length) { // fork: original layout also names the counted volume
+            content.createEl('h4', { cls: 'sl-km-stats-scope-heading', text: statsHeading(kmScope) });
         }
         // fork: with a volume selected, all sections count only that volume (scoped scenes + stats)
         const projectPath = this.sceneManager.activeProject?.filePath;
         const projectScenes = this.sceneManager.getAllScenes()
             .filter(scene => !scene.inactive && !scene.corkboardNote);
-        const allScenes = projectScenes.filter(volumeScopePredicate(this.app, projectPath, false));
+        this.kmInScope = volumeScopePredicate(this.app, projectPath, false);
+        const allScenes = projectScenes.filter(this.kmInScope);
         const isScoped = allScenes.length !== projectScenes.length;
         const stats = this.sceneManager.queryService.getStatistics(this.plugin.settings.excludeArcAnchorFromWordcount ?? true,
             isScoped ? allScenes : undefined);
@@ -134,7 +140,9 @@ export class StatsView extends ItemView {
             projectScenes, this.plugin.settings.excludeArcAnchorFromWordcount ?? true,
             (scene) => { const f = this.app.vault.getFileByPath(scene.filePath); if (f) void this.app.workspace.getLeaf('tab').openFile(f); },
             () => { void openStructureDialog(this.plugin, 'volumes'); },
-            getVolumeScope(this.app, projectPath));
+            getVolumeScope(this.app, projectPath),
+            { app: this.app, includeWeekends: this.plugin.writingTracker.getProjectDeadline().includeWeekends,
+                projectDeadline: this.plugin.writingTracker.getProjectDeadline().deadline, projectGoal: this.plugin.settings.projectWordGoal });
 
         if (redesigned) {
             // Section order, icons, and default open states follow Scribe's
@@ -152,7 +160,7 @@ export class StatsView extends ItemView {
                 this.renderWritingHistory(body));
 
             this.renderCollapsible(content, 'history', 'Writing Trail', false, body =>
-                this.renderWritingTrail(body, allScenes, stats.totalWords));
+                this.renderWritingTrail(body, allScenes, stats.totalWords, kmScope.volume ? 'Words in volume' : undefined)); // fork
 
             this.renderCollapsible(content, 'users', 'Characters & World', true, body =>
                 this.renderCharactersWorld(body, stats, allScenes));
@@ -197,7 +205,7 @@ export class StatsView extends ItemView {
             this.renderWritingHistory(body));
 
         this.renderCollapsible(content, 'footprints', 'Writing Trail', false, body =>
-            this.renderWritingTrail(body, allScenes, stats.totalWords));
+            this.renderWritingTrail(body, allScenes, stats.totalWords, kmScope.volume ? 'Words in volume' : undefined)); // fork
 
         // 4. Progress Breakdown (collapsible, default open)
         this.renderCollapsible(content, 'list-checks', 'Progress Breakdown', true, body =>
@@ -396,7 +404,7 @@ export class StatsView extends ItemView {
         if (cpm > 0 && isScriptioContinuaLocale(locale)) {
             // Sum CJK chars across all scenes (cheaper than re-tokenising).
             const scenes = (this.plugin.sceneManager?.getAllScenes?.() ?? [])
-                .filter(volumeScopePredicate(this.app, this.sceneManager.activeProject?.filePath)); // fork: volume scope
+                .filter(this.kmInScope); // fork: volume scope
             let chars = 0;
             for (const s of scenes) if (s.body) chars += countReadingCharacters(s.body);
             readMinutes = chars > 0 ? Math.round(chars / cpm) : Math.round(stats.totalWords / wpm);
@@ -1646,7 +1654,7 @@ export class StatsView extends ItemView {
     }
 
     private renderTensionSection(parent: HTMLElement): void {
-        const ordered = this.sceneManager.queryService.getFilteredScenes(scopeFilter(this.app, this.sceneManager.activeProject?.filePath, undefined), { field: 'sequence', direction: 'asc' }); // fork: volume scope
+        const ordered = this.sceneManager.queryService.getFilteredScenes(undefined, { field: 'sequence', direction: 'asc' }).filter(this.kmInScope); // fork: volume scope
         const intensityScenes = ordered.filter(scene => scene.intensity !== undefined);
         if (intensityScenes.length > 2) {
             this.renderTensionCurve(parent, intensityScenes);
@@ -2177,7 +2185,7 @@ export class StatsView extends ItemView {
     // ════════════════════════════════════════════════════
 
     private renderPacingCoach(parent: HTMLElement, _allScenes: Scene[]): void {
-        const ordered = this.sceneManager.queryService.getFilteredScenes(scopeFilter(this.app, this.sceneManager.activeProject?.filePath, undefined), { field: 'sequence', direction: 'asc' }); // fork: volume scope
+        const ordered = this.sceneManager.queryService.getFilteredScenes(undefined, { field: 'sequence', direction: 'asc' }).filter(this.kmInScope); // fork: volume scope
         if (ordered.length < 3) return;
 
         const sec = parent.createDiv('stats-subsection');
@@ -2321,7 +2329,7 @@ export class StatsView extends ItemView {
         }
     }
 
-    private renderWritingTrail(parent: HTMLElement, scenes: Scene[], currentWords: number): void {
+    private renderWritingTrail(parent: HTMLElement, scenes: Scene[], currentWords: number, currentLabel = 'Current words'): void {
         const tracker = this.plugin.writingTracker;
         const history = tracker.getFullHistory();
         const changes = tracker.getFullChangeHistory();
@@ -2345,7 +2353,7 @@ export class StatsView extends ItemView {
         exportButton.addEventListener('click', () => this.exportWritingTrailCsv(dates, history, changes, revisions));
 
         const metrics = parent.createDiv('stats-writing-trail-metrics');
-        this.createStatCard(metrics, 'file-text', 'Current words', currentWords.toLocaleString());
+        this.createStatCard(metrics, 'file-text', currentLabel, currentWords.toLocaleString()); // fork: label
         this.createStatCard(metrics, 'activity', 'Net tracked', (wordsAdded - wordsDeleted).toLocaleString());
         this.createStatCard(metrics, 'plus', 'Words added', wordsAdded.toLocaleString());
         this.createStatCard(metrics, 'minus', 'Words deleted', wordsDeleted.toLocaleString());
