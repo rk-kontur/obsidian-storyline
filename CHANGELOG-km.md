@@ -2,6 +2,23 @@
 
 Changes of this fork compared to the original StoryLine plugin by Jan Sandström. Each `## <version>` section is used as the initial text of the matching GitHub release; texts edited on GitHub (e.g. with screenshots) are never overwritten. Every release also carries `storyline-km-source.zip` (all source files that are new or changed compared to the original, without `main.js`) and `storyline-km.patch` (the full diff against the original).
 
+## 1.12.0-km.12
+
+**Manuscript no longer turns blank with Pane Relief's "Maximize active tab"**
+
+- With a maximized tab (Pane Relief), switching to the Manuscript from another view showed an empty page. The Manuscript hosts one embedded editor per scene; while they load, Obsidian briefly reports one of them as the active tab, and Pane Relief maximized that hidden editor instead of the Manuscript.
+- The Manuscript now hands the maximized state back to itself when that happens. Without Pane Relief, or without a maximized tab, nothing changes.
+
+**How and where to use:**
+
+1. In Pane Relief, maximize the StoryLine tab ("Maximize active tab").
+2. Switch to the **Manuscript** from any other StoryLine view: the manuscript stays visible.
+
+**Files:**
+
+- `utils/paneReliefCompat.ts` (new: give the maximized state back to the view that owns the embedded editor)
+- `views/ManuscriptView.ts` (+5: run the check on load, on active tab change and on layout change)
+
 ## 1.12.0-km.11
 
 **Timeline: POV character no longer listed twice on a card**
