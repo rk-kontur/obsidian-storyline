@@ -3,11 +3,16 @@ name: Release km
 # Baut das Plugin und veröffentlicht ein GitHub-Release für BRAT,
 # sobald ein Tag der Form 1.2.3-km.N gepusht wird.
 # Der Tag muss mit "version" in manifest.json übereinstimmen.
+#
+# Alternativ manuell starten (workflow_dispatch, z. B. durch Claude):
+# Version kommt aus manifest.json, der Tag wird auf dem gewählten
+# Branch-Stand angelegt.
 
 on:
   push:
     tags:
       - "*-km.*"
+  workflow_dispatch:
 
 permissions:
   contents: write
@@ -23,13 +28,19 @@ jobs:
           node-version: 20.19.1
           cache: npm
 
-      - name: Check tag matches manifest
+      - name: Resolve version
+        id: v
         run: |
           V=$(node -p "require('./manifest.json').version")
-          if [ "$V" != "${GITHUB_REF_NAME}" ]; then
+          if [ "${GITHUB_EVENT_NAME}" = "push" ] && [ "$V" != "${GITHUB_REF_NAME}" ]; then
             echo "Tag ${GITHUB_REF_NAME} passt nicht zu manifest.json ($V)"
             exit 1
           fi
+          case "$V" in
+            *-km.*) ;;
+            *) echo "Version $V hat kein -km.N-Suffix"; exit 1 ;;
+          esac
+          echo "version=$V" >> "$GITHUB_OUTPUT"
 
       - run: npm ci
       - run: npm run build
@@ -37,10 +48,12 @@ jobs:
       - name: Publish release assets
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          V: ${{ steps.v.outputs.version }}
         run: |
-          if ! gh release view "${GITHUB_REF_NAME}" >/dev/null 2>&1; then
-            gh release create "${GITHUB_REF_NAME}" \
-              --title "${GITHUB_REF_NAME}" \
+          if ! gh release view "$V" >/dev/null 2>&1; then
+            gh release create "$V" \
+              --target "${GITHUB_SHA}" \
+              --title "$V" \
               --notes "Fork-Build von StoryLine (id storyline-km) für BRAT-Tests."
           fi
-          gh release upload "${GITHUB_REF_NAME}" main.js manifest.json styles.css --clobber
+          gh release upload "$V" main.js manifest.json styles.css --clobber
