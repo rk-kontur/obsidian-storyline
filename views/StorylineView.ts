@@ -2,7 +2,6 @@
 import { ButtonComponent, ItemView, Menu, MenuItem, Modal, Notice, Setting, TFile, TextComponent, WorkspaceLeaf } from 'obsidian';
 import { aliasRealizedColumns, drawRealizedLinks, removeRealizedStations, resolveRealizations, splitRealizedLanes } from '../utils/arcRealization';
 import { renderVolumeScopeSelect, scopeFilter } from '../utils/volumeScope';
-import { readCssNumber } from '../utils/cssVars';
 import { drawSubwayVolumeMarker, getProjectVolumes, VolumeDividerTracker } from '../utils/volumes';
 import * as obsidian from 'obsidian';
 import { Scene } from '../models/Scene';
@@ -408,14 +407,11 @@ export class StorylineView extends ItemView {
         const LINE_WIDTH = 8;
         const LABEL_LEFT = 14;
         const TRACK_LEFT = 160;
-        // fork: spacing can be tuned from CSS: --sl-km-subway-spacing (px) or
-        // --sl-km-subway-spacing-factor (1 = default), --sl-km-subway-lane-gap (px)
-        const SCENE_SPACING = readCssNumber(content, '--sl-km-subway-spacing',
-            220 * readCssNumber(content, '--sl-km-subway-spacing-factor', 1, 0.3, 3), 60, 900);
+        const SCENE_SPACING = 220;
         const TOP_MARGIN = 55;
 
         // Each lane needs room for: the track line + scene label + tag pills below it
-        const LANE_TRACK = readCssNumber(content, '--sl-km-subway-lane-gap', 30, 10, 200);         // space for the line itself
+        const LANE_TRACK = 30;         // space for the line itself
         const LANE_INFO = this.showSubwayTagPills ? 65 : 36;          // space for scene title + optional tag pills below node
         const LANE_HEIGHT = LANE_TRACK + LANE_INFO;  // total per lane
 
