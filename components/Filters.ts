@@ -6,6 +6,8 @@ import type SceneCardsPlugin from '../main';
 import type { SceneFilter, SortConfig, SortField, FilterPreset } from '../models/Scene';
 import { getStatusOrder } from '../models/Scene';
 import { getActDisplayLabel } from '../utils/actChapter';
+import { renderVolumeFilterChips } from './VolumeFilterChips';
+import { getProjectVolumes } from '../utils/volumes';
 
 type FocusModeCallback = (active: boolean) => void;
 
@@ -231,6 +233,11 @@ export class FiltersComponent {
                     this.emitChange();
                 });
             });
+            // Volume chips (fork): shortcut for all acts of a volume
+            if (this.plugin) {
+                renderVolumeFilterChips(panel, getProjectVolumes(this.plugin.app, this.sceneManager.activeProject?.filePath),
+                    this.currentFilter, actValues, actContainer, () => this.emitChange());
+            }
         }
 
         // Chapter filter

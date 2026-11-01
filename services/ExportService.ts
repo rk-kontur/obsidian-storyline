@@ -13,7 +13,7 @@ import { StoryLocation } from '../models/Location';
 
 export type ExportFormat = 'md' | 'json' | 'html' | 'csv' | 'docx' | 'pdf';
 export type ExportScope = 'manuscript' | 'outline';
-export type ExportRangeField = 'sequence' | 'chapter';
+export type ExportRangeField = 'sequence' | 'chapter' | 'act';
 
 export interface ExportRange {
     field: ExportRangeField;
@@ -150,7 +150,8 @@ export class ExportService {
         if (this.exportRange) {
             const selectedRanges = this.exportRange.sequenceRanges;
             scenes = scenes.filter(scene => {
-                const rawValue = this.exportRange!.field === 'sequence' ? scene.sequence : scene.chapter;
+                const field = this.exportRange!.field;
+                const rawValue = field === 'sequence' ? scene.sequence : field === 'act' ? scene.act : scene.chapter;
                 if (rawValue === undefined) return false;
                 const value = Number(rawValue);
                 return Number.isFinite(value) && selectedRanges.some(range =>

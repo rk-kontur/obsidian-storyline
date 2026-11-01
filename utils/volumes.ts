@@ -101,6 +101,17 @@ export function getActsForVolume(volumes: VolumeDef[], id: string): number[] {
     return volumes.find(v => v.id === id)?.acts ?? [];
 }
 
+/** Export range (field 'act') for one volume, undefined for '' / unknown id. */
+export function volumeExportRange(
+    volumes: VolumeDef[],
+    id: string,
+): { field: 'act'; sequenceRanges: Array<{ start: number; end: number }> } | undefined {
+    if (!id) return undefined;
+    const acts = getActsForVolume(volumes, id);
+    if (acts.length === 0) return undefined;
+    return { field: 'act', sequenceRanges: acts.map(a => ({ start: a, end: a })) };
+}
+
 /**
  * Tracks the current volume while a view renders act dividers in order and
  * emits a volume band whenever a new volume starts.

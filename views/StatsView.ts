@@ -1,5 +1,7 @@
 /* eslint-disable @typescript-eslint/no-floating-promises, @typescript-eslint/no-unused-vars, no-useless-escape -- Obsidian's API surface and several untyped third-party libraries force dynamic dispatch; floating promises are intentional in DOM/event handlers; matching enable at end of file */
 import { SceneManager } from '../services/SceneManager';
+import { renderVolumeStatsSection } from '../components/VolumeStatsSection';
+import { getProjectVolumes } from '../utils/volumes';
 import { renderViewSwitcher } from '../components/ViewSwitcher';
 import * as obsidian from 'obsidian';
 import type SceneCardsPlugin from '../main';
@@ -103,6 +105,10 @@ export class StatsView extends ItemView {
         const stats = this.sceneManager.queryService.getStatistics(this.plugin.settings.excludeArcAnchorFromWordcount ?? true);
         const allScenes = this.sceneManager.getAllScenes()
             .filter(scene => !scene.inactive && !scene.corkboardNote);
+
+        // Per-volume statistics and goals (fork) — only when `volumes:` is defined
+        renderVolumeStatsSection(content, getProjectVolumes(this.app, this.sceneManager.activeProject?.filePath),
+            allScenes, this.plugin.settings.excludeArcAnchorFromWordcount ?? true);
 
         if (redesigned) {
             // Section order, icons, and default open states follow Scribe's

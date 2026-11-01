@@ -13899,3 +13899,52 @@ body.sl-focus-active-global.sl-focus-dim-text .markdown-source-view.mod-cm6 .cm-
     left: 0;
     z-index: 8;
 }
+
+.sl-km-volume-stats {
+    margin: 8px 0 16px;
+    padding: 8px 12px;
+    border: 1px solid var(--background-modifier-border);
+    border-radius: 8px;
+}
+
+.sl-km-volume-stats > summary {
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.sl-km-volume-stats-table {
+    width: 100%;
+    margin-top: 8px;
+    border-collapse: collapse;
+    font-size: 0.9em;
+}
+
+.sl-km-volume-stats-table th,
+.sl-km-volume-stats-table td {
+    padding: 4px 6px;
+    text-align: left;
+    border-bottom: 1px solid var(--background-modifier-border);
+}
+
+.sl-km-volume-progress {
+    display: inline-block;
+    width: 70px;
+    height: 6px;
+    vertical-align: middle;
+    border-radius: 3px;
+    background: var(--background-modifier-border);
+    overflow: hidden;
+}
+
+.sl-km-volume-progress-fill {
+    height: 100%;
+    background: var(--interactive-accent);
+}
+
+.sl-km-muted {
+    color: var(--text-muted);
+}
+
+.sl-km-overdue {
+    color: var(--text-error);
+}

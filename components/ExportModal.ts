@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-misused-promises -- Obsidian's API surface and several untyped third-party libraries force dynamic dispatch; floating promises are intentional in DOM/event handlers; matching enable at end of file */
 import { Modal, Setting, Notice, DropdownComponent, ToggleComponent } from 'obsidian';
 import { ExportService, ExportFormat, ExportRange, ExportScope } from '../services/ExportService';
+import { getProjectVolumes, volumeExportRange } from '../utils/volumes';
 import type SceneCardsPlugin from '../main';
 
 type ExportContent = ExportScope | 'scenes' | 'chapters';
@@ -17,6 +18,8 @@ export class ExportModal extends Modal {
     private exportScope: ExportScope = 'manuscript';
     private exportContent: ExportContent = 'manuscript';
     private exportRangeText = '';
+    /** Fork: export only one volume (act group); '' = all */
+    private exportVolumeId = '';
 
     // Per-export options (issues #85 / #87)
     private includeSceneTitles = true;
@@ -128,6 +131,20 @@ export class ExportModal extends Modal {
                         .onChange(v => { this.exportRangeText = v; }));
             }
 
+            // Volume selection (fork) — only when the project defines `volumes:`
+            const volumes = getProjectVolumes(this.app, this.plugin.sceneManager.activeProject?.filePath);
+            if (volumes.length > 0 && this.exportContent !== 'scenes' && this.exportContent !== 'chapters') {
+                new Setting(manuscriptOptions)
+                    .setName('Volume')
+                    .setDesc('Export a single volume (its acts) or the whole project.')
+                    .addDropdown(dd => {
+                        dd.addOption('', 'All volumes');
+                        volumes.forEach(v => dd.addOption(v.id, v.title));
+                        dd.setValue(this.exportVolumeId);
+                        dd.onChange(v => { this.exportVolumeId = v; });
+                    });
+            }
+
             new Setting(manuscriptOptions)
                 .setName('Include inactive scenes')
                 .setDesc('Include parked scenes marked inactive. Off by default.')
@@ -218,7 +235,7 @@ export class ExportModal extends Modal {
         exportBtn.addEventListener('click', async () => {
             const exportRange = this.exportContent === 'scenes' || this.exportContent === 'chapters'
                 ? this.parseExportRange(this.exportRangeText)
-                : undefined;
+                : volumeExportRange(getProjectVolumes(this.app, this.plugin.sceneManager.activeProject?.filePath), this.exportVolumeId);
             if ((this.exportContent === 'scenes' || this.exportContent === 'chapters') && !exportRange) {
                 const valueLabel = this.exportContent === 'scenes' ? 'scene' : 'chapter';
                 new Notice(`Enter ${valueLabel} numbers like 1-4, 6, 8.`);
