@@ -4,6 +4,7 @@ import * as obsidian from 'obsidian';
 import { CellData, ColumnMeta, RowMeta, PlotGridData } from '../models/PlotGridData';
 import { renderArcPointIcon } from '../components/ArcPointUI';
 import { getProjectVolumes, VolumeDividerTracker } from '../utils/volumes';
+import { renderVolumeScopeSelect, scopeFilter } from '../utils/volumeScope';
 import { LocationManager } from '../services/LocationManager';
 import type { SceneFilter, SortConfig } from '../models/Scene';
 import { SceneManager } from '../services/SceneManager';
@@ -582,6 +583,7 @@ export class PlotgridView extends ItemView {
         // add a small left margin so there's a bit more space between the view switcher and action buttons
         controls.setCssStyles({ marginLeft: '24px' });
 
+        if (this.plugin) renderVolumeScopeSelect(controls, this.plugin); // fork: shared volume scope
         const left = controls.createDiv('plot-grid-toolbar-left');
         left.setCssStyles({
             display: 'flex',
@@ -1026,9 +1028,11 @@ export class PlotgridView extends ItemView {
             k => { const v = (this.currentFilter as unknown as Record<string, unknown>)[k]; return v !== undefined && v !== '' && !(Array.isArray(v) && v.length === 0); }
         );
         let filteredPaths: Set<string> | null = null;
-        if (hasFilter && sceneManager) {
+        // fork: shared volume scope restricts rows like an act filter
+        const scopedFilter = sceneManager ? scopeFilter(this.app, sceneManager.activeProject?.filePath, this.currentFilter) : this.currentFilter;
+        if ((hasFilter || scopedFilter !== this.currentFilter) && sceneManager) {
             filteredPaths = new Set(
-                sceneManager.queryService.getFilteredScenes(this.currentFilter, undefined).map(s => s.filePath)
+                sceneManager.queryService.getFilteredScenes(scopedFilter, undefined).map(s => s.filePath)
             );
         }
 

@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-floating-promises, @typescript-eslint/no-misused-promises, @typescript-eslint/no-unnecessary-type-assertion -- Obsidian's API surface and several untyped third-party libraries force dynamic dispatch; floating promises are intentional in DOM/event handlers; matching enable at end of file */
 import { ButtonComponent, ItemView, Menu, MenuItem, Modal, Notice, Setting, TFile, TextComponent, WorkspaceLeaf } from 'obsidian';
 import { aliasRealizedColumns, drawRealizedLinks, removeRealizedStations, resolveRealizations, splitRealizedLanes } from '../utils/arcRealization';
+import { renderVolumeScopeSelect, scopeFilter } from '../utils/volumeScope';
 import { drawSubwayVolumeMarker, getProjectVolumes, VolumeDividerTracker } from '../utils/volumes';
 import * as obsidian from 'obsidian';
 import { Scene } from '../models/Scene';
@@ -144,6 +145,8 @@ export class StorylineView extends ItemView {
             menu.showAtPosition({ x: e.clientX, y: e.clientY });
         });
 
+        renderVolumeScopeSelect(controls, this.plugin); // fork: shared volume scope
+
         // Arc Points filter toggle (All / Scenes / Arc Points)
         const arcFilterContainer = controls.createDiv('story-line-arc-filter');
         const arcModes: { value: 'all' | 'scenes' | 'arcPoints'; label: string }[] = [
@@ -262,7 +265,7 @@ export class StorylineView extends ItemView {
 
         const arcFilter = this.arcAnchorFilter === 'all' ? undefined : { arcAnchorFilter: this.arcAnchorFilter };
         const allScenes = this.sceneManager.queryService.getFilteredScenes(
-            arcFilter,
+            scopeFilter(this.app, this.sceneManager.activeProject?.filePath, arcFilter), // fork: volume scope
             { field: 'sequence', direction: 'asc' }
         );
         // Corkboard sticky notes are not story scenes — exclude them from

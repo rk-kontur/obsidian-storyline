@@ -1,5 +1,7 @@
 /* eslint-disable @typescript-eslint/no-floating-promises, @typescript-eslint/no-misused-promises, @typescript-eslint/no-unnecessary-type-assertion, @typescript-eslint/no-unused-vars -- Obsidian's API surface and several untyped third-party libraries force dynamic dispatch; floating promises are intentional in DOM/event handlers; matching enable at end of file */
 import { ItemView, WorkspaceLeaf, WorkspaceSplit, MarkdownRenderer, TFile, setIcon, Notice, Menu } from 'obsidian';
+import { renderVolumeScopeSelect, scopeFilter, volumeScopeKey } from '../utils/volumeScope';
+import { getProjectVolumes, VolumeDividerTracker } from '../utils/volumes';
 import { EditorView, Decoration } from '@codemirror/view';
 import { RangeSetBuilder, StateEffect, Compartment, EditorSelection } from '@codemirror/state';
 import { syntaxTree } from '@codemirror/language';
@@ -234,6 +236,7 @@ export class ManuscriptView extends ItemView {
             this.currentFilter,
             this.currentSort,
         );
+        renderVolumeScopeSelect(filterContainer, this.plugin); // fork: shared volume scope
         this.filtersComponent.render();
 
         // Plain-text toggle (same style as Board view's Scenes on/off)
@@ -358,7 +361,7 @@ export class ManuscriptView extends ItemView {
 
     /** Build a cache key from the current filter + sort configuration */
     private computeFilterKey(): string {
-        return JSON.stringify(this.currentFilter) + '|' + JSON.stringify(this.currentSort);
+        return JSON.stringify(this.currentFilter) + '|' + JSON.stringify(this.currentSort) + '|' + volumeScopeKey(this.app);
     }
 
     private scheduleManuscriptViewStateSave(): void {
@@ -398,7 +401,7 @@ export class ManuscriptView extends ItemView {
         ) {
             scenes = this._lastScenes;
         } else {
-            scenes = this.sceneManager.queryService.getFilteredScenes(this.currentFilter, this.currentSort)
+            scenes = this.sceneManager.queryService.getFilteredScenes(scopeFilter(this.app, this.sceneManager.activeProject?.filePath, this.currentFilter), this.currentSort)
                 .filter(s => !s.corkboardNote);
 
             // When user picks a non-structural sort (e.g. "title"), respect it
@@ -458,12 +461,14 @@ export class ManuscriptView extends ItemView {
 
         const editorContainers: { el: HTMLElement; path: string }[] = [];
 
+        const volumeTracker = new VolumeDividerTracker(getProjectVolumes(this.app, this.sceneManager.activeProject?.filePath));
         for (const scene of scenes) {
             // Act divider
             if (scene.act !== undefined && scene.act !== lastAct) {
                 lastAct = scene.act;
                 lastChapter = undefined;
                 if (prevBlock) prevBlock.classList.add('is-before-divider');
+                volumeTracker.renderBefore(this.scrollArea, scene.act); // fork: volume heading
                 const actDiv = this.scrollArea.createDiv('sl-manuscript-act-divider');
                 const actLabel = this.sceneManager.getActLabel(Number(scene.act));
                 const actDisplay = getActDisplayLabel(scene.act);
@@ -1074,7 +1079,7 @@ export class ManuscriptView extends ItemView {
         const scenes = this._lastScenes.length > 0
             ? this._lastScenes
             : this.sceneManager.queryService
-                .getFilteredScenes(this.currentFilter, this.currentSort)
+                .getFilteredScenes(scopeFilter(this.app, this.sceneManager.activeProject?.filePath, this.currentFilter), this.currentSort)
                 .filter(s => !s.corkboardNote);
 
         for (const scene of scenes) {
@@ -1281,7 +1286,7 @@ export class ManuscriptView extends ItemView {
         const key = this.computeFilterKey();
         const scenes = (key === this._lastFilterKey && this._lastScenes.length > 0)
             ? this._lastScenes
-            : this.sceneManager.queryService.getFilteredScenes(this.currentFilter, this.currentSort)
+            : this.sceneManager.queryService.getFilteredScenes(scopeFilter(this.app, this.sceneManager.activeProject?.filePath, this.currentFilter), this.currentSort)
                 .filter(s => !s.corkboardNote);
         let totalWords = 0;
         let totalChars = 0;

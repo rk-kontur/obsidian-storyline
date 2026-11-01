@@ -1,5 +1,7 @@
 /* eslint-disable @typescript-eslint/no-floating-promises, @typescript-eslint/no-misused-promises, @typescript-eslint/no-unnecessary-type-assertion -- Obsidian's API surface and several untyped third-party libraries force dynamic dispatch; floating promises are intentional in DOM/event handlers; matching enable at end of file */
 import { ItemView, WorkspaceLeaf, Menu, TFile, setIcon } from 'obsidian';
+import { inVolumeScope, renderVolumeScopeSelect } from '../utils/volumeScope';
+import { getProjectVolumes, VolumeDividerTracker } from '../utils/volumes';
 import type SceneCardsPlugin from '../main';
 import { ManuscriptView } from './ManuscriptView';
 import { resolveTagColor, getPlotlineHSL } from '../settings';
@@ -118,6 +120,7 @@ export class NavigatorView extends ItemView {
             this.renderList();
         });
 
+        renderVolumeScopeSelect(toolbar, this.plugin); // fork: shared volume scope
         this.sortBtn = toolbar.createDiv('sl-nav-sort-btn');
         setIcon(this.sortBtn, SORT_ICONS[this.sortMode]);
         attachTooltip(this.sortBtn, 'Sort');
@@ -327,6 +330,8 @@ export class NavigatorView extends ItemView {
         this.listEl.empty();
 
         let scenes = this.sceneManager.getAllScenes().filter(s => !s.corkboardNote && !s.inactive);
+        // fork: shared volume scope
+        scenes = scenes.filter(s => inVolumeScope(this.app, this.sceneManager.activeProject?.filePath, s));
 
         // Plotline filter
         if (this.plotlineFilter) {
@@ -388,7 +393,9 @@ export class NavigatorView extends ItemView {
             return;
         }
 
+        const volumeTracker = new VolumeDividerTracker(getProjectVolumes(this.app, this.sceneManager.activeProject?.filePath));
         for (const [act, actScenes] of groups) {
+            volumeTracker.renderBefore(this.listEl!, actScenes[0]?.act); // fork: volume heading
             const isCollapsed = this.collapsedActs.has(act);
 
             const header = this.listEl!.createDiv('sl-nav-act-header');

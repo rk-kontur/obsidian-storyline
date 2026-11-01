@@ -4,6 +4,7 @@ import { tabifyStructureModal } from '../components/StructureModalTabs';
 import { SceneManager } from '../services/SceneManager';
 import { SceneCardComponent } from '../components/SceneCard';
 import { getProjectVolumes, VolumeDividerTracker } from '../utils/volumes';
+import { renderVolumeScopeSelect, scopeFilter } from '../utils/volumeScope';
 import { ArcFilterMode, arcFilterQuery, loadArcFilter, renderArcFilterToggle, renderArcPointBadge, saveArcFilter } from '../components/ArcPointUI';
 import { InspectorComponent } from '../components/Inspector';
 import { QuickAddModal } from '../components/QuickAddModal';
@@ -200,6 +201,8 @@ export class TimelineView extends ItemView {
             });
         }
 
+        renderVolumeScopeSelect(controls, this.plugin); // fork: shared volume scope
+
         // Arc Points filter toggle (All / Scenes / Arc Points)
         renderArcFilterToggle(controls, this.arcFilter, (mode) => {
             this.arcFilter = mode;
@@ -281,7 +284,7 @@ export class TimelineView extends ItemView {
         const timelineEl = container.createDiv('story-line-timeline');
         const sortField = this.timelineOrder === 'chronological' ? 'chronologicalOrder' : 'chapter';
         const scenes = this.sceneManager.queryService.getFilteredScenes(
-            arcFilterQuery(this.arcFilter),
+            scopeFilter(this.app, this.sceneManager.activeProject?.filePath, arcFilterQuery(this.arcFilter)),
             { field: sortField, direction: 'asc' }
         ).filter(scene => !this.isNoteScene(scene));
 
@@ -633,7 +636,7 @@ export class TimelineView extends ItemView {
         enableDragToPan(timelineEl);
         const sortField = this.timelineOrder === 'chronological' ? 'chronologicalOrder' : 'chapter';
         const scenes = this.sceneManager.queryService.getFilteredScenes(
-            arcFilterQuery(this.arcFilter),
+            scopeFilter(this.app, this.sceneManager.activeProject?.filePath, arcFilterQuery(this.arcFilter)),
             { field: sortField, direction: 'asc' }
         ).filter(scene => !this.isNoteScene(scene));
 

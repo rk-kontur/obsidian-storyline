@@ -1,6 +1,8 @@
 /* eslint-disable @typescript-eslint/no-floating-promises, @typescript-eslint/no-misused-promises, @typescript-eslint/no-unnecessary-type-assertion -- Obsidian's API surface and several untyped third-party libraries force dynamic dispatch; floating promises are intentional in DOM/event handlers; matching enable at end of file */
 import { ItemView, WorkspaceLeaf, Menu, Notice, TFile, Modal, Setting, MarkdownRenderer, normalizePath } from 'obsidian';
 import { tabifyStructureModal } from '../components/StructureModalTabs';
+import { renderVolumeScopeSelect, scopeActs, scopeFilter } from '../utils/volumeScope';
+import { actFromColumnKey, getProjectVolumes, renderVolumeColumnDivider, VolumeDividerTracker } from '../utils/volumes';
 import * as obsidian from 'obsidian';
 import { Scene, SceneFilter, SortConfig, BoardGroupBy, SceneStatus, SceneTemplate, BeatSheetTemplate, BUILTIN_BEAT_SHEETS, getStatusOrder, getStatusConfig, resolveStatusCfg } from '../models/Scene';
 import { openConfirmModal } from '../components/ConfirmModal';
@@ -250,6 +252,7 @@ export class BoardView extends ItemView {
         renderViewSwitcher(toolbar, BOARD_VIEW_TYPE, this.plugin, this.leaf);
 
         const controls = toolbar.createDiv('story-line-toolbar-controls');
+        renderVolumeScopeSelect(controls, this.plugin); // fork: shared volume scope
 
         const modeToggle = controls.createDiv('story-line-board-mode-toggle');
         const corkboardBtn = modeToggle.createEl('button', {
@@ -536,11 +539,12 @@ export class BoardView extends ItemView {
         // Pass defined acts/chapters so empty containers still render as
         // drop targets (issue #220 — newly inserted chapters were invisible
         // until a scene was dragged into them).
-        const definedActs = this.sceneManager.getDefinedActs();
+        const projectPath = this.sceneManager.activeProject?.filePath;
+        const definedActs = scopeActs(this.app, projectPath, this.sceneManager.getDefinedActs());
         const definedChapters = this.sceneManager.getDefinedChapters();
         const groups = this.sceneManager.queryService.getScenesGroupedByWithEmpty(
             this.groupBy,
-            this.currentFilter,
+            scopeFilter(this.app, projectPath, this.currentFilter),
             this.currentSort,
             definedActs,
             definedChapters
@@ -556,8 +560,11 @@ export class BoardView extends ItemView {
             return;
         }
 
+        const volumeTracker = new VolumeDividerTracker(this.groupBy === 'act' ? getProjectVolumes(this.app, projectPath) : []);
         for (const key of sortedKeys) {
             let scenes = groups.get(key) || [];
+            const startedVolume = volumeTracker.next(actFromColumnKey(key)); // fork: volume band between act columns
+            if (startedVolume) renderVolumeColumnDivider(this.boardEl, startedVolume);
             if (!this.plugin.settings.showNotesInKanban) {
                 scenes = scenes.filter(scene => !this.isCorkboardNoteScene(scene));
                 const isNoActColumn = this.groupBy === 'act' && key.trim().toLowerCase() === 'no act';
@@ -584,7 +591,7 @@ export class BoardView extends ItemView {
         for (const vs of this.scrollers) vs.destroy();
         this.scrollers = [];
 
-        let scenes = this.sceneManager.queryService.getFilteredScenes(this.currentFilter, this.currentSort);
+        let scenes = this.sceneManager.queryService.getFilteredScenes(scopeFilter(this.app, this.sceneManager.activeProject?.filePath, this.currentFilter), this.currentSort);
         if (!this.plugin.settings.showScenesInCorkboard) {
             scenes = scenes.filter(scene => this.isCorkboardNoteScene(scene));
         }

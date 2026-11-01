@@ -14063,3 +14063,47 @@ body.sl-focus-active-global.sl-focus-dim-text .markdown-source-view.mod-cm6 .cm-
 .sl-km-edit-volumes {
     margin: 6px 0;
 }
+
+/* Fork: shared volume scope + volume visuals in Board, Corkboard, Manuscript, Navigator */
+.sl-km-volume-scope {
+    max-width: 160px;
+}
+
+.sl-km-volume-badge {
+    margin-left: auto;
+    padding: 0 6px;
+    border-radius: 8px;
+    background: var(--background-modifier-hover);
+    color: var(--text-muted);
+    font-size: var(--font-ui-smaller);
+    font-weight: 600;
+    line-height: 1.6;
+}
+
+.sl-km-volume-column {
+    flex: 0 0 28px;
+    align-self: stretch;
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    padding-top: 12px;
+    border-left: 3px solid var(--text-muted);
+    background: var(--background-secondary);
+    border-radius: 4px;
+}
+
+.sl-km-volume-column-label {
+    writing-mode: vertical-rl;
+    transform: rotate(180deg);
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--text-accent);
+    white-space: nowrap;
+}
+
+.sl-nav-list .sl-km-volume-divider {
+    margin: 10px 0 2px;
+    padding: 3px 8px;
+    font-size: var(--font-ui-small);
+}

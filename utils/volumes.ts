@@ -171,3 +171,22 @@ export function drawSubwayVolumeMarker(
     label.textContent = opts.title.toUpperCase();
     svg.appendChild(label);
 }
+
+/**
+ * Kanban helper: a narrow vertical band with the volume title, inserted
+ * between act columns where a new volume starts.
+ */
+export function renderVolumeColumnDivider(parent: HTMLElement, vol: VolumeDef): void {
+    const band = parent.createDiv('sl-km-volume-column');
+    band.setAttribute('title', vol.title);
+    band.createSpan({ cls: 'sl-km-volume-column-label', text: vol.title });
+}
+
+/** Act number from a Kanban act column key ("Act 5", "Prologue", "Epilogue"). */
+export function actFromColumnKey(key: string): number | undefined {
+    const k = key.trim().toLowerCase();
+    if (k === 'prologue') return 0;
+    if (k === 'epilogue') return 99;
+    const m = k.match(/(\d+(?:\.\d+)?)/);
+    return m ? Number(m[1]) : undefined;
+}

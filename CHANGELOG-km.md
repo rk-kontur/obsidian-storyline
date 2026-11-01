@@ -2,6 +2,77 @@
 
 Changes of this fork compared to the original StoryLine plugin by Jan Sandström. Each `## <version>` section is used as the initial text of the matching GitHub release; texts edited on GitHub (e.g. with screenshots) are never overwritten. Every release also carries `storyline-km-source.zip` (all source files that are new or changed compared to the original, without `main.js`) and `storyline-km.patch` (the full diff against the original).
 
+## 1.12.0-km.1
+
+**Volumes in every view, one shared volume selector**
+
+This release completes the volume feature (series with several volumes in one project). A volume is a named group of acts, defined in the **Volumes** tab of **Manage story structure** (see 1.11.8-km.12). This release adds a **shared volume selector** that works across all views and shows volume boundaries everywhere.
+
+Nothing changes for projects without volumes: the selector, badges and dividers only appear once at least one volume is defined.
+
+### 1. Shared volume selector ("All volumes / Volume 1 / …")
+
+- A dropdown in the toolbar of **Board (Kanban and Corkboard)**, **Plot Grid**, **Timeline**, **Plotlines (Subway)**, **Manuscript** and the **Navigator** sidebar.
+- It is **one setting for all views**: choose "Volume 2" in the Board, and Timeline, Subway, Plot Grid, Manuscript and Navigator show Volume 2 as well. Every open StoryLine view refreshes immediately.
+- **All volumes** shows the whole project as before.
+- Remembered per vault.
+- Works together with all existing filters: the volume restricts the acts, the other filters (status, POV, tags, Arc Points …) still apply. If an act filter is active, only its acts inside the selected volume remain.
+- Not affected on purpose: **Statistics** (always shows the per-volume table) and **Export** (has its own "Volume" choice).
+
+<!-- screenshot: toolbar with the volume dropdown -->
+
+### 2. Volume boundaries in each view
+
+| View | What you see |
+|---|---|
+| **Board · Kanban** (grouped by act) | A narrow vertical band with the volume title between the act columns where a new volume starts. |
+| **Board · Kanban and Corkboard** | Every scene card shows a small badge such as **V2** at the right of the card header (hover: full volume title). |
+| **Plot Grid** | A full-width volume band above the first act divider of each volume. |
+| **Timeline** (linear and swimlanes) | A volume band above the first act divider of each volume. |
+| **Plotlines · Subway** | A solid line with the volume title (instead of the dashed act divider) where a volume starts. |
+| **Manuscript** | A volume heading above the first act divider of each volume. |
+| **Navigator** (grouped by act) | A volume heading above the first act of each volume. |
+
+<!-- screenshot: Kanban with volume band and V-badges -->
+<!-- screenshot: Corkboard cards with V-badges -->
+<!-- screenshot: Manuscript with volume heading -->
+<!-- screenshot: Navigator with volume headings -->
+
+### 3. Overview: all volume features so far
+
+- **Define volumes:** Manage story structure → **Volumes** tab (title, acts from–to, word goal, deadline). Command: **Manage volumes**. (1.11.8-km.12)
+- **Select a volume for all views:** volume dropdown in any toolbar. (this release)
+- **Volume chips in the filter panel** of Board, Manuscript, Plot Grid: select the acts of one or more volumes. (1.11.8-km.5)
+- **Statistics → Volumes:** scenes, words, goal, progress, deadline, words per day, and **open setups at the end of each volume**. (1.11.8-km.5, km.6)
+- **Export:** "Volume" choice for Manuscript and Outline. (1.11.8-km.5)
+
+**How and where to use:**
+
+1. Define volumes once: Command palette → **StoryLine: Manage volumes** (or the structure button in Board / Timeline → **Volumes** tab) → **+ Add volume**.
+2. Open any StoryLine view. In its toolbar you now find the volume dropdown:
+   - **Board:** left of the Corkboard / Kanban switch.
+   - **Plot Grid:** at the start of the toolbar.
+   - **Timeline:** left of the All / Scenes / Arc Points buttons.
+   - **Plotlines (Subway):** left of the All / Scenes / Arc Points buttons.
+   - **Manuscript:** below the filter bar.
+   - **Navigator:** between the search field and the sort button.
+3. Choose a volume. All open views switch to it. Choose **All volumes** to see everything again.
+4. Kanban shows the volume bands only when **Group by** is set to **Act**. The V-badges on cards are always shown when volumes exist.
+
+**Files:**
+
+- `utils/volumeScope.ts` (new: shared scope, dropdown, card badge)
+- `utils/volumes.ts` (Kanban column band, act from column key)
+- `components/SceneCard.ts` (+2, volume badge)
+- `views/BoardView.ts` (dropdown, scope for Kanban and Corkboard, column bands)
+- `views/PlotgridView.ts` (dropdown, scope)
+- `views/TimelineView.ts` (dropdown, scope)
+- `views/StorylineView.ts` (dropdown, scope)
+- `views/ManuscriptView.ts` (dropdown, scope, volume headings)
+- `views/NavigatorView.ts` (dropdown, scope, volume headings)
+- `styles.css` (fork section)
+- `.github/workflows/release-km.yml` (release texts edited on GitHub are never overwritten)
+
 ## 1.11.8-km.12
 
 **Volumes editor, tabbed "Manage story structure" dialog, new commands**
