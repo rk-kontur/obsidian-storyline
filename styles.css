@@ -14126,3 +14126,48 @@ body.sl-focus-active-global.sl-focus-dim-text .markdown-source-view.mod-cm6 .cm-
 .sl-km-export-volume:not(:empty) {
     margin-bottom: 12px;
 }
+
+/* Fork: filter bar - name the two toggle groups and never truncate their buttons.
+   "Type" = All / Scenes / Arc Points, "State" = Active / All / Inactive.
+   Labels are CSS only (::before), the upstream markup is unchanged. */
+.story-line-filter-bar .story-line-arc-filter::before,
+.story-line-filter-bar .story-line-active-filter::before {
+    display: inline-flex;
+    align-items: center;
+    align-self: stretch;
+    padding: 0 6px 0 8px;
+    font-size: var(--font-ui-smaller);
+    font-weight: 600;
+    color: var(--text-faint);
+    white-space: nowrap;
+}
+
+.story-line-filter-bar .story-line-arc-filter::before {
+    content: "Type";
+}
+
+.story-line-filter-bar .story-line-active-filter::before {
+    content: "State";
+}
+
+.story-line-filter-bar .story-line-arc-filter,
+.story-line-filter-bar .story-line-active-filter {
+    flex: 0 0 auto;
+}
+
+.story-line-filter-bar .story-line-arc-filter-btn,
+.story-line-filter-bar .story-line-active-filter-btn {
+    flex: 0 0 auto;
+    white-space: nowrap;
+}
+
+/* The search field gives way instead of the buttons */
+.story-line-filter-bar .story-line-search-wrapper {
+    flex: 1 1 140px;
+    min-width: 90px;
+}
+
+.story-line-filter-bar .story-line-search-wrapper .story-line-search {
+    width: 100%;
+    min-width: 0;
+}

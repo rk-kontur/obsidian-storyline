@@ -2,6 +2,28 @@
 
 Changes of this fork compared to the original StoryLine plugin by Jan Sandström. Each `## <version>` section is used as the initial text of the matching GitHub release; texts edited on GitHub (e.g. with screenshots) are never overwritten. Every release also carries `storyline-km-source.zip` (all source files that are new or changed compared to the original, without `main.js`) and `storyline-km.patch` (the full diff against the original).
 
+## 1.12.0-km.5
+
+**Filter bar: "Type" and "State" labels, no more cut-off buttons**
+
+- The filter bar has two independent toggle groups that both contain an "All" button, which looked like a duplicate. They are now labelled:
+  - **Type:** All · Scenes · Arc Points (regular scenes vs. Arc Points)
+  - **State:** Active · All · Inactive (active vs. parked scenes)
+- Both groups can still be combined, e.g. "Arc Points" + "All" shows active and inactive Arc Points.
+- The buttons are no longer cut off ("Arc Poi", "Inacti"); the search field gets narrower instead.
+- CSS only (fork section of `styles.css`); the upstream filter logic and markup are unchanged.
+
+<!-- screenshot: filter bar with Type and State labels -->
+
+**How and where to use:**
+
+1. Open **Board**, **Manuscript** or **Plot Grid**.
+2. In the filter bar, **Type** filters by scene kind, **State** by active / inactive.
+
+**Files:**
+
+- `styles.css` (fork section: labels via `::before`, no-shrink buttons, flexible search field)
+
 ## 1.12.0-km.4
 
 **Export dialog: Volume choice next to Content and Format**
