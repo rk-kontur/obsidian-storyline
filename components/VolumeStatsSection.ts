@@ -8,6 +8,7 @@
 
 import type { Scene } from '../models/Scene';
 import { getVolumeForAct, type VolumeDef } from '../utils/volumes';
+import { computeOpenSetups } from '../utils/volumeSetups';
 
 export interface VolumeStatsRow {
     volume: VolumeDef;
@@ -63,6 +64,7 @@ export function renderVolumeStatsSection(
     volumes: VolumeDef[],
     scenes: Scene[],
     excludeArcPoints: boolean,
+    openScene?: (scene: Scene) => void,
 ): void {
     if (volumes.length === 0) return;
     const rows = computeVolumeStats(volumes, scenes, excludeArcPoints);
@@ -110,5 +112,37 @@ export function renderVolumeStatsSection(
             dl.setText('–');
         }
         tr.createEl('td', { text: r.wordsPerDay !== undefined ? fmt(r.wordsPerDay) : '–' });
+    }
+
+    renderOpenSetups(details, volumes, scenes, openScene);
+}
+
+/** "Open setups at end of volume N": setups whose payoff comes later or is missing. */
+function renderOpenSetups(
+    parent: HTMLElement,
+    volumes: VolumeDef[],
+    scenes: Scene[],
+    openScene?: (scene: Scene) => void,
+): void {
+    const report = computeOpenSetups(volumes, scenes);
+    const wrap = parent.createDiv('sl-km-open-setups');
+    wrap.createEl('h4', { text: 'Open setups at end of volume' });
+    if (report.every(r => r.open.length === 0)) {
+        wrap.createDiv({ cls: 'sl-km-muted', text: 'No open setups: every setup pays off within its volume.' });
+        return;
+    }
+    for (const { volume, open } of report) {
+        const d = wrap.createEl('details');
+        d.createEl('summary', { text: `${volume.title}: ${open.length} open` });
+        const ul = d.createEl('ul');
+        for (const o of open) {
+            const li = ul.createEl('li');
+            const link = li.createEl('a', { text: o.setup.title || o.setup.filePath, href: '#' });
+            link.addEventListener('click', (e) => { e.preventDefault(); openScene?.(o.setup); });
+            const targets = o.payoffs.length
+                ? o.payoffs.map(p => `${p.title} (${p.where})`).join(', ')
+                : 'no payoff';
+            li.createSpan({ cls: 'sl-km-muted', text: ` → ${targets}` });
+        }
     }
 }

@@ -1,93 +1,105 @@
-# Changelog Fork storyline-km
+# Changelog: fork storyline-km
 
-Änderungen des Forks gegenüber dem Original StoryLine von Jan Sandström. Jeder Abschnitt `## <Version>` wird automatisch als Text des passenden GitHub-Releases übernommen. An jedem Release hängen außerdem `storyline-km-source.zip` (alle gegenüber dem Original neuen oder geänderten Quelldateien, ohne `main.js`) und `storyline-km.patch` (der komplette Unterschied zum Original).
+Changes of this fork compared to the original StoryLine plugin by Jan Sandström. Each `## <version>` section is used automatically as the text of the matching GitHub release. Every release also carries `storyline-km-source.zip` (all source files that are new or changed compared to the original, without `main.js`) and `storyline-km.patch` (the full diff against the original).
+
+## 1.11.8-km.6
+
+**Report: open setups at the end of each volume**
+
+- The "Volumes" section in Statistics now lists, per volume, every setup that is still open at the end of that volume: its payoff lies in a later volume, in no volume, or does not exist.
+- Each entry shows where the payoff is ("Volume 3", "missing"). Click the setup to open the scene.
+- Setup/payoff links are read from both sides (`payoff_scenes` on the setup, `setup_scenes` on the payoff), matched by scene title like the built-in Validator. `[[wikilinks]]` are accepted.
+- Only shown when the project file defines `volumes:`.
+
+**Files:**
+
+- `utils/volumeSetups.ts` (new)
+- `components/VolumeStatsSection.ts` (report)
+- `views/StatsView.ts` (open scene on click)
+- `styles.css` (fork section)
 
 ## 1.11.8-km.5
 
-**Band-Filter, Statistik und Ziele pro Band, Export pro Band**
+**Volume filter, statistics and goals per volume, export per volume**
 
-- **Band-Filter:** In der Filterleiste von Board, Manuskript und Plotgrid erscheint unter „Act“ eine Gruppe „Volume“. Ein Band-Chip wählt alle Akte dieses Bands aus, ein zweiter Klick hebt die Auswahl wieder auf. Einzelne Akt-Chips bleiben unabhängig nutzbar.
-- **Statistik pro Band:** Die Statistik-Ansicht zeigt oben einen Abschnitt „Volumes“ mit Szenen, Arc Points, Wörtern, Wortziel, Fortschritt, Deadline und nötigen Wörtern pro Tag je Band.
-- **Ziele pro Band:** `wordGoal` und `deadline` aus der `volumes:`-Definition werden dort ausgewertet.
-- **Export pro Band:** Im Export-Dialog gibt es bei Manuskript und Outline die Auswahl „Volume“. Exportiert werden nur die Akte des gewählten Bands.
-- Alles erscheint nur, wenn die Projektdatei `volumes:` enthält.
+- **Volume filter:** The filter panel of Board, Manuscript and Plot Grid gets a "Volume" chip group below "Act". A volume chip selects all acts of that volume; clicking again clears them. Single act chips keep working.
+- **Statistics per volume:** Statistics shows a "Volumes" section at the top with scenes, arc points, words, word goal, progress, deadline and words per day needed, per volume.
+- **Goals per volume:** `wordGoal` and `deadline` from the `volumes:` definition are evaluated there.
+- **Export per volume:** The export dialog offers a "Volume" choice for Manuscript and Outline. Only the acts of the chosen volume are exported.
+- Everything appears only when the project file defines `volumes:`.
 
-**Dateien:**
+**Files:**
 
-- `components/VolumeFilterChips.ts` (neu)
-- `components/VolumeStatsSection.ts` (neu)
-- `components/Filters.ts` (+6 Zeilen)
+- `components/VolumeFilterChips.ts` (new)
+- `components/VolumeStatsSection.ts` (new)
+- `components/Filters.ts` (+6 lines)
 - `components/ExportModal.ts` (+17)
 - `services/ExportService.ts` (+2)
 - `views/StatsView.ts` (+5)
 - `utils/volumes.ts` (volumeExportRange)
-- `styles.css` (Fork-Abschnitt am Ende)
-
+- `styles.css` (fork section at the end)
 
 ## 1.11.8-km.4
 
-**Bände als Akt-Gruppen**
+**Volumes as act groups**
 
-- Neuer optionaler Block `volumes:` in der Projektdatei. Ein Band ist eine benannte Gruppe von Akten:
+- New optional `volumes:` block in the project file. A volume is a named group of acts:
 
   ```yaml
   volumes:
     - id: b1
-      title: "Band 1"
-      acts: [1, 2, 3, 4]    # oder "1-4"
+      title: "Volume 1"
+      acts: [1, 2, 3, 4]    # or "1-4"
       wordGoal: 90000       # optional
       deadline: 2027-03-01  # optional
   ```
 
-- Szenen, Nummerierung, Sortierung und Dateinamen bleiben unverändert. Die Band-Zugehörigkeit ergibt sich aus dem Akt.
-- **Band-Trenner** in Subway-Map (durchgezogene Linie mit Bandtitel), Timeline (linear und Swimlanes) und Plotgrid.
-- Ohne `volumes:` verhält sich das Plugin wie das Original.
+- Scenes, numbering, sorting and file names stay unchanged. A scene's volume is derived from its act.
+- **Volume dividers** in the Subway map (solid line with volume title), Timeline (linear and swimlanes) and Plot Grid.
+- Without `volumes:` the plugin behaves exactly like the original.
 
-**Dateien:**
+**Files:**
 
-- `utils/volumes.ts` (neu)
+- `utils/volumes.ts` (new)
 - `views/StorylineView.ts` (+17)
 - `views/TimelineView.ts` (+5)
 - `views/PlotgridView.ts` (+5)
-- `styles.css` (neuer Fork-Abschnitt am Ende)
-
+- `styles.css` (new fork section at the end)
 
 ## 1.11.8-km.3
 
-**Arc Points in Timeline und Plotgrid**
+**Arc Points in Timeline and Plot Grid**
 
-- **Timeline:** Arc Points tragen das Abzeichen „◆ Arc Point“ wie auf dem Board, in linearer Ansicht und in Swimlanes.
-- **Timeline:** Neuer Filter „All / Scenes / Arc Points“ in der Werkzeugleiste. Die Auswahl wird pro Vault gespeichert.
-- **Plotgrid:** Verknüpfte Arc-Point-Szenen zeigen eine Raute in der Mini-Karte und im Zeilenkopf.
+- **Timeline:** Arc Points carry the "◆ Arc Point" badge known from the Board, in linear and swimlane mode.
+- **Timeline:** New "All / Scenes / Arc Points" filter in the toolbar. The choice is remembered per vault.
+- **Plot Grid:** Linked Arc Point scenes show a diamond in the mini card and in the row header.
 
-**Dateien:**
+**Files:**
 
-- `components/ArcPointUI.ts` (neu)
+- `components/ArcPointUI.ts` (new)
 - `views/TimelineView.ts` (+12)
 - `views/PlotgridView.ts` (+3)
 
-
 ## 1.11.8-km.2
 
-**Fix: Plotline-Farben in der Subway-Map**
+**Fix: plotline colours in the Subway map**
 
-- Die Farben der Plotlines verschoben sich, sobald der Arc-Point-Filter umgeschaltet oder eine Plotline ausgeblendet wurde. Die Farbe richtet sich jetzt nach allen Plotlines des Projekts, nicht nur nach den sichtbaren. Betrifft Linien, Tag-Schilder und Listenansicht.
-- Release-Workflow lässt sich manuell starten und setzt den Tag selbst.
+- Plotline colours shifted whenever the Arc Point filter was toggled or a plotline was hidden. The colour now depends on all plotlines of the project, not only the visible ones. Affects lines, tag pills and the list view.
+- The release workflow can be started manually and sets the tag itself.
 
-**Dateien:**
+**Files:**
 
-- `views/StorylineView.ts` (Farbindex)
+- `views/StorylineView.ts` (colour index)
 - `.github/workflows/release-km.yml`
-
 
 ## 1.11.8-km.1
 
-**Erste Fork-Version**
+**First fork version**
 
-- Eigene Plugin-ID `storyline-km`, damit der Fork neben dem Original installiert werden kann. Nie beide gleichzeitig aktivieren.
+- Own plugin id `storyline-km`, so the fork can be installed next to the original. Never enable both at the same time.
 
-**Dateien:**
+**Files:**
 
 - `manifest.json` (id, version)
-- `.github/workflows/release-km.yml` (neu)
-- `CLAUDE.md` (neu)
+- `.github/workflows/release-km.yml` (new)
+- `CLAUDE.md` (new)

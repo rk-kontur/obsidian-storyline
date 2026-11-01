@@ -108,7 +108,8 @@ export class StatsView extends ItemView {
 
         // Per-volume statistics and goals (fork) — only when `volumes:` is defined
         renderVolumeStatsSection(content, getProjectVolumes(this.app, this.sceneManager.activeProject?.filePath),
-            allScenes, this.plugin.settings.excludeArcAnchorFromWordcount ?? true);
+            allScenes, this.plugin.settings.excludeArcAnchorFromWordcount ?? true,
+            (scene) => { const f = this.app.vault.getFileByPath(scene.filePath); if (f) void this.app.workspace.getLeaf('tab').openFile(f); });
 
         if (redesigned) {
             // Section order, icons, and default open states follow Scribe's

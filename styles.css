@@ -13948,3 +13948,15 @@ body.sl-focus-active-global.sl-focus-dim-text .markdown-source-view.mod-cm6 .cm-
 .sl-km-overdue {
     color: var(--text-error);
 }
+
+.sl-km-open-setups {
+    margin-top: 12px;
+}
+
+.sl-km-open-setups h4 {
+    margin: 4px 0;
+}
+
+.sl-km-open-setups summary {
+    cursor: pointer;
+}
