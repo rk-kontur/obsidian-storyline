@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-return, @typescript-eslint/no-floating-promises, @typescript-eslint/no-misused-promises, @typescript-eslint/no-unnecessary-type-assertion, no-useless-escape -- Obsidian's API surface and several untyped third-party libraries force dynamic dispatch; floating promises are intentional in DOM/event handlers; matching enable at end of file */
 import { addIcon, App, ButtonComponent, DropdownComponent, FuzzySuggestModal, ItemView, Modal, Notice, Platform, Plugin, Setting, TFile, TextComponent, ToggleComponent, WorkspaceLeaf, normalizePath, parseYaml, setIcon } from 'obsidian';
+import { registerForkCommands } from './services/ForkCommands';
 import { SceneCardsSettings, SceneCardsSettingTab, DEFAULT_SETTINGS, migrateSectionStateKeys } from './settings';
 import { asRecord, isRecord } from './utils/narrow';
 import type { FilterPreset } from './models/Scene';
@@ -385,6 +386,7 @@ export default class SceneCardsPlugin extends Plugin {
         });
 
         // Commands
+        registerForkCommands(this); // fork: Manage story structure / Manage volumes
         this.addCommand({
             id: 'open-board-view',
             name: 'Open board view',            callback: () => this.activateView(BOARD_VIEW_TYPE),

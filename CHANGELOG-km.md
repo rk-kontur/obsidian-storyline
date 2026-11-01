@@ -2,6 +2,37 @@
 
 Changes of this fork compared to the original StoryLine plugin by Jan Sandström. Each `## <version>` section is used automatically as the text of the matching GitHub release. Every release also carries `storyline-km-source.zip` (all source files that are new or changed compared to the original, without `main.js`) and `storyline-km.patch` (the full diff against the original).
 
+## 1.11.8-km.12
+
+**Volumes editor, tabbed "Manage story structure" dialog, new commands**
+
+- **Volumes editor:** No more hand-editing YAML. Each volume is one row: title, from act, to act, word goal, deadline (date picker), remove. **+ Add volume** proposes the next free acts with the size of the previous volume. Acts assigned to two volumes are marked red; acts without a volume are listed. Changes are saved automatically to the `volumes:` block of the project file.
+- **"Manage story structure" as tabs:** The dialog is split into **Volumes | Acts | Chapters | Templates**. Templates holds beat sheet templates, saved custom beat sheets and the custom structure builder as collapsible blocks. The last used tab is remembered. If a future upstream version changes the dialog, it simply falls back to its original layout.
+- **New commands** (assign a hotkey in Settings → Hotkeys): **Manage story structure** and **Manage volumes** (opens the dialog on the Volumes tab). Both work from anywhere; if neither Board nor Timeline is open, the Board is opened first.
+- **Statistics:** the Volumes section has an **Edit volumes** button.
+
+**How and where to use:**
+
+1. Open the dialog in one of these ways:
+   - Board or Timeline toolbar → structure button (columns icon), or
+   - Command palette (`Ctrl/Cmd + P`) → **StoryLine: Manage story structure** / **StoryLine: Manage volumes**, or
+   - Statistics → Volumes → **Edit volumes**.
+2. Go to the **Volumes** tab, click **+ Add volume**, adjust title, acts, goal and deadline.
+3. Close with **Done**. The volume dividers, filter chips, statistics and export options use the new volumes right away.
+4. Hotkey: Settings → Hotkeys → search "Manage story structure" → set a key combination.
+
+**Files:**
+
+- `components/VolumesEditor.ts` (new)
+- `components/StructureModalTabs.ts` (new)
+- `services/ForkCommands.ts` (new)
+- `views/BoardView.ts` (+3, tab hook)
+- `views/TimelineView.ts` (+3, tab hook)
+- `main.ts` (+2, registers the commands)
+- `components/VolumeStatsSection.ts` (Edit volumes button)
+- `views/StatsView.ts` (+2)
+- `styles.css` (fork section)
+
 ## 1.11.8-km.11
 
 **Subway map: dashed realized link blends colours**

@@ -2,6 +2,7 @@
 import { SceneManager } from '../services/SceneManager';
 import { renderVolumeStatsSection } from '../components/VolumeStatsSection';
 import { getProjectVolumes } from '../utils/volumes';
+import { openStructureDialog } from '../services/ForkCommands';
 import { renderViewSwitcher } from '../components/ViewSwitcher';
 import * as obsidian from 'obsidian';
 import type SceneCardsPlugin from '../main';
@@ -109,7 +110,8 @@ export class StatsView extends ItemView {
         // Per-volume statistics and goals (fork) — only when `volumes:` is defined
         renderVolumeStatsSection(content, getProjectVolumes(this.app, this.sceneManager.activeProject?.filePath),
             allScenes, this.plugin.settings.excludeArcAnchorFromWordcount ?? true,
-            (scene) => { const f = this.app.vault.getFileByPath(scene.filePath); if (f) void this.app.workspace.getLeaf('tab').openFile(f); });
+            (scene) => { const f = this.app.vault.getFileByPath(scene.filePath); if (f) void this.app.workspace.getLeaf('tab').openFile(f); },
+            () => { void openStructureDialog(this.plugin, 'volumes'); });
 
         if (redesigned) {
             // Section order, icons, and default open states follow Scribe's

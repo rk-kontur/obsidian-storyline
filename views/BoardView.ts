@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-floating-promises, @typescript-eslint/no-misused-promises, @typescript-eslint/no-unnecessary-type-assertion -- Obsidian's API surface and several untyped third-party libraries force dynamic dispatch; floating promises are intentional in DOM/event handlers; matching enable at end of file */
 import { ItemView, WorkspaceLeaf, Menu, Notice, TFile, Modal, Setting, MarkdownRenderer, normalizePath } from 'obsidian';
+import { tabifyStructureModal } from '../components/StructureModalTabs';
 import * as obsidian from 'obsidian';
 import { Scene, SceneFilter, SortConfig, BoardGroupBy, SceneStatus, SceneTemplate, BeatSheetTemplate, BUILTIN_BEAT_SHEETS, getStatusOrder, getStatusConfig, resolveStatusCfg } from '../models/Scene';
 import { openConfirmModal } from '../components/ConfirmModal';
@@ -3831,6 +3832,8 @@ export class BoardView extends ItemView {
             this.refreshBoard();
         });
 
+        // Fork: regroup into tabs (Volumes | Acts | Chapters | Templates)
+        tabifyStructureModal(modal, { app: this.app, projectFilePath: this.sceneManager.activeProject?.filePath, definedActs: this.sceneManager.getDefinedActs() });
         modal.open();
 
         // Issue #214 — on iOS/iPadOS the modal opens scrolled past the top,

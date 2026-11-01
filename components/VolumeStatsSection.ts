@@ -65,6 +65,7 @@ export function renderVolumeStatsSection(
     scenes: Scene[],
     excludeArcPoints: boolean,
     openScene?: (scene: Scene) => void,
+    onEditVolumes?: () => void,
 ): void {
     if (volumes.length === 0) return;
     const rows = computeVolumeStats(volumes, scenes, excludeArcPoints);
@@ -72,6 +73,10 @@ export function renderVolumeStatsSection(
     const details = parent.createEl('details', { cls: 'sl-km-volume-stats' });
     details.open = true;
     details.createEl('summary', { text: 'Volumes' });
+    if (onEditVolumes) {
+        const edit = details.createEl('button', { cls: 'sl-km-edit-volumes', text: 'Edit volumes' });
+        edit.addEventListener('click', onEditVolumes);
+    }
 
     const table = details.createEl('table', { cls: 'sl-km-volume-stats-table' });
     const head = table.createEl('thead').createEl('tr');
