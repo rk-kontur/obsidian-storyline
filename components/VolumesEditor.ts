@@ -106,7 +106,8 @@ function pickDeletions(raw: unknown[], resolved: string[], pending: Map<string, 
     const out = new Set<number>();
     for (const [id, fields] of pending) {
         const candidates = resolved.map((r, i) => (r === id ? i : -1)).filter(i => i >= 0);
-        if (candidates.length === 0) continue;
+        // Never saved (added and deleted before the first save): nothing of ours is in the file
+        if (candidates.length === 0 || !fields) continue;
         const match = fields
             ? candidates.find(i => { const p = parseVolumes([raw[i]])[0]; return p ? sameFields(p, fields) : false; })
             : undefined;
