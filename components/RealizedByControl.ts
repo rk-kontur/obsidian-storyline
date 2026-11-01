@@ -2,23 +2,10 @@
 //  Inspector control for Arc Point "realizedBy" (fork: storyline-km)
 // ═══════════════════════════════════════════════════════
 
-import { FuzzySuggestModal, TFile } from 'obsidian';
+import { TFile } from 'obsidian';
 import type { App } from 'obsidian';
 import type { Scene } from '../models/Scene';
-import { linkpathOf, readRealizedBy, REALIZED_BY_KEY } from '../utils/arcRealization';
-
-class ScenePickerModal extends FuzzySuggestModal<Scene> {
-    constructor(app: App, private scenes: Scene[], private onPick: (scene: Scene) => void) {
-        super(app);
-        this.setPlaceholder('Scene that realizes this Arc Point…');
-    }
-    getItems(): Scene[] { return this.scenes; }
-    getItemText(scene: Scene): string {
-        const act = scene.act !== undefined ? `${scene.act}-` : '';
-        return `${act}${scene.sequence ?? ''} ${scene.title || scene.filePath}`.trim();
-    }
-    onChooseItem(scene: Scene): void { this.onPick(scene); }
-}
+import { linkpathOf, readRealizedBy, REALIZED_BY_KEY, resolveRealizingScene } from '../utils/arcRealization';
 
 async function writeRealizedBy(app: App, arc: Scene, target: Scene | undefined): Promise<void> {
     const file = app.vault.getAbstractFileByPath(arc.filePath);
@@ -35,7 +22,7 @@ async function writeRealizedBy(app: App, arc: Scene, target: Scene | undefined):
 }
 
 /**
- * Renders "Realized by: <scene> [Choose] [×]" for Arc Points.
+ * Renders "realized by [dropdown: not yet | scenes…]" in one line for Arc Points.
  * `getScenes` returns the candidate scenes (regular scenes of the project).
  */
 export function renderRealizedByControl(
@@ -54,27 +41,32 @@ export function renderRealizedByControl(
         row.empty();
         if (!isArc()) { row.hide(); return; }
         row.show();
-        row.createSpan({ cls: 'sl-km-realized-by-label', text: 'Realized by' });
+        row.createSpan({ cls: 'sl-km-realized-by-label', text: 'realized by' });
+
         const raw = readRealizedBy(app, scene);
-        row.createSpan({
-            cls: raw ? 'sl-km-realized-by-value' : 'sl-km-realized-by-value sl-km-muted',
-            text: raw ? linkpathOf(raw) : 'not yet',
-        });
-        const choose = row.createEl('button', { text: raw ? 'Change' : 'Choose…' });
-        choose.addEventListener('click', () => {
-            const candidates = getScenes().filter(s => !s.arcAnchor && s.filePath !== scene.filePath);
-            new ScenePickerModal(app, candidates, async (target) => {
-                await writeRealizedBy(app, scene, target);
-                window.setTimeout(() => { render(); onChanged?.(); }, 150);
-            }).open();
-        });
-        if (raw) {
-            const clear = row.createEl('button', { text: '×', attr: { 'aria-label': 'Remove link' } });
-            clear.addEventListener('click', async () => {
-                await writeRealizedBy(app, scene, undefined);
-                window.setTimeout(() => { render(); onChanged?.(); }, 150);
-            });
+        const candidates = getScenes()
+            .filter(s => !s.arcAnchor && !s.corkboardNote && s.filePath !== scene.filePath)
+            .sort((a, b) => (Number(a.act) || 0) - (Number(b.act) || 0) || (a.sequence ?? 0) - (b.sequence ?? 0));
+        const current = raw ? resolveRealizingScene(app, scene, candidates) : undefined;
+
+        const select = row.createEl('select', { cls: 'dropdown sl-km-realized-by-select' });
+        select.createEl('option', { text: 'not yet', value: '' });
+        for (const c of candidates) {
+            const label = `${c.act !== undefined ? `${c.act}-` : ''}${c.sequence ?? ''} ${c.title || c.filePath}`.trim();
+            select.createEl('option', { text: label, value: c.filePath });
         }
+        // Link set by hand that does not resolve: keep it visible instead of silently showing "not yet"
+        if (raw && !current) {
+            select.createEl('option', { text: `${linkpathOf(raw)} (not found)`, value: '__raw__' });
+        }
+        select.value = current ? current.filePath : (raw ? '__raw__' : '');
+        select.addEventListener('keydown', (e: KeyboardEvent) => e.stopPropagation());
+        select.addEventListener('change', async () => {
+            if (select.value === '__raw__') return;
+            const target = candidates.find(c => c.filePath === select.value);
+            await writeRealizedBy(app, scene, target);
+            onChanged?.();
+        });
     };
     render();
     // Re-render when the Arc Point checkbox right above changes.

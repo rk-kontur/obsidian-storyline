@@ -2,6 +2,28 @@
 
 Changes of this fork compared to the original StoryLine plugin by Jan Sandström. Each `## <version>` section is used automatically as the text of the matching GitHub release. Every release also carries `storyline-km-source.zip` (all source files that are new or changed compared to the original, without `main.js`) and `storyline-km.patch` (the full diff against the original).
 
+## 1.11.8-km.8
+
+**Realized by: one-line dropdown, dashed link in the Subway map**
+
+- **Inspector:** The "Realized by" row is now a single line: label **realized by** plus a dropdown. Default is **not yet**; the list contains all regular scenes, sorted by act and sequence. Choosing **not yet** removes the link.
+- **Subway map:** A realized Arc Point is now joined to its scene with a **dashed** line in the Arc Point's colour, so it is clearly different from the solid connector of a scene that sits on several plotlines.
+- A `realizedBy` link typed by hand that cannot be resolved shows up in the dropdown as "(not found)" instead of being hidden.
+
+**How and where to use:**
+
+1. Click the Arc Point scene in Board or Timeline (or use **Open Scene Details Sidebar**) to open the Inspector.
+2. With **Arc point** ticked, the row **realized by** appears right below it.
+3. Pick the scene from the dropdown. Pick **not yet** to remove the link.
+4. Open **Plotlines** in **Subway** mode: the diamond sits at the scene's station, connected by a dashed line.
+
+**Files:**
+
+- `components/RealizedByControl.ts` (dropdown)
+- `utils/arcRealization.ts` (splitRealizedLanes, drawRealizedLinks)
+- `views/StorylineView.ts` (+3)
+- `styles.css` (fork section)
+
 ## 1.11.8-km.7
 
 **Arc Points: "Realized by" links a stage to the scene that tells it**

@@ -104,3 +104,53 @@ export function aliasRealizedColumns(
     }
     return laneScene;
 }
+
+/**
+ * Subway helper for the connector loop: splits the lanes at a station into
+ * regular lanes (solid interchange connector) and lanes that only carry a
+ * realized Arc Point (dashed link).
+ */
+export function splitRealizedLanes(
+    lanes: number[],
+    col: number,
+    plotlineKeys: string[],
+    laneScene: Map<string, Scene>,
+): { lanes: number[]; arcLanes: number[] } {
+    if (laneScene.size === 0) return { lanes, arcLanes: [] };
+    const regular: number[] = [];
+    const arcLanes: number[] = [];
+    for (const l of lanes) {
+        (laneScene.has(`${plotlineKeys[l]}|${col}`) ? arcLanes : regular).push(l);
+    }
+    return { lanes: regular, arcLanes };
+}
+
+/** Dashed link from every realized Arc Point lane to the nearest regular lane. */
+export function drawRealizedLinks(
+    svg: SVGSVGElement,
+    doc: Document,
+    opts: { x: number; lanes: number[]; arcLanes: number[]; laneY: (lane: number) => number; color: (lane: number) => string },
+): void {
+    if (opts.arcLanes.length === 0 || opts.lanes.length === 0) return;
+    const svgNS = 'http://www.w3.org/2000/svg';
+    for (const al of opts.arcLanes) {
+        const y1 = opts.laneY(al);
+        let y2 = opts.laneY(opts.lanes[0]);
+        for (const l of opts.lanes) {
+            const y = opts.laneY(l);
+            if (Math.abs(y - y1) < Math.abs(y2 - y1)) y2 = y;
+        }
+        const line = doc.createElementNS(svgNS, 'line');
+        line.setAttribute('x1', String(opts.x));
+        line.setAttribute('y1', String(y1));
+        line.setAttribute('x2', String(opts.x));
+        line.setAttribute('y2', String(y2));
+        line.setAttribute('stroke', opts.color(al));
+        line.setAttribute('stroke-width', '5');
+        line.setAttribute('stroke-dasharray', '12,8');
+        line.setAttribute('stroke-linecap', 'butt');
+        line.setAttribute('opacity', '0.75');
+        line.addClass('sl-km-realized-link');
+        svg.appendChild(line);
+    }
+}

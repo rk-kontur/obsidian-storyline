@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-floating-promises, @typescript-eslint/no-misused-promises, @typescript-eslint/no-unnecessary-type-assertion -- Obsidian's API surface and several untyped third-party libraries force dynamic dispatch; floating promises are intentional in DOM/event handlers; matching enable at end of file */
 import { ButtonComponent, ItemView, Menu, MenuItem, Modal, Notice, Setting, TFile, TextComponent, WorkspaceLeaf } from 'obsidian';
-import { aliasRealizedColumns, removeRealizedStations, resolveRealizations } from '../utils/arcRealization';
+import { aliasRealizedColumns, drawRealizedLinks, removeRealizedStations, resolveRealizations, splitRealizedLanes } from '../utils/arcRealization';
 import { drawSubwayVolumeMarker, getProjectVolumes, VolumeDividerTracker } from '../utils/volumes';
 import * as obsidian from 'obsidian';
 import { Scene } from '../models/Scene';
@@ -611,7 +611,10 @@ export class StorylineView extends ItemView {
         }
 
         // ── Shared-scene connectors ──
-        for (const [col, lanes] of sceneToLanes) {
+        for (const [col, stationLanes] of sceneToLanes) {
+            // Realized Arc Points join with a dashed link, not the solid connector (fork)
+            const { lanes, arcLanes } = splitRealizedLanes(stationLanes, col, plotlineKeys, realizedLaneScene);
+            drawRealizedLinks(svg, activeDocument, { x: colX(col), lanes, arcLanes, laneY, color: l => laneColor(l, plotlineKeys[l]) });
             if (lanes.length <= 1) continue;
             const x = colX(col);
             const sortedLanes = [...lanes].sort((a, b) => a - b);

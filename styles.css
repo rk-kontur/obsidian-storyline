@@ -13964,10 +13964,17 @@ body.sl-focus-active-global.sl-focus-dim-text .markdown-source-view.mod-cm6 .cm-
 .sl-km-realized-by {
     display: flex;
     align-items: center;
-    gap: 6px;
-    flex-wrap: wrap;
+    gap: 8px;
+    flex-wrap: nowrap;
+}
+
+.sl-km-realized-by-select {
+    flex: 1 1 auto;
+    min-width: 0;
 }
 
 .sl-km-realized-by-label {
+    flex: 0 0 auto;
     font-weight: 600;
+    white-space: nowrap;
 }
