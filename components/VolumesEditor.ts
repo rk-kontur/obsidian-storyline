@@ -7,7 +7,8 @@
 
 import { Notice, TFile } from 'obsidian';
 import type { App } from 'obsidian';
-import { isValidActRange, MAX_VOLUME_ACT, MAX_VOLUME_RANGE, normalizeVolumeIds, parseVolumes, readVolumeIdSeq, resolveVolumeIds, volumeIdNumber, type VolumeIdFix } from '../utils/volumes';
+import { EPILOGUE_ACT } from '../utils/actChapter';
+import { isValidActRange, isVolumeAct, MAX_VOLUME_ACT, MAX_VOLUME_RANGE, normalizeVolumeIds, parseVolumes, readVolumeIdSeq, resolveVolumeIds, volumeIdNumber, type VolumeIdFix } from '../utils/volumes';
 import { clearVolumeScopeIfId, getVolumeScope, nextVolumeId } from '../utils/volumeScope';
 
 interface EditableVolume {
@@ -327,6 +328,7 @@ export function renderVolumesEditor(
 
     const render = () => {
         list.empty();
+        rangeHint.setText(''); // a hint belongs to the last range edit only
         warn.empty();
         if (volumes.length === 0) {
             list.createEl('p', { cls: 'structure-empty', text: 'No volumes defined yet.' });
@@ -354,15 +356,27 @@ export function renderVolumesEditor(
                 const f = parseInt(from.value, 10);
                 const t = parseInt(to.value, 10);
                 if (isNaN(f) || isNaN(t) || f < 0 || t < 0) return;
+                // Rejected: the fields show the saved range again, the hint says why
+                const reject = (why: string) => {
+                    from.value = String(v.acts[0] ?? '');
+                    to.value = String(v.acts[v.acts.length - 1] ?? '');
+                    rangeHint.setText(`${v.title}: ${why} Not saved, the previous range is shown again.`);
+                };
                 // Same limits as parseActList: the file must never get a range it would ignore
                 if (!isValidActRange(f, t)) {
-                    rangeHint.setText(`${v.title}: acts go up to ${MAX_VOLUME_ACT}, and a volume spans at most ${MAX_VOLUME_RANGE} acts. Not saved.`);
+                    reject(`acts go up to ${MAX_VOLUME_ACT}, and a volume spans at most ${MAX_VOLUME_RANGE} acts.`);
                     return;
                 }
-                rangeHint.setText('');
-                v.acts = toRange(f, t);
+                const acts = toRange(f, t).filter(isVolumeAct);
+                if (acts.length === 0) {
+                    reject('Prologue (act 0) and Epilogue (act 99) are not part of volumes.');
+                    return;
+                }
+                const leftOut = acts.length < toRange(f, t).length;
+                v.acts = acts;
                 scheduleSave();
                 render();
+                if (leftOut) rangeHint.setText(`${v.title}: Prologue (act 0) and Epilogue (act 99) are not part of volumes and were left out.`);
             };
             from.addEventListener('change', onRange);
             to.addEventListener('change', onRange);
@@ -429,9 +443,11 @@ export function renderVolumesEditor(
         const lastSize = volumes.length ? volumes[volumes.length - 1].acts.length : 4;
         const start = used.length ? Math.max(...used) + 1 : (getDefinedActs().filter(a => a > 0 && a !== 99)[0] ?? 1);
         const id = nextVolumeId([...volumes.map(v => v.id), ...rawVolumeIds(projectFm()?.volumes)], retiredIds, getVolumeScope(app, projectFilePath), readVolumeIdSeq(projectFm()));
-        // Stay inside the act limits of parseActList
-        const first = Math.min(start, MAX_VOLUME_ACT);
-        volumes.push({ id, title: `Volume ${volumes.length + 1}`, acts: toRange(first, Math.min(first + Math.max(1, lastSize) - 1, MAX_VOLUME_ACT)) });
+        // Stay inside the act limits of parseActList, without Prologue (0) and Epilogue (99)
+        const first = Math.min(Math.max(start, 1), MAX_VOLUME_ACT);
+        let acts = toRange(first, Math.min(first + Math.max(1, lastSize) - 1, MAX_VOLUME_ACT)).filter(isVolumeAct);
+        if (acts.length === 0) acts = [first === EPILOGUE_ACT ? EPILOGUE_ACT + 1 : 1];
+        volumes.push({ id, title: `Volume ${volumes.length + 1}`, acts });
         scheduleSave();
         render();
     });

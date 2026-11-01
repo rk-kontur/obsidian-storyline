@@ -166,8 +166,10 @@ export function actInVolumeScope(vol: VolumeDef, act: unknown): boolean {
 
 /**
  * True if the scene is inside the scoped volume (or no volume is scoped).
- * Scenes without an act and corkboard notes count as inside unless
- * `keepUnassigned` is false (Statistics: count only the volume's own scenes).
+ * Same set as scopeFilter: scenes and corkboard notes without an act
+ * (undefined or '') count as inside unless `keepUnassigned` is false
+ * (Statistics: count only the volume's own scenes); everything else follows
+ * its act (actNumber), Prologue/Epilogue and non-numeric acts are outside.
  */
 export function inVolumeScope(app: App, projectFilePath: string | undefined | null, scene: Scene, keepUnassigned = true): boolean {
     return volumeScopePredicate(app, projectFilePath, keepUnassigned)(scene);
@@ -184,11 +186,12 @@ export function volumeScopePredicate(
 ): (scene: Scene) => boolean {
     const vol = getScopedVolume(app, projectFilePath);
     if (!vol) return () => true;
-    const acts = new Set(vol.acts);
     return (scene: Scene) => {
-        if (scene.act === undefined || scene.act === null || String(scene.act) === '' || scene.corkboardNote) return keepUnassigned;
-        const n = actNumber(scene.act); // "05" and " 5" are act 5, "Prologue" is in no volume
-        return n !== undefined && acts.has(n);
+        // Exactly the rule of scopeFilter: only undefined and '' are "no act"
+        // (an empty `act:` key, null, is outside every volume); corkboard
+        // notes follow their act like scenes.
+        if (scene.act === undefined || scene.act === '') return keepUnassigned;
+        return actInVolumeScope(vol, scene.act);
     };
 }
 

@@ -10,13 +10,18 @@ Changes of this fork compared to the original StoryLine plugin by Jan Sandström
 
 - A scene with `act: "05"` (or `" 5"`) showed the badge **V2**, but disappeared as soon as **Volume 2** was selected, because the volume selection compared act values as text.
 - All volume decisions now use one rule: an act belongs to a volume when its number is one of the volume's acts. `5`, `"5"`, `"05"`, `" 5 "` and `"5.0"` are act 5. This applies to the volume selection in every view (Board, Corkboard, Plot Grid, Timeline, Subway, Manuscript, Navigator, Statistics, Characters, Locations, Codex), the scene badges, Statistics, the **Delete plotline** / **Rename plotline** impact overview and the export of one volume.
-- Acts that are not a plain number (`Prologue`, `Epilogue`, `Act 5`, empty) belong to no volume, as before. Prologue and Epilogue are deliberately not mapped to a volume. An empty act no longer counts as act 0 in the volume export.
+- **Prologue and Epilogue belong to no volume.** StoryLine stores the Prologue as act `0` and the Epilogue as act `99`. Scenes with act `0`, `"00"`, `99`, `"Prologue"` or `"Epilogue"` are hidden under every volume selection, get no volume badge and are not part of a volume's statistics or export, also when a volume's `acts:` names them (`acts: "0-4"` is read as acts 1–4).
+- Other acts that are not a plain number (`Act 5`, `1.1a`) belong to no volume either. An empty act no longer counts as act 0 in the volume export.
+- Scenes without an act (no `act:` key, or `act: ""`) stay visible under every volume selection, as before. An empty `act:` key (`act:` with nothing after it) is outside every volume in every view; before, the Navigator, Characters, Locations, Codex and Statistics still showed such scenes.
+- Corkboard notes follow their act like scenes, in every view: a note with an act of another volume is hidden. Before, the Navigator, Characters, Locations and Codex kept every note visible, and Statistics left notes out even when their act was in the volume. Statistics still ignores notes without an act while a volume is selected.
 
 ### Act ranges with dashes, and limits
 
 - `acts: "1–4"` (en dash) and `"1—4"` (em dash) are read as ranges. Before, such a volume silently disappeared.
 - A range wider than 1000 acts (e.g. a typo `1-40000`) or an act above 9999 is ignored instead of freezing Obsidian. The rest of the list still counts (`"1-2, 99999"` is acts 1 and 2).
-- In the Volumes editor, **From act** / **To act** refuse such values and show a hint below the list: "acts go up to 9999, and a volume spans at most 1000 acts. Not saved."
+- In the Volumes editor, **From act** / **To act** refuse such values: the fields show the saved range again and a hint below the list says "acts go up to 9999, and a volume spans at most 1000 acts. Not saved, the previous range is shown again."
+- **From act** / **To act** also leave out act 0 (Prologue) and act 99 (Epilogue): `0` to `4` is saved as acts 1–4 with the hint "Prologue (act 0) and Epilogue (act 99) are not part of volumes and were left out." A range of only act 0 or only act 99 is refused. **+ Add volume** never starts at act 0 or 99.
+- The hint disappears with the next edit, move or delete in the list.
 
 ### Duplicate volume ids no longer merge volumes
 
@@ -42,7 +47,12 @@ Changes of this fork compared to the original StoryLine plugin by Jan Sandström
 
 - **Add act**, act labels, beat sheets and the other structure actions of upstream rewrite the whole project frontmatter (read the file, change it, write it back). If a volumes save happened between that read and write, the volumes change was overwritten.
 - A pending volumes change is now written as soon as you press a mouse button or a key anywhere outside the Volumes section of the dialog, which is before the upstream action starts. Upstream keeps no copy of `volumes:` in memory; it always reads the file first, so the only risk is this read-to-write window.
-- What remains: an upstream save started elsewhere (another view, settings, sync) while a volumes save is being written can still overwrite it, as for any two plugins writing the same file. On a very slow vault a click that directly follows the edit may still interleave; reopen the dialog to check.
+- What remains:
+  - An upstream save started elsewhere (another view, settings, sync) while a volumes save is being written can still overwrite it, as for any two plugins writing the same file.
+  - On a very slow vault a click that directly follows a volumes edit may still interleave with the upstream save.
+  - The reverse order is not protected either: when **Add act** (or another structure action) is clicked first and a volume is edited right afterwards, the volumes save can start while the upstream save is still between its read and its write. The upstream write then carries the old `volumes:` and the volumes change is lost. The Volumes editor cannot see upstream saves, so it cannot wait for them.
+  - Volumes saves run one after another. A flush (closing the dialog, leaving a field, a click outside the section) queues behind a volumes save that is already running, so it is written a moment later, not at once; an upstream save that reads in between is the same window as above.
+  - In all these cases, reopen the dialog to check, and repeat the edit if it is missing.
 
 **How and where to use:**
 
@@ -51,12 +61,13 @@ Changes of this fork compared to the original StoryLine plugin by Jan Sandström
 3. Type `40000` into **To act**: the hint below the list appears and nothing is saved. Type a valid act: the hint disappears and the range is saved.
 4. Change a title and click **Done** right away: reopen the dialog, the title is saved.
 5. Change a title, then click **Add act** in the **Acts** section right away: both the new title and the new act are in the project file.
-6. In the project file, write `act: "05"` in a scene of Volume 2 (acts 5–8) and select **Volume 2** in any view: the scene is shown, with the badge **V2**. A scene with `act: Prologue` is hidden under every volume selection.
+6. In the project file, write `act: "05"` in a scene of Volume 2 (acts 5–8) and select **Volume 2** in any view: the scene is shown, with the badge **V2**. A scene with act `0` / `Prologue` or `99` / `Epilogue` is hidden under every volume selection and has no badge.
 7. Write `acts: "1–4"` (with an en dash) for a volume: the volume appears in the volume dropdown.
+8. In the Volumes editor, set **From act** to `0` and **To act** to `4`: the volume is saved as acts 1–4 and the hint names the Prologue.
 
 **Files:**
 
-- `utils/volumes.ts` (`MAX_VOLUME_ACT`, `MAX_VOLUME_RANGE`, `isValidActRange`, `parseActList`, `actNumber`, `parseVolumes`, `getVolumeForAct`)
+- `utils/volumes.ts` (`MAX_VOLUME_ACT`, `MAX_VOLUME_RANGE`, `isValidActRange`, `parseActList`, `actNumber`, `isVolumeAct`, `parseVolumeActs`, `resolveVolumeIds`, `parseVolumes`, `getVolumeForAct`)
 - `utils/volumeScope.ts` (`scopeFilter`, `sceneActStringsInVolume`, `actInVolumeScope`, `volumeScopePredicate`)
 - `components/VolumesEditor.ts` (`saveVolumes`, `renderVolumesEditor`, `VolumesEditorHandle`, `flushOpenVolumeEditors`)
 - `components/StructureModalSections.ts` (`enhanceStructureModal`)

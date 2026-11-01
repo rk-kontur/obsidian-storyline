@@ -18,6 +18,7 @@
 
 import type { App } from 'obsidian';
 import { TFile } from 'obsidian';
+import { EPILOGUE_ACT, PROLOGUE_ACT } from './actChapter';
 
 export interface VolumeDef {
     id: string;
@@ -76,15 +77,30 @@ export function parseActList(raw: unknown): number[] {
 /**
  * Numeric value of a scene's act for volume membership: 5, "5", "05" and
  * " 5 " are all act 5. Anything that is not a plain decimal number
- * ("Prologue", "Act 5", "", null) is undefined and belongs to no volume.
+ * ("Prologue", "Act 5", "", null) is undefined and belongs to no volume,
+ * and so are 0 (Prologue) and 99 (Epilogue), see isVolumeAct.
  * Every volume membership decision (badges, scope, statistics, export,
  * delete/rename impact) goes through this.
  */
 export function actNumber(act: unknown): number | undefined {
-    if (typeof act === 'number') return Number.isFinite(act) ? act : undefined;
-    if (typeof act !== 'string') return undefined;
-    const t = act.trim();
-    return /^\d+(?:\.\d+)?$/.test(t) ? Number(t) : undefined;
+    let n: number | undefined;
+    if (typeof act === 'number') n = Number.isFinite(act) ? act : undefined;
+    else if (typeof act === 'string' && /^\d+(?:\.\d+)?$/.test(act.trim())) n = Number(act.trim());
+    return n !== undefined && isVolumeAct(n) ? n : undefined;
+}
+
+/**
+ * Prologue (act 0, PROLOGUE_ACT) and Epilogue (act 99, EPILOGUE_ACT) belong
+ * to no volume, also when a volume's `acts:` names them ("0-4"): they are
+ * dropped from VolumeDef.acts and never match a scene.
+ */
+export function isVolumeAct(n: number): boolean {
+    return n !== PROLOGUE_ACT && n !== EPILOGUE_ACT;
+}
+
+/** Acts of a raw `acts:` value that can belong to a volume (parseActList without Prologue/Epilogue). */
+export function parseVolumeActs(raw: unknown): number[] {
+    return parseActList(raw).filter(isVolumeAct);
 }
 
 /** Trimmed text of a string/number frontmatter value, '' for anything else. */
@@ -107,7 +123,7 @@ export function resolveVolumeIds(raw: unknown): string[] {
     return raw.map((entry, idx) => {
         if (!entry || typeof entry !== 'object') return '';
         const e = entry as Record<string, unknown>;
-        if (parseActList(e.acts).length === 0) return '';
+        if (parseVolumeActs(e.acts).length === 0) return '';
         let id = scalarText(e.id);
         if (!id) {
             let n = idx + 1;
@@ -196,7 +212,7 @@ export function parseVolumes(raw: unknown): VolumeDef[] {
         }
         seen.add(id);
         const e = entry as Record<string, unknown>;
-        const acts = parseActList(e.acts);
+        const acts = parseVolumeActs(e.acts);
         const title = typeof e.title === 'string' && e.title.trim() ? e.title.trim() : `Volume ${idx + 1}`;
         const goal = Number(e.wordGoal);
         const deadline = e.deadline instanceof Date
