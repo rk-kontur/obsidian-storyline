@@ -2,6 +2,22 @@
 
 Changes of this fork compared to the original StoryLine plugin by Jan Sandström. Each `## <version>` section is used automatically as the text of the matching GitHub release. Every release also carries `storyline-km-source.zip` (all source files that are new or changed compared to the original, without `main.js`) and `storyline-km.patch` (the full diff against the original).
 
+## 1.11.8-km.11
+
+**Subway map: dashed realized link blends colours**
+
+- The dashed link between a realized Arc Point and its scene now blends from the Arc Point's plotline colour to the scene's plotline colour, like the solid connectors between plotlines.
+- Opacity 65 %.
+
+**How and where to use:**
+
+1. Link an Arc Point to a scene via **Realized** in the Inspector (next to **Arc point**).
+2. Open **Plotlines** in **Subway** mode: the dashed link runs in a colour gradient between both lines.
+
+**Files:**
+
+- `utils/arcRealization.ts` (gradient, opacity)
+
 ## 1.11.8-km.10
 
 **Inspector: "Realized" sits in the Arc point row**

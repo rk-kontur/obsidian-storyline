@@ -135,21 +135,44 @@ export function drawRealizedLinks(
     const svgNS = 'http://www.w3.org/2000/svg';
     for (const al of opts.arcLanes) {
         const y1 = opts.laneY(al);
-        let y2 = opts.laneY(opts.lanes[0]);
+        let nearest = opts.lanes[0];
         for (const l of opts.lanes) {
-            const y = opts.laneY(l);
-            if (Math.abs(y - y1) < Math.abs(y2 - y1)) y2 = y;
+            if (Math.abs(opts.laneY(l) - y1) < Math.abs(opts.laneY(nearest) - y1)) nearest = l;
         }
+        const y2 = opts.laneY(nearest);
+
+        // Colour blend from the Arc Point's line to the scene's line, like the solid connectors
+        const gradId = `sl-km-realized-grad-${Math.round(opts.x)}-${al}`;
+        const defs = svg.querySelector('defs') || (() => {
+            const d = doc.createElementNS(svgNS, 'defs');
+            svg.insertBefore(d, svg.firstChild);
+            return d;
+        })();
+        const grad = doc.createElementNS(svgNS, 'linearGradient');
+        grad.setAttribute('id', gradId);
+        grad.setAttribute('gradientUnits', 'userSpaceOnUse');
+        grad.setAttribute('x1', String(opts.x));
+        grad.setAttribute('y1', String(y1));
+        grad.setAttribute('x2', String(opts.x));
+        grad.setAttribute('y2', String(y2));
+        for (const [offset, color] of [['0%', opts.color(al)], ['100%', opts.color(nearest)]]) {
+            const stop = doc.createElementNS(svgNS, 'stop');
+            stop.setAttribute('offset', offset);
+            stop.setAttribute('stop-color', color);
+            grad.appendChild(stop);
+        }
+        defs.appendChild(grad);
+
         const line = doc.createElementNS(svgNS, 'line');
         line.setAttribute('x1', String(opts.x));
         line.setAttribute('y1', String(y1));
         line.setAttribute('x2', String(opts.x));
         line.setAttribute('y2', String(y2));
-        line.setAttribute('stroke', opts.color(al));
+        line.setAttribute('stroke', `url(#${gradId})`);
         line.setAttribute('stroke-width', '5');
         line.setAttribute('stroke-dasharray', '12,4');
         line.setAttribute('stroke-linecap', 'butt');
-        line.setAttribute('opacity', '0.55');
+        line.setAttribute('opacity', '0.65');
         line.addClass('sl-km-realized-link');
         svg.appendChild(line);
     }
