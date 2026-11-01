@@ -10,7 +10,7 @@
 import type { App } from 'obsidian';
 import type { Scene } from '../models/Scene';
 import { getProjectVolumes, getVolumeForAct, type VolumeDef } from '../utils/volumes';
-import { getScopedVolume } from '../utils/volumeScope';
+import { actInVolumeScope, getScopedVolume } from '../utils/volumeScope';
 
 export type TagImpactKind = 'volume' | 'unassigned' | 'outside';
 
@@ -59,9 +59,8 @@ export interface TagImpact {
 const isUnassigned = (s: Scene) => s.act === undefined || String(s.act) === '';
 const hasAct = (s: Scene) => s.act !== undefined && s.act !== null && String(s.act).trim() !== '';
 
-/** The volume scope rule of scopeFilter / SceneQueryService.matchesFilter. */
-const inScope = (vol: VolumeDef, s: Scene) =>
-    [...vol.acts.map(String), ''].includes(s.act !== undefined ? String(s.act) : '');
+/** The volume scope rule of scopeFilter (numeric acts, no act inside every volume). */
+const inScope = (vol: VolumeDef, s: Scene) => actInVolumeScope(vol, s.act);
 
 const bySequence = (a: Scene, b: Scene) =>
     (Number(a.act) || 0) - (Number(b.act) || 0) || (a.sequence ?? 0) - (b.sequence ?? 0);
@@ -82,8 +81,8 @@ export function computeTagImpact(volumes: VolumeDef[], scoped: VolumeDef | undef
     const outside: TagImpactGroup = { id: '#outside', kind: 'outside', title: 'Not in a volume', scenes: [], isSelection: false };
     for (const s of affected) {
         if (isUnassigned(s)) { unassigned.scenes.push(s); continue; }
-        // Selection membership uses exactly the scope rule (string compare), so
-        // "01" or " 2" is not in the selection when the views hide it.
+        // Selection membership uses exactly the scope rule of the views
+        // (numeric: "01" and " 2" are acts 1 and 2, "Prologue" is in no volume).
         if (scoped && inScope(scoped, s)) { (groups[selIdx] ?? outside).scenes.push(s); continue; }
         // Otherwise getVolumeForAct only picks the column (never the selection)
         const v = hasAct(s) ? getVolumeForAct(volumes, s.act) : undefined;

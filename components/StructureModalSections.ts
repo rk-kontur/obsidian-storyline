@@ -124,7 +124,24 @@ export function enhanceStructureModal(modal: Modal, ctx: StructureModalContext):
         }
         g.heading.remove();
     }
-    renderVolumesEditor(bodies.get('volumes')!, ctx.app, ctx.projectFilePath, ctx.getDefinedActs);
+    const volumesBody = bodies.get('volumes')!;
+    const volumesEditor = renderVolumesEditor(volumesBody, ctx.app, ctx.projectFilePath, ctx.getDefinedActs);
+    // Upstream structure actions (Add act, act labels, beat sheets, ...) rewrite
+    // the project frontmatter with vault.read + vault.modify. A volumes change
+    // still waiting for its debounce must reach the file first: any pointer or
+    // key action outside the Volumes section writes it at once (pointerdown /
+    // keydown come before the click or change that starts the upstream save).
+    const flushIfOutside = (e: Event) => {
+        if (!(e.target instanceof Node) || !volumesBody.contains(e.target)) void volumesEditor.flush();
+    };
+    content.addEventListener('pointerdown', flushIfOutside, true);
+    content.addEventListener('keydown', flushIfOutside, true);
+    // Closing the dialog within the debounce window must not lose the last change
+    const upstreamOnClose = modal.onClose.bind(modal) as () => void;
+    modal.onClose = () => {
+        void volumesEditor.dispose();
+        upstreamOnClose();
+    };
 
     content.empty();
     preamble.forEach(n => content.appendChild(n));

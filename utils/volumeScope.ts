@@ -13,7 +13,7 @@
 import type { App } from 'obsidian';
 import type SceneCardsPlugin from '../main';
 import type { Scene, SceneFilter } from '../models/Scene';
-import { getProjectVolumes, getVolumeForAct, volumeIdNumber, type VolumeDef } from './volumes';
+import { actNumber, getProjectVolumes, getVolumeForAct, volumeIdNumber, type VolumeDef } from './volumes';
 
 const STORAGE_KEY = 'storyline-km:volumeScope';
 
@@ -105,8 +105,33 @@ export function getScopedVolume(app: App, projectFilePath: string | undefined | 
 }
 
 /**
+ * Distinct raw act values (as matchesFilter compares them: String(act)) of
+ * the project's scenes that are numerically in the volume, e.g. "05" or " 5"
+ * for act 5. Only for the active project of the bound plugin; otherwise
+ * (no plugin bound, other project) none.
+ */
+function sceneActStringsInVolume(projectFilePath: string | undefined | null, vol: VolumeDef): string[] {
+    const sm = boundPlugin?.sceneManager;
+    if (!sm || (sm.activeProject?.filePath ?? null) !== (projectFilePath ?? null)) return [];
+    const acts = new Set(vol.acts);
+    const out = new Set<string>();
+    for (const s of sm.getAllScenes()) {
+        if (s.act === undefined) continue;
+        const n = actNumber(s.act);
+        if (n !== undefined && acts.has(n)) out.add(String(s.act));
+    }
+    return [...out];
+}
+
+/**
  * Merge the volume scope into a SceneFilter (intersection with an existing
  * act filter). Returns the filter unchanged when no volume is scoped.
+ *
+ * Membership is numeric (actNumber): "05", " 5" and 5 are act 5, exactly as
+ * getVolumeForAct (badges) and volumeScopePredicate decide. Upstream's
+ * matchesFilter compares strings, so the act list holds the volume's acts
+ * plus every raw act value of the project's scenes that is numerically in
+ * the volume. Non-numeric acts ("Prologue") are in no volume.
  */
 export function scopeFilter<T extends SceneFilter | undefined>(
     app: App,
@@ -115,12 +140,28 @@ export function scopeFilter<T extends SceneFilter | undefined>(
 ): T | SceneFilter {
     const vol = getScopedVolume(app, projectFilePath);
     if (!vol) return filter;
-    const volActs = vol.acts.map(String);
+    const volActs = new Set(vol.acts);
+    const inVol = (a: unknown) => { const n = actNumber(a); return n !== undefined && volActs.has(n); };
     // An explicit act filter is intersected with the volume. Without one, '' keeps
     // scenes that have no act (corkboard notes, unassigned scenes) visible.
-    const base = filter?.act?.length ? filter.act.map(String).filter(a => volActs.includes(a)) : [...volActs, ''];
+    const base = filter?.act?.length
+        ? filter.act.map(String).filter(inVol)
+        : [...new Set([...vol.acts.map(String), ...sceneActStringsInVolume(projectFilePath, vol)]), ''];
     // Empty intersection must match nothing, not everything
     return { ...(filter ?? {}), act: base.length ? base : ['__none__'] };
+}
+
+/**
+ * True if a scene with this act is inside the volume under the scope rule of
+ * scopeFilter: no act (undefined or '') is inside every volume, otherwise the
+ * act must be numerically one of the volume's acts. Corkboard notes are not
+ * special here (scopeFilter does not know them either). Used by the delete
+ * and rename impact, which must count exactly what the views show.
+ */
+export function actInVolumeScope(vol: VolumeDef, act: unknown): boolean {
+    if (act === undefined || act === '') return true;
+    const n = actNumber(act);
+    return n !== undefined && vol.acts.includes(n);
 }
 
 /**
@@ -146,8 +187,8 @@ export function volumeScopePredicate(
     const acts = new Set(vol.acts);
     return (scene: Scene) => {
         if (scene.act === undefined || scene.act === null || String(scene.act) === '' || scene.corkboardNote) return keepUnassigned;
-        const n = Number(scene.act);
-        return Number.isFinite(n) && acts.has(n);
+        const n = actNumber(scene.act); // "05" and " 5" are act 5, "Prologue" is in no volume
+        return n !== undefined && acts.has(n);
     };
 }
 

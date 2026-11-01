@@ -7,7 +7,7 @@
 
 import { Notice, TFile } from 'obsidian';
 import type { App } from 'obsidian';
-import { normalizeVolumeIds, parseVolumes, readVolumeIdSeq, resolveVolumeIds, volumeIdNumber, type VolumeIdFix } from '../utils/volumes';
+import { isValidActRange, MAX_VOLUME_ACT, MAX_VOLUME_RANGE, normalizeVolumeIds, parseVolumes, readVolumeIdSeq, resolveVolumeIds, volumeIdNumber, type VolumeIdFix } from '../utils/volumes';
 import { clearVolumeScopeIfId, getVolumeScope, nextVolumeId } from '../utils/volumeScope';
 
 interface EditableVolume {
@@ -87,6 +87,12 @@ interface EditorSession {
     pendingDeletes: Map<string, VolumeFields | undefined>;
     /** All ids deleted in this dialog (never handed out again). */
     retiredIds: Set<string>;
+    /**
+     * The order was changed in this dialog (move up / move down) and is not
+     * saved yet. Only then does a save reorder entries; otherwise the order
+     * in the file (also one changed by hand meanwhile) is kept.
+     */
+    orderChanged: boolean;
 }
 
 function fieldsOf(v: VolumeFields): VolumeFields {
@@ -130,6 +136,13 @@ function pickDeletions(raw: unknown[], resolved: string[], pending: Map<string, 
  *   entries added elsewhere meanwhile, a second entry with an id already written.
  * - `volumeIdSeq` keeps the highest volume number ever used (also of deleted
  *   volumes), so ids are never handed out twice.
+ * - Order (only after move up / move down in this dialog): the entries
+ *   written for the dialog's volumes (updated in place or appended) are
+ *   permuted among the positions they occupy, into the dialog's order. Their
+ *   contents are not changed by this. Every other entry (drafts, non-object
+ *   entries, entries added elsewhere, a second entry with an id already
+ *   written) keeps its exact position, so these keep their order among each
+ *   other and their place in the list. Without a move the file's order is kept.
  */
 async function saveVolumes(
     app: App,
@@ -154,6 +167,8 @@ async function saveVolumes(
         const remove = pickDeletions(raw, resolved, pendingDeletes);
         const written = new Set<string>();
         const out: unknown[] = [];
+        /** Positions in `out` of the entries written for the dialog's volumes, with their ids. */
+        const own: Array<{ pos: number; id: string }> = [];
         raw.forEach((entry, idx) => {
             if (remove.has(idx)) return; // deleted in this dialog (one entry per id)
             const id = resolved[idx];
@@ -173,6 +188,7 @@ async function saveVolumes(
             if (!before || v.deadline !== before.deadline) {
                 if (v.deadline) e.deadline = v.deadline; else delete e.deadline;
             }
+            own.push({ pos: out.length, id });
             out.push(e);
         });
         // Append only volumes added in this dialog. A volume the dialog knew
@@ -182,8 +198,16 @@ async function saveVolumes(
             const e: Record<string, unknown> = { id: v.id, title: v.title, acts: v.acts };
             if (v.wordGoal) e.wordGoal = v.wordGoal;
             if (v.deadline) e.deadline = v.deadline;
+            own.push({ pos: out.length, id: v.id });
             out.push(e);
             written.add(v.id);
+        }
+        if (session.orderChanged) {
+            const rank = new Map(volumes.map((v, i) => [v.id, i]));
+            const entries = own.map(o => ({ id: o.id, entry: out[o.pos] }))
+                .sort((a, b) => (rank.get(a.id) ?? 0) - (rank.get(b.id) ?? 0));
+            own.forEach((o, i) => { out[o.pos] = entries[i].entry; });
+            session.orderChanged = false;
         }
         if (out.length === 0) delete fm.volumes;
         else fm.volumes = out;
@@ -209,12 +233,30 @@ async function persistIdFix(app: App, projectFilePath: string): Promise<void> {
     });
 }
 
+/** Handle of a rendered Volumes tab. */
+export interface VolumesEditorHandle {
+    /** Write a pending (debounced) change now. Resolves when every save so far is done. */
+    flush(): Promise<void>;
+    /** Flush and forget the editor (dialog closed). */
+    dispose(): Promise<void>;
+}
+
+/** Editors whose dialog is still open: flushed on plugin unload. */
+const openEditors = new Set<VolumesEditorHandle>();
+
+/** Flush every open Volumes tab (plugin unload). */
+export function flushOpenVolumeEditors(): Promise<void> {
+    return Promise.all([...openEditors].map(h => h.flush())).then(() => undefined);
+}
+
+const NOOP_HANDLE: VolumesEditorHandle = { flush: () => Promise.resolve(), dispose: () => Promise.resolve() };
+
 export function renderVolumesEditor(
     container: HTMLElement,
     app: App,
     projectFilePath: string | undefined,
     getDefinedActs: () => number[],
-): void {
+): VolumesEditorHandle {
     container.empty();
     container.addClass('sl-km-volumes-editor');
     container.createEl('p', {
@@ -223,7 +265,7 @@ export function renderVolumesEditor(
     });
     if (!projectFilePath) {
         container.createEl('p', { cls: 'structure-empty', text: 'No active project.' });
-        return;
+        return NOOP_HANDLE;
     }
 
     const projectFile = app.vault.getAbstractFileByPath(projectFilePath);
@@ -243,7 +285,7 @@ export function renderVolumesEditor(
 
     // Ids deleted in this dialog: removed from the file on save, never handed out again
     const retiredIds = new Set<string>();
-    const session: EditorSession = { original, pendingDeletes: new Map(), retiredIds };
+    const session: EditorSession = { original, pendingDeletes: new Map(), retiredIds, orderChanged: false };
     if (idFix.renumbered.length > 0) {
         container.createEl('p', {
             cls: 'sl-km-volumes-warning',
@@ -252,12 +294,36 @@ export function renderVolumesEditor(
     }
 
     const list = container.createDiv('sl-km-volumes-list');
+    const rangeHint = container.createDiv('sl-km-volumes-warning');
     const warn = container.createDiv('sl-km-volumes-warning');
+    // Saves run one after another (each reads the file afresh); a change is
+    // written 400 ms after the last edit, or at once by flush().
     let saveTimer: number | null = null;
-    const scheduleSave = () => {
-        if (saveTimer) window.clearTimeout(saveTimer);
-        saveTimer = window.setTimeout(() => { void saveVolumes(app, projectFilePath, volumes, session); }, 400);
+    let saving: Promise<void> = Promise.resolve();
+    const runSave = (): Promise<void> => {
+        saving = saving
+            .then(() => saveVolumes(app, projectFilePath, volumes, session))
+            .catch(() => { new Notice('Could not save the volumes.'); });
+        return saving;
     };
+    const scheduleSave = () => {
+        if (saveTimer !== null) window.clearTimeout(saveTimer);
+        saveTimer = window.setTimeout(() => { saveTimer = null; void runSave(); }, 400);
+    };
+    const flush = (): Promise<void> => {
+        if (saveTimer === null) return saving;
+        window.clearTimeout(saveTimer);
+        saveTimer = null;
+        return runSave();
+    };
+    const handle: VolumesEditorHandle = {
+        flush,
+        dispose: () => { openEditors.delete(handle); return flush(); },
+    };
+    openEditors.add(handle);
+    // Leaving a field of this tab writes its change at once, before a click
+    // elsewhere in the dialog (e.g. "Add act") starts an upstream save.
+    container.addEventListener('focusout', () => { void flush(); });
 
     const render = () => {
         list.empty();
@@ -266,7 +332,7 @@ export function renderVolumesEditor(
             list.createEl('p', { cls: 'structure-empty', text: 'No volumes defined yet.' });
         } else {
             const head = list.createDiv('sl-km-volume-row sl-km-volume-head');
-            ['Title', 'From act', 'To act', 'Word goal', 'Deadline', ''].forEach(t => head.createSpan({ text: t }));
+            ['Title', 'From act', 'To act', 'Word goal', 'Deadline', '', ''].forEach(t => head.createSpan({ text: t }));
         }
         const overlaps = findOverlaps(volumes);
 
@@ -278,8 +344,9 @@ export function renderVolumesEditor(
             title.addEventListener('change', () => { v.title = title.value.trim() || `Volume ${i + 1}`; scheduleSave(); });
 
             const contiguous = v.acts.every((a, k) => k === 0 || a === v.acts[k - 1] + 1);
-            const from = row.createEl('input', { type: 'number', value: String(v.acts[0] ?? '') });
-            const to = row.createEl('input', { type: 'number', value: String(v.acts[v.acts.length - 1] ?? '') });
+            const actAttr = { min: '0', max: String(MAX_VOLUME_ACT) };
+            const from = row.createEl('input', { type: 'number', value: String(v.acts[0] ?? ''), attr: actAttr });
+            const to = row.createEl('input', { type: 'number', value: String(v.acts[v.acts.length - 1] ?? ''), attr: actAttr });
             if (!contiguous) {
                 from.title = to.title = `Acts ${rangeText(v.acts)} (editing turns this into a range)`;
             }
@@ -287,6 +354,12 @@ export function renderVolumesEditor(
                 const f = parseInt(from.value, 10);
                 const t = parseInt(to.value, 10);
                 if (isNaN(f) || isNaN(t) || f < 0 || t < 0) return;
+                // Same limits as parseActList: the file must never get a range it would ignore
+                if (!isValidActRange(f, t)) {
+                    rangeHint.setText(`${v.title}: acts go up to ${MAX_VOLUME_ACT}, and a volume spans at most ${MAX_VOLUME_RANGE} acts. Not saved.`);
+                    return;
+                }
+                rangeHint.setText('');
                 v.acts = toRange(f, t);
                 scheduleSave();
                 render();
@@ -304,6 +377,22 @@ export function renderVolumesEditor(
 
             const deadline = row.createEl('input', { type: 'date', value: v.deadline ?? '' });
             deadline.addEventListener('change', () => { v.deadline = deadline.value || undefined; scheduleSave(); });
+
+            const move = row.createSpan({ cls: 'sl-km-volume-move' });
+            const moveBy = (delta: number) => {
+                const j = i + delta;
+                if (j < 0 || j >= volumes.length) return;
+                [volumes[i], volumes[j]] = [volumes[j], volumes[i]];
+                session.orderChanged = true;
+                scheduleSave();
+                render();
+            };
+            const up = move.createEl('button', { cls: 'clickable-icon', text: '↑', attr: { 'aria-label': `Move ${v.title} up` } });
+            const down = move.createEl('button', { cls: 'clickable-icon', text: '↓', attr: { 'aria-label': `Move ${v.title} down` } });
+            up.disabled = i === 0;
+            down.disabled = i === volumes.length - 1;
+            up.addEventListener('click', () => moveBy(-1));
+            down.addEventListener('click', () => moveBy(1));
 
             const del = row.createEl('button', { cls: 'clickable-icon structure-remove', text: '×', attr: { 'aria-label': `Remove ${v.title}` } });
             del.addEventListener('click', () => {
@@ -340,10 +429,13 @@ export function renderVolumesEditor(
         const lastSize = volumes.length ? volumes[volumes.length - 1].acts.length : 4;
         const start = used.length ? Math.max(...used) + 1 : (getDefinedActs().filter(a => a > 0 && a !== 99)[0] ?? 1);
         const id = nextVolumeId([...volumes.map(v => v.id), ...rawVolumeIds(projectFm()?.volumes)], retiredIds, getVolumeScope(app, projectFilePath), readVolumeIdSeq(projectFm()));
-        volumes.push({ id, title: `Volume ${volumes.length + 1}`, acts: toRange(start, start + Math.max(1, lastSize) - 1) });
+        // Stay inside the act limits of parseActList
+        const first = Math.min(start, MAX_VOLUME_ACT);
+        volumes.push({ id, title: `Volume ${volumes.length + 1}`, acts: toRange(first, Math.min(first + Math.max(1, lastSize) - 1, MAX_VOLUME_ACT)) });
         scheduleSave();
         render();
     });
 
     render();
+    return handle;
 }

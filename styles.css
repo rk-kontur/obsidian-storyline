@@ -14003,7 +14003,7 @@ body.sl-focus-active-global.sl-focus-dim-text .markdown-source-view.mod-cm6 .cm-
 
 .sl-km-volume-row {
     display: grid;
-    grid-template-columns: minmax(120px, 2fr) 70px 70px 100px 140px 32px;
+    grid-template-columns: minmax(120px, 2fr) 70px 70px 100px 140px 56px 32px;
     gap: 6px;
     align-items: center;
     margin-bottom: 6px;
@@ -14017,6 +14017,17 @@ body.sl-focus-active-global.sl-focus-dim-text .markdown-source-view.mod-cm6 .cm-
 .sl-km-volume-head {
     font-size: var(--font-ui-smaller);
     color: var(--text-muted);
+}
+
+/* Move up / move down buttons of a volume row */
+.sl-km-volume-move {
+    display: flex;
+    gap: 2px;
+}
+
+.sl-km-volume-move button:disabled {
+    opacity: 0.3;
+    cursor: default;
 }
 
 .sl-km-volume-row.has-overlap input[type="number"] {

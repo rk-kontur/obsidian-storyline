@@ -10,6 +10,7 @@ import type SceneCardsPlugin from '../main';
 import { BOARD_VIEW_TYPE, TIMELINE_VIEW_TYPE } from '../constants';
 import { clearNextStructureSection, setNextStructureSection, type StructureSection } from '../components/StructureModalSections';
 import { registerVolumeScopeSync } from '../utils/volumeScope';
+import { flushOpenVolumeEditors } from '../components/VolumesEditor';
 
 interface HasStructureModal { openStructureModal(): void }
 
@@ -55,4 +56,6 @@ export function registerForkCommands(plugin: SceneCardsPlugin): void {
     });
     // Volume dropdowns follow changes of the project file's `volumes:`
     registerVolumeScopeSync(plugin);
+    // A volumes change still waiting for its debounce is written on unload
+    plugin.register(() => { void flushOpenVolumeEditors(); });
 }

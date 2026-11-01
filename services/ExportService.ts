@@ -2,6 +2,7 @@
 import { StoryLineProject } from '../models/StoryLineProject';
 import { SceneManager } from './SceneManager';
 import { compareActChapter, getActDisplayLabel, getChapterDisplayLabel } from '../utils/actChapter';
+import { actNumber } from '../utils/volumes'; // fork: volume act rule
 import { CharacterManager } from './CharacterManager';
 import { LocationManager } from './LocationManager';
 import { SLMarkdownToDocxConverter, SLDocxSettings, SLObsidianFontSettings } from './DocxConverter';
@@ -153,7 +154,7 @@ export class ExportService {
                 const field = this.exportRange!.field;
                 const rawValue = field === 'sequence' ? scene.sequence : field === 'act' ? scene.act : scene.chapter;
                 if (rawValue === undefined) return false;
-                const value = Number(rawValue);
+                const value = field === 'act' ? (actNumber(rawValue) ?? NaN) : Number(rawValue); // fork: act rule of the volume scope ("05" = 5, "" is no act)
                 return Number.isFinite(value) && selectedRanges.some(range =>
                     value >= range.start && value <= range.end
                 );

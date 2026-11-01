@@ -27,30 +27,64 @@ export interface VolumeDef {
     deadline?: string;
 }
 
-/** Parse `[1,2,3]`, `"1-4"`, `"1-4, 6"` or a single number into act numbers. */
+/** Highest act number a volume may name; larger values are ignored. */
+export const MAX_VOLUME_ACT = 9999;
+/** Most acts one range token ("1-1000") may expand to; wider ranges are ignored. */
+export const MAX_VOLUME_RANGE = 1000;
+
+/** True if `from`-`to` is a range parseActList accepts (bounds and width). */
+export function isValidActRange(from: number, to: number): boolean {
+    const a = Math.min(from, to);
+    const b = Math.max(from, to);
+    return Number.isInteger(a) && Number.isInteger(b) && a >= 0 && b <= MAX_VOLUME_ACT && b - a + 1 <= MAX_VOLUME_RANGE;
+}
+
+/**
+ * Parse `[1,2,3]`, `"1-4"`, `"1–4, 6"` or a single number into act numbers.
+ * Hyphen, en dash and em dash separate ranges. Tokens outside 0..MAX_VOLUME_ACT
+ * and ranges wider than MAX_VOLUME_RANGE acts are ignored (a typo like
+ * "1-40000" must not expand into thousands of acts).
+ */
 export function parseActList(raw: unknown): number[] {
     const out: number[] = [];
+    const addNumber = (n: number) => {
+        if (Number.isFinite(n) && n >= 0 && n <= MAX_VOLUME_ACT) out.push(n);
+    };
     const addToken = (token: string) => {
         const t = token.trim();
         if (!t) return;
-        const range = t.match(/^(\d+)\s*-\s*(\d+)$/);
+        const range = t.match(/^(\d+)\s*[-\u2013\u2014]\s*(\d+)$/);
         if (range) {
             const a = Number(range[1]);
             const b = Number(range[2]);
+            if (!isValidActRange(a, b)) return;
             for (let i = Math.min(a, b); i <= Math.max(a, b); i++) out.push(i);
             return;
         }
-        const n = Number(t);
-        if (Number.isFinite(n)) out.push(n);
+        addNumber(Number(t));
     };
     if (Array.isArray(raw)) {
         for (const item of raw) addToken(String(item));
     } else if (typeof raw === 'number') {
-        out.push(raw);
+        addNumber(raw);
     } else if (typeof raw === 'string') {
         raw.split(',').forEach(addToken);
     }
     return Array.from(new Set(out)).sort((a, b) => a - b);
+}
+
+/**
+ * Numeric value of a scene's act for volume membership: 5, "5", "05" and
+ * " 5 " are all act 5. Anything that is not a plain decimal number
+ * ("Prologue", "Act 5", "", null) is undefined and belongs to no volume.
+ * Every volume membership decision (badges, scope, statistics, export,
+ * delete/rename impact) goes through this.
+ */
+export function actNumber(act: unknown): number | undefined {
+    if (typeof act === 'number') return Number.isFinite(act) ? act : undefined;
+    if (typeof act !== 'string') return undefined;
+    const t = act.trim();
+    return /^\d+(?:\.\d+)?$/.test(t) ? Number(t) : undefined;
 }
 
 /** Trimmed text of a string/number frontmatter value, '' for anything else. */
@@ -145,9 +179,22 @@ export function parseVolumes(raw: unknown): VolumeDef[] {
     if (!Array.isArray(raw)) return [];
     const volumes: VolumeDef[] = [];
     const ids = resolveVolumeIds(raw);
+    // Hand-written YAML may repeat an explicit id. Every consumer keys by id
+    // (Maps, scope selection), so a later duplicate gets "<id>~2", "~3", ...
+    // here, in the output only (nothing is written). The volumes editor
+    // renumbers such duplicates in the file when it opens.
+    const taken = new Set(ids.filter(id => id));
+    const seen = new Set<string>();
     raw.forEach((entry, idx) => {
-        const id = ids[idx];
+        let id = ids[idx];
         if (!id) return;
+        if (seen.has(id)) {
+            let n = 2;
+            while (taken.has(`${id}~${n}`)) n++;
+            id = `${id}~${n}`;
+            taken.add(id);
+        }
+        seen.add(id);
         const e = entry as Record<string, unknown>;
         const acts = parseActList(e.acts);
         const title = typeof e.title === 'string' && e.title.trim() ? e.title.trim() : `Volume ${idx + 1}`;
@@ -193,8 +240,8 @@ export function volumeIdNumber(id: string | undefined | null): number {
 /** Volume containing the given act, or undefined. */
 export function getVolumeForAct(volumes: VolumeDef[], act: number | string | undefined): VolumeDef | undefined {
     if (act === undefined || act === null || volumes.length === 0) return undefined;
-    const n = Number(act);
-    if (!Number.isFinite(n)) return undefined;
+    const n = actNumber(act);
+    if (n === undefined) return undefined;
     return volumes.find(v => v.acts.includes(n));
 }
 

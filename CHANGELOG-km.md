@@ -2,6 +2,70 @@
 
 Changes of this fork compared to the original StoryLine plugin by Jan Sandström. Each `## <version>` section is used as the initial text of the matching GitHub release; texts edited on GitHub (e.g. with screenshots) are never overwritten. Every release also carries `storyline-km-source.zip` (all source files that are new or changed compared to the original, without `main.js`) and `storyline-km.patch` (the full diff against the original).
 
+## 1.11.8-km.17
+
+**Volumes: numeric acts everywhere, safe act ranges, reorder volumes, no lost edits**
+
+### A scene with act "05" is in Volume 2 everywhere
+
+- A scene with `act: "05"` (or `" 5"`) showed the badge **V2**, but disappeared as soon as **Volume 2** was selected, because the volume selection compared act values as text.
+- All volume decisions now use one rule: an act belongs to a volume when its number is one of the volume's acts. `5`, `"5"`, `"05"`, `" 5 "` and `"5.0"` are act 5. This applies to the volume selection in every view (Board, Corkboard, Plot Grid, Timeline, Subway, Manuscript, Navigator, Statistics, Characters, Locations, Codex), the scene badges, Statistics, the **Delete plotline** / **Rename plotline** impact overview and the export of one volume.
+- Acts that are not a plain number (`Prologue`, `Epilogue`, `Act 5`, empty) belong to no volume, as before. Prologue and Epilogue are deliberately not mapped to a volume. An empty act no longer counts as act 0 in the volume export.
+
+### Act ranges with dashes, and limits
+
+- `acts: "1–4"` (en dash) and `"1—4"` (em dash) are read as ranges. Before, such a volume silently disappeared.
+- A range wider than 1000 acts (e.g. a typo `1-40000`) or an act above 9999 is ignored instead of freezing Obsidian. The rest of the list still counts (`"1-2, 99999"` is acts 1 and 2).
+- In the Volumes editor, **From act** / **To act** refuse such values and show a hint below the list: "acts go up to 9999, and a volume spans at most 1000 acts. Not saved."
+
+### Duplicate volume ids no longer merge volumes
+
+- Two volumes with the same `id` in hand-written YAML were counted as one row in Statistics and could not be picked separately. Every view now keeps them apart (the second one is shown under the id `<id>~2` until the Volumes editor renumbers it in the file, which it does when it opens). Nothing is written by reading.
+
+### Reorder volumes
+
+- Each row in **Manage story structure** → **Volumes** has **↑** / **↓** buttons that move the volume up or down.
+- Saving changes only the order of the entries in the project file:
+  - The entries of the volumes shown in the editor swap places among the positions they occupy. Their contents (unknown keys such as `color`, the notation `acts: "1-4"`) stay as they are.
+  - Every other entry keeps its exact position: drafts without acts, non-object entries, entries added by hand while the dialog was open. So they also keep their order among each other.
+  - A new volume moved up takes the position of the volume it passes; a volume deleted elsewhere while the dialog was open is not re-added.
+  - The order is written only after **↑** / **↓** was used. Otherwise an order changed by hand in the file while the dialog was open is kept, as before.
+
+<!-- screenshot: Volumes editor rows with the ↑ / ↓ buttons -->
+<!-- screenshot: Volumes editor with the "at most 1000 acts" hint -->
+
+### No lost change when the dialog closes
+
+- Changes are written 400 ms after the last edit. Closing the dialog (**Done**, Esc, ×) within that time now writes the last change at once; so does disabling or updating the plugin while the dialog is open. Leaving a field of the Volumes section also writes its change at once.
+
+### Volumes and the other structure actions in the same dialog
+
+- **Add act**, act labels, beat sheets and the other structure actions of upstream rewrite the whole project frontmatter (read the file, change it, write it back). If a volumes save happened between that read and write, the volumes change was overwritten.
+- A pending volumes change is now written as soon as you press a mouse button or a key anywhere outside the Volumes section of the dialog, which is before the upstream action starts. Upstream keeps no copy of `volumes:` in memory; it always reads the file first, so the only risk is this read-to-write window.
+- What remains: an upstream save started elsewhere (another view, settings, sync) while a volumes save is being written can still overwrite it, as for any two plugins writing the same file. On a very slow vault a click that directly follows the edit may still interleave; reopen the dialog to check.
+
+**How and where to use:**
+
+1. Open **Board** or **Timeline** → **Manage story structure** (or the command **Manage volumes**) and open the **Volumes** section.
+2. Click **↑** or **↓** in a row to move a volume. Open the project file: only the order of the entries changed; drafts and other entries are where they were.
+3. Type `40000` into **To act**: the hint below the list appears and nothing is saved. Type a valid act: the hint disappears and the range is saved.
+4. Change a title and click **Done** right away: reopen the dialog, the title is saved.
+5. Change a title, then click **Add act** in the **Acts** section right away: both the new title and the new act are in the project file.
+6. In the project file, write `act: "05"` in a scene of Volume 2 (acts 5–8) and select **Volume 2** in any view: the scene is shown, with the badge **V2**. A scene with `act: Prologue` is hidden under every volume selection.
+7. Write `acts: "1–4"` (with an en dash) for a volume: the volume appears in the volume dropdown.
+
+**Files:**
+
+- `utils/volumes.ts` (`MAX_VOLUME_ACT`, `MAX_VOLUME_RANGE`, `isValidActRange`, `parseActList`, `actNumber`, `parseVolumes`, `getVolumeForAct`)
+- `utils/volumeScope.ts` (`scopeFilter`, `sceneActStringsInVolume`, `actInVolumeScope`, `volumeScopePredicate`)
+- `components/VolumesEditor.ts` (`saveVolumes`, `renderVolumesEditor`, `VolumesEditorHandle`, `flushOpenVolumeEditors`)
+- `components/StructureModalSections.ts` (`enhanceStructureModal`)
+- `components/PlotlineDeleteImpact.ts` (`inScope`)
+- `services/ExportService.ts` (`getSortedScenes`, act range)
+- `services/ForkCommands.ts` (`registerForkCommands`)
+- `styles.css` (fork section: volume row grid, `.sl-km-volume-move`)
+- `CHANGELOG-km.md`
+
 ## 1.11.8-km.16
 
 **Statistics per volume: complete warnings, correct deadlines, one scene set for every section**
