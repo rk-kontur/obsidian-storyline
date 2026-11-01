@@ -2,6 +2,38 @@
 
 Changes of this fork compared to the original StoryLine plugin by Jan Sandström. Each `## <version>` section is used as the initial text of the matching GitHub release; texts edited on GitHub (e.g. with screenshots) are never overwritten. Every release also carries `storyline-km-source.zip` (all source files that are new or changed compared to the original, without `main.js`) and `storyline-km.patch` (the full diff against the original).
 
+## 1.12.0-km.7
+
+**Subway map: "on page" and "off page" zones**
+
+Some plotlines are not told in scenes but develop in the background: a character arc, technology, politics, the conventions and obligatory scenes of a genre. Such a plotline can now be marked **off page**. The Subway map then shows two zones:
+
+- **ON PAGE** at the top: the plotlines that are told in the written scenes.
+- **OFF PAGE** below, in a lightly tinted band: the background developments.
+
+Details:
+
+- **Explicit choice per plotline**, independent of its content: an off-page line may contain scenes and Arc Points, an on-page line as well. Arc Points work the same in both zones.
+- **Realized Arc Points** connect across the zones: the dashed link runs from the off-page stage up to the scene that tells it. This shows at a glance which background development already reaches the text.
+- Without off-page lines, nothing changes (no band, no headers).
+- Stored in the project file as `offPageLines: [Mark, Politics]`; it can also be edited by hand.
+- The band colour and the headers can be styled with CSS (`.sl-km-offpage-band`, `.sl-km-zone-header`).
+
+<!-- screenshot: Subway map with ON PAGE and OFF PAGE zones -->
+
+**How and where to use:**
+
+1. Open **Plotlines** in **Subway** mode.
+2. **Right-click a plotline name** in the name column on the left → **Move to off page**. The line moves into the tinted OFF PAGE band at the bottom.
+3. To move it back: right-click → **Move to on page**.
+4. Optional: link Arc Points on an off-page line to the scene that tells them (Inspector → **Realized**) to see where the background reaches the text.
+
+**Files:**
+
+- `utils/pageZones.ts` (new: zones, ordering, band, headers, context menu, project file storage)
+- `views/StorylineView.ts` (lane order by zone, zone gap, band, headers, right-click on line names)
+- `styles.css` (fork section: default band tint and header style)
+
 ## 1.12.0-km.6
 
 **Subway map: volume name in the act labels**

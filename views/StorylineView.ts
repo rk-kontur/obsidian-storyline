@@ -2,6 +2,7 @@
 import { ButtonComponent, ItemView, Menu, MenuItem, Modal, Notice, Setting, TFile, TextComponent, WorkspaceLeaf } from 'obsidian';
 import { aliasRealizedColumns, drawRealizedLinks, removeRealizedStations, resolveRealizations, splitRealizedLanes } from '../utils/arcRealization';
 import { renderVolumeScopeSelect, scopeFilter } from '../utils/volumeScope';
+import { attachZoneMenu, drawOffPageBand, getOffPageLines, orderByZone, renderZoneHeader, ZONE_GAP } from '../utils/pageZones';
 import { drawSubwayVolumeMarker, getProjectVolumes, getVolumeForAct, VolumeDividerTracker } from '../utils/volumes';
 import * as obsidian from 'obsidian';
 import { Scene } from '../models/Scene';
@@ -398,6 +399,13 @@ export class StorylineView extends ItemView {
             this.renderListView(content, scenes, plotlines, plotlineKeys);
             return;
         }
+        // fork: on page lines first, off page lines below in their own band
+        const projectPath = this.sceneManager.activeProject?.filePath;
+        const offPageLines = getOffPageLines(this.app, projectPath);
+        const zoned = orderByZone(plotlineKeys, offPageLines);
+        plotlineKeys = zoned.keys;
+        const zoneSplit = zoned.split;
+        const zoneGap = zoneSplit >= 0 ? ZONE_GAP : 0;
 
         const tagColors = this.plugin.settings.tagColors || {};
         const scheme = this.plugin.settings.colorScheme;
@@ -455,7 +463,7 @@ export class StorylineView extends ItemView {
 
         // ── SVG dimensions ──
         const svgWidth = TRACK_LEFT + numCols * SCENE_SPACING + 60;
-        const trackBottom = TOP_MARGIN + numLanes * LANE_HEIGHT;
+        const trackBottom = TOP_MARGIN + numLanes * LANE_HEIGHT + zoneGap;
         const svgHeight = trackBottom + 30;
 
         const wrapper = content.createDiv('subway-map-wrapper');
@@ -494,7 +502,16 @@ export class StorylineView extends ItemView {
 
         const colX = (col: number) => TRACK_LEFT + col * SCENE_SPACING + SCENE_SPACING / 2;
         // Track Y sits in the upper portion of the lane
-        const laneY = (lane: number) => TOP_MARGIN + lane * LANE_HEIGHT + LANE_TRACK / 2;
+        const laneY = (lane: number) => TOP_MARGIN + lane * LANE_HEIGHT + LANE_TRACK / 2
+            + (zoneSplit >= 0 && lane >= zoneSplit ? zoneGap : 0);
+
+        // fork: tinted off page band + zone headers in the name column
+        if (zoneSplit >= 0) {
+            const bandTop = TOP_MARGIN + zoneSplit * LANE_HEIGHT + 4;
+            drawOffPageBand(svg, activeDocument, bandTop, trackBottom - bandTop + 10, svgWidth);
+            if (zoneSplit > 0) renderZoneHeader(labelCol, 'ON PAGE', TOP_MARGIN - 22, LABEL_LEFT, false);
+            renderZoneHeader(labelCol, 'OFF PAGE', bandTop + 6, LABEL_LEFT, true);
+        }
 
         // ── Build plotline → columns map ──
         const plotlineCols = new Map<string, number[]>();
@@ -598,6 +615,7 @@ export class StorylineView extends ItemView {
                 fontFamily: 'var(--font-interface)',
             });
             lblDiv.textContent = this.formatPlotlineName(pk);
+            attachZoneMenu(lblDiv, this.app, projectPath, pk, offPageLines.has(pk), () => this.refresh()); // fork: on / off page
 
             if (cols.length === 0) continue;
 
