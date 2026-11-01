@@ -14,7 +14,7 @@ Changes of this fork compared to the original StoryLine plugin by Jan Sandström
 ### Volume deadlines match the overview
 
 - The **Volumes** table counted days from UTC midnight. East of UTC it showed **(1 d)** on the deadline day and **(0 d)** the day after instead of **overdue**, and its **Words/day** differed from the overview card.
-- The table now uses the same deadline plan as **Project Overview**, with the same "include weekends" setting: the hint shows the remaining writing days, **(overdue)** after the deadline while words are missing, and nothing once the goal is reached. **Words/day** is the same number as in the overview.
+- The table now uses the same deadline plan as **Project Overview**, with the same "include weekends" setting: the hint shows the remaining writing days, **(overdue)** after the deadline while words are missing, and nothing once the goal is reached. For volumes with their own word goal and deadline, **Words/day** is the same number as in the overview (the overview also falls back to scene targets or the project goal and deadline, the table does not).
 
 ### Volume table
 
@@ -49,7 +49,7 @@ Changes of this fork compared to the original StoryLine plugin by Jan Sandström
 1. Open **Statistics** and pick a volume in the volume dropdown in the toolbar.
 2. Open **Warnings**: plotline gaps and act imbalance inside the volume are listed again; setups that pay off in another volume are not reported.
 3. In the **Volumes** section, check **Acts**, the deadline hint and **Words/day**: they match **Project Overview** for the same volume. Collapse the section; it stays collapsed after a refresh or restart.
-4. Pick **All volumes**: the **All volumes** row shows the same scene and word totals as the overview, with a note for scenes outside every volume.
+4. Pick **All volumes**: the **All volumes** row shows the same word total as the overview; its scenes plus arc points equal the overview's **Scenes** card. A note counts the scenes outside every volume.
 5. Open **Writing Trail** with a volume selected: the first card reads **Words in volume**.
 6. In **Settings** → StoryLine → **Statistics view**, choose **Original**: the heading above the overview names the selected volume.
 7. Close Board and Timeline, then click **Edit volumes** in Statistics: the Board opens in a new tab with **Manage story structure** → **Volumes** open, and the Statistics tab stays.

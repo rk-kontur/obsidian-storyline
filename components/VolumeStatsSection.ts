@@ -115,7 +115,7 @@ export function computeTotalRow(
     };
     for (const s of scenes) {
         addScene(total, s, excludeArcPoints);
-        if (!getVolumeForAct(volumes, s.act)) total.outside++;
+        if (!s.arcAnchor && !getVolumeForAct(volumes, s.act)) total.outside++;
     }
     return Object.assign(withMetrics(total, opts), { outside: total.outside });
 }

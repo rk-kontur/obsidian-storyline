@@ -2329,7 +2329,7 @@ export class StatsView extends ItemView {
         }
     }
 
-    private renderWritingTrail(parent: HTMLElement, scenes: Scene[], currentWords: number, currentLabel = 'Current words'): void {
+    private renderWritingTrail(parent: HTMLElement, scenes: Scene[], currentWords: number, currentLabel = 'Current words'): void { // fork: label
         const tracker = this.plugin.writingTracker;
         const history = tracker.getFullHistory();
         const changes = tracker.getFullChangeHistory();
