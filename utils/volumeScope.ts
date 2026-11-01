@@ -85,8 +85,9 @@ export function nextVolumeId(existingIds: Iterable<string>, retiredIds: Iterable
 
 /**
  * True if the volume scope changed since the last call for this owner (a
- * view). Lets a view's refresh() bypass its "just saved" grace window when
- * the volume was switched. The first call only records the key.
+ * view), and records the current key. Called in renderView (records what was
+ * rendered) and in refresh(), which then bypasses its "just saved" grace
+ * window when the volume was switched. The first call only records the key.
  */
 const lastScopeKeys = new WeakMap<object, string>();
 export function volumeScopeChanged(owner: object, plugin: SceneCardsPlugin): boolean {

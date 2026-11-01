@@ -146,6 +146,7 @@ export class LocationView extends ItemView {
     // ── Main render ────────────────────────────────────
 
     private renderView(container: HTMLElement): void {
+        volumeScopeChanged(this, this.plugin); // fork: remember the rendered volume scope (refresh grace bypass)
         this.clearPortaledDropdowns(); // issue #102 — don't leak portaled popups across re-renders
         container.empty();
 

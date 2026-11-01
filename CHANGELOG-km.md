@@ -18,7 +18,10 @@ Changes of this fork compared to the original StoryLine plugin by Jan Sandström
 - Deleting the selected volume in **Manage story structure** → **Volumes** resets the selection to **All volumes**.
 - The volumes editor now keeps a high-water mark `volumeIdSeq` in the project file: the highest volume number it has ever saved, including deleted volumes. **+ Add volume** creates `v<volumeIdSeq + 1>` (or higher, if an existing id, a volume deleted in the open dialog or the stored selection has a higher number). So an id that the editor has saved once is never handed out again, also after closing and reopening the dialog and on other devices that still have the old volume selected.
 - Not covered: ids that were deleted before this version, or added and removed only by hand in the project file without the editor saving in between, are unknown to `volumeIdSeq` and can be reused once.
-- Every save from the editor writes an explicit `id` for every volume. Opening the editor on hand-written `volumes:` entries without `id` writes the ids they currently have (`v1`, `v2`, … by position) right away, so removing an entry above them no longer renames the ones below. An entry without `id` also never gets an id that another entry uses explicitly.
+- The editor no longer rewrites the whole `volumes:` block. What it writes:
+  - **On opening** the Volumes tab, only if an entry has no `id`: it adds `id` to those entries, in place, with the id they already have (`v1`, `v2`, … by position, never one that another entry uses). An entry without valid acts (a draft) gets a free `v<position>` id. Nothing else changes, so removing an entry above them no longer renames the ones below. If all entries have an `id`, opening writes nothing.
+  - **On an edit**, per volume only `id` and the fields changed in the editor (title, acts, word goal, deadline). Unchanged fields keep their notation (e.g. `acts: "1-4"`), other keys (e.g. `color`) stay, and entries the editor cannot show (e.g. a draft without acts) are kept untouched. Deleted volumes are removed, new ones are appended. Changed acts are written as a list (`[1, 2, 3]`). The edit also writes `volumeIdSeq`.
+- An entry without `id` never gets an id that another entry uses explicitly. New volumes also skip the ids of draft entries.
 - A stored selection that points to a volume that no longer exists (e.g. removed by hand in the project file) is reset to **All volumes** on this device.
 
 ### Faster scene lists with a volume selected
@@ -37,8 +40,8 @@ Changes of this fork compared to the original StoryLine plugin by Jan Sandström
   - Character cards without scenes in the selected volume say **No scenes in Volume 2** (instead of "No scenes yet").
   - The scene stats of a character, location or world add a line such as **3 more in other volumes**.
   - **Referenced by** shows **No references in Volume 2 (3 in other volumes)** when all references are scenes of other volumes (Characters and Locations used to hide the section, Codex said "No linked entries yet"), and **N more in other volumes** when some are hidden.
-- **Characters from scenes (no profile yet)** lists only characters that appear (`characters:` or `pov:`) in scenes of the selected volume.
-- A volume switch always re-renders these views, also right after saving an entry (the short "just saved" pause that protects the editor no longer swallows the switch).
+- **Characters from scenes (no profile yet)** lists only characters that appear (`characters:` or `pov:`) in scenes of the selected volume (inactive scenes included, as in the unfiltered list).
+- A volume switch always re-renders these views, also right after saving an entry or right after the view opened (the short "just saved" pause that protects the editor no longer swallows the switch).
 - The "may need review" warning of a modified codex entry still lists all affected scenes, so none is missed.
 
 <!-- screenshot: Characters view toolbar with the volume dropdown -->
@@ -57,7 +60,7 @@ Changes of this fork compared to the original StoryLine plugin by Jan Sandström
 **Files:**
 
 - `utils/volumeScope.ts` (self-updating dropdown registry `syncVolumeScopeSelects` / `registerVolumeScopeSync`, `volumeScopePredicate`, `scopeScenes`, `scopeSceneRefs`, `clearVolumeScope`, `clearVolumeScopeIfId`, `nextVolumeId`, `volumeScopeChanged`, scroll reset after a volume change)
-- `utils/volumes.ts` (`readVolumeIdSeq`, `volumeIdNumber`, `hasImplicitVolumeIds`, collision-free positional ids)
+- `utils/volumes.ts` (`resolveVolumeIds`, `assignMissingVolumeIds`, `readVolumeIdSeq`, `volumeIdNumber`, `hasImplicitVolumeIds`, collision-free positional ids)
 - `components/VolumeScopeNotes.ts` (new: "hidden by the volume selection" notes)
 - `components/VolumesEditor.ts`
 - `services/ForkCommands.ts`

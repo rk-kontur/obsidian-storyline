@@ -58,22 +58,22 @@ function scalarText(v: unknown): string {
     return typeof v === 'string' || typeof v === 'number' ? String(v).trim() : '';
 }
 
-/** Parse the raw `volumes:` frontmatter value. Invalid entries are skipped. */
-export function parseVolumes(raw: unknown): VolumeDef[] {
+/**
+ * Id of every raw `volumes:` entry as parseVolumes assigns it, '' for entries
+ * parseVolumes skips (not an object, no valid acts). Entries without `id` get
+ * "v<position>", but never an id that another entry uses explicitly (that
+ * would make two volumes share one id).
+ */
+export function resolveVolumeIds(raw: unknown): string[] {
     if (!Array.isArray(raw)) return [];
-    const volumes: VolumeDef[] = [];
-    // Entries without `id` get "v<position>", but never an id that another
-    // entry uses explicitly (that would make two volumes share one id).
     const explicitIds = new Set(raw
         .map(e => (e && typeof e === 'object' ? scalarText((e as Record<string, unknown>).id) : ''))
         .filter(id => id));
     const usedIds = new Set<string>();
-    raw.forEach((entry, idx) => {
-        if (!entry || typeof entry !== 'object') return;
+    return raw.map((entry, idx) => {
+        if (!entry || typeof entry !== 'object') return '';
         const e = entry as Record<string, unknown>;
-        const acts = parseActList(e.acts);
-        if (acts.length === 0) return;
-        const title = typeof e.title === 'string' && e.title.trim() ? e.title.trim() : `Volume ${idx + 1}`;
+        if (parseActList(e.acts).length === 0) return '';
         let id = scalarText(e.id);
         if (!id) {
             let n = idx + 1;
@@ -81,6 +81,51 @@ export function parseVolumes(raw: unknown): VolumeDef[] {
             id = `v${n}`;
         }
         usedIds.add(id);
+        return id;
+    });
+}
+
+/**
+ * Give every object entry of a raw `volumes:` array that has no `id` the id
+ * it has now (resolveVolumeIds), in place. Entries parseVolumes skips (e.g. a
+ * draft without acts) get a free "v<position>" id as well. Nothing else is
+ * changed. Returns true if an id was added.
+ */
+export function assignMissingVolumeIds(raw: unknown): boolean {
+    if (!Array.isArray(raw)) return false;
+    const resolved = resolveVolumeIds(raw);
+    const taken = new Set(raw
+        .map((e, i) => (e && typeof e === 'object' ? scalarText((e as Record<string, unknown>).id) || resolved[i] : ''))
+        .filter(id => id));
+    let changed = false;
+    raw.forEach((entry, idx) => {
+        if (!entry || typeof entry !== 'object') return;
+        const e = entry as Record<string, unknown>;
+        if (scalarText(e.id)) return;
+        let id = resolved[idx];
+        if (!id) {
+            let n = idx + 1;
+            while (taken.has(`v${n}`)) n++;
+            id = `v${n}`;
+            taken.add(id);
+        }
+        e.id = id;
+        changed = true;
+    });
+    return changed;
+}
+
+/** Parse the raw `volumes:` frontmatter value. Invalid entries are skipped. */
+export function parseVolumes(raw: unknown): VolumeDef[] {
+    if (!Array.isArray(raw)) return [];
+    const volumes: VolumeDef[] = [];
+    const ids = resolveVolumeIds(raw);
+    raw.forEach((entry, idx) => {
+        const id = ids[idx];
+        if (!id) return;
+        const e = entry as Record<string, unknown>;
+        const acts = parseActList(e.acts);
+        const title = typeof e.title === 'string' && e.title.trim() ? e.title.trim() : `Volume ${idx + 1}`;
         const goal = Number(e.wordGoal);
         const deadline = e.deadline instanceof Date
             ? e.deadline.toISOString().slice(0, 10)
