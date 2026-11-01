@@ -1,5 +1,6 @@
  
 import { Scene, SceneFilter, SortConfig, getStatusOrder } from '../models/Scene';
+import { sceneHasAnyCharacter } from '../utils/sceneCharacters';
 import { compareActChapter, getActDisplayLabel } from '../utils/actChapter';
 import { parseSceneLocations } from './MetadataParser';
 
@@ -372,7 +373,8 @@ export class SceneQueryService {
             return false;
         }
         if (filter.characters?.length) {
-            if (!scene.characters || !filter.characters.some(c => scene.characters!.includes(c))) {
+            // fork: the POV character counts as a character of the scene
+            if (!sceneHasAnyCharacter(scene, filter.characters)) {
                 return false;
             }
         }

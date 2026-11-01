@@ -2,6 +2,31 @@
 
 Changes of this fork compared to the original StoryLine plugin by Jan Sandström. Each `## <version>` section is used as the initial text of the matching GitHub release; texts edited on GitHub (e.g. with screenshots) are never overwritten. Every release also carries `storyline-km-source.zip` (all source files that are new or changed compared to the original, without `main.js`) and `storyline-km.patch` (the full diff against the original).
 
+## 1.12.0-km.10
+
+**The POV character counts as a character of the scene everywhere**
+
+Character View, Statistics, the Validator and the scene cards already treated the POV character as part of the scene. Two places did not, so a POV character had to be entered a second time under Characters:
+
+- **Character filter** (filter panel in Board, Manuscript, Plot Grid): filtering by a character now also finds the scenes where that character is only the POV.
+- **Timeline swimlanes "By Character":** a scene now also appears in the lane of its POV character.
+
+Names are compared without `[[ ]]`, alias and case, so `Yasemin` and `[[Yasemin]]` match. A character listed both as POV and under Characters is counted once.
+
+<!-- screenshot: Timeline swimlanes by character with a POV-only scene -->
+
+**How and where to use:**
+
+1. Give a scene a POV character (Inspector → **POV**); no need to add the same character under **Characters**.
+2. **Board / Manuscript / Plot Grid → filter panel → Characters:** choose the character; its POV scenes are included.
+3. **Timeline → swimlanes → Group by Character:** the scene shows up in the POV character's lane.
+
+**Files:**
+
+- `utils/sceneCharacters.ts` (new: characters of a scene incl. POV, name comparison)
+- `services/SceneQueryService.ts` (+2: character filter uses it)
+- `views/TimelineView.ts` (+2: swimlanes by character use it)
+
 ## 1.12.0-km.9
 
 **Off page plotlines in the Plotlines list, Timeline swimlanes and Plot Grid**

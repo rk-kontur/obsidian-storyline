@@ -5,6 +5,7 @@ import { SceneManager } from '../services/SceneManager';
 import { SceneCardComponent } from '../components/SceneCard';
 import { getProjectVolumes, VolumeDividerTracker } from '../utils/volumes';
 import { getOffPageLines, orderByZone } from '../utils/pageZones';
+import { sceneCharacterNames } from '../utils/sceneCharacters';
 import { defaultActForScope, placeInFullList, renderVolumeScopeSelect, scopeActs, scopeFilter } from '../utils/volumeScope';
 import { ArcFilterMode, arcFilterQuery, loadArcFilter, renderArcFilterToggle, renderArcPointBadge, saveArcFilter } from '../components/ArcPointUI';
 import { InspectorComponent } from '../components/Inspector';
@@ -788,7 +789,8 @@ export class TimelineView extends ItemView {
             case 'pov':
                 return [scene.pov || '(no POV)'];
             case 'character':
-                if (scene.characters && scene.characters.length > 0) return this.cleanLaneKeys(scene.characters);
+                // fork: the POV character gets the scene in its lane too
+                if (sceneCharacterNames(scene).length > 0) return this.cleanLaneKeys(sceneCharacterNames(scene));
                 return ['(no character)'];
             case 'location':
                 return parseSceneLocations(scene.location).length > 0
