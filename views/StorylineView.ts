@@ -436,8 +436,13 @@ export class StorylineView extends ItemView {
         const numLanes = plotlineKeys.length;
 
         const hslAdj = getPlotlineHSL(this.plugin.settings);
-        const laneColor = (idx: number, plotline: string): string =>
-            resolveTagColor(plotline, idx, scheme, tagColors, hslAdj);
+        // Colour index comes from ALL tags (sorted), not from the currently
+        // visible lanes, so filtering (e.g. Arc Points) or hiding plotlines
+        // does not shift colours. Matches SceneCard / Plotgrid / Navigator.
+        const allTagsSorted = this.sceneManager.queryService.getAllTags();
+        const stableTagIdx = (tag: string): number => Math.max(0, allTagsSorted.indexOf(tag));
+        const laneColor = (_idx: number, plotline: string): string =>
+            resolveTagColor(plotline, stableTagIdx(plotline), scheme, tagColors, hslAdj);
 
         // ── SVG dimensions ──
         const svgWidth = TRACK_LEFT + numCols * SCENE_SPACING + 60;
@@ -721,8 +726,7 @@ export class StorylineView extends ItemView {
                     let px = x - totalWidth / 2;
 
                     for (const { tag, width } of pillData) {
-                        const pillIdx = plotlineKeys.indexOf(tag);
-                        const pillColor = resolveTagColor(tag, Math.max(0, pillIdx), scheme, tagColors, hslAdj);
+                        const pillColor = resolveTagColor(tag, stableTagIdx(tag), scheme, tagColors, hslAdj);
                         const rect = activeDocument.createElementNS(svgNS, 'rect');
                         rect.setAttribute('x', String(px));
                         rect.setAttribute('y', String(pillY - 8));
@@ -775,10 +779,8 @@ export class StorylineView extends ItemView {
         const section = container.createDiv('storyline-section');
         const tagColors = this.plugin.settings.tagColors || {};
         const scheme = this.plugin.settings.colorScheme;
-        const plotlineIdx = allScenes.reduce((tags, s) => {
-            (s.tags || []).forEach(t => { if (!tags.includes(t)) tags.push(t); });
-            return tags;
-        }, [] as string[]).sort().indexOf(plotline);
+        // Stable colour index across all tags (see subway laneColor).
+        const plotlineIdx = this.sceneManager.queryService.getAllTags().indexOf(plotline);
         const plotlineColor = resolveTagColor(plotline, Math.max(0, plotlineIdx), scheme, tagColors, getPlotlineHSL(this.plugin.settings));
 
         // Collapsible header
