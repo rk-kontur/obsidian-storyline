@@ -101,3 +101,8 @@ export function attachZoneMenu(
         menu.showAtMouseEvent(evt);
     });
 }
+
+/** "ON PAGE" / "OFF PAGE" heading between plotline sections (Plotlines list view). */
+export function renderZoneListHeading(parent: HTMLElement, off: boolean): void {
+    parent.createDiv({ cls: `sl-km-zone-list-heading${off ? ' is-off-page' : ''}`, text: off ? 'OFF PAGE' : 'ON PAGE' });
+}

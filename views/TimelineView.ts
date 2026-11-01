@@ -4,6 +4,7 @@ import { enhanceStructureModal } from '../components/StructureModalSections';
 import { SceneManager } from '../services/SceneManager';
 import { SceneCardComponent } from '../components/SceneCard';
 import { getProjectVolumes, VolumeDividerTracker } from '../utils/volumes';
+import { getOffPageLines, orderByZone } from '../utils/pageZones';
 import { defaultActForScope, placeInFullList, renderVolumeScopeSelect, scopeActs, scopeFilter } from '../utils/volumeScope';
 import { ArcFilterMode, arcFilterQuery, loadArcFilter, renderArcFilterToggle, renderArcPointBadge, saveArcFilter } from '../components/ArcPointUI';
 import { InspectorComponent } from '../components/Inspector';
@@ -659,7 +660,10 @@ export class TimelineView extends ItemView {
             const keys = this.getSceneLaneKeys(scene);
             for (const k of keys) laneKeysSet.add(k);
         }
-        const laneKeys = Array.from(laneKeysSet).sort();
+        // fork: when grouped by plotline, off page lanes go last and are tinted
+        const laneOffPage = (this.swimlaneGroupBy === 'plotline' || this.swimlaneGroupBy === 'tag')
+            ? getOffPageLines(this.app, this.sceneManager.activeProject?.filePath) : new Set<string>();
+        const laneKeys = orderByZone(Array.from(laneKeysSet).sort(), laneOffPage).keys;
         if (laneKeys.length === 0) laneKeys.push('(none)');
 
         // 2. Build row definitions — one row per scene in sequence order,
@@ -703,6 +707,7 @@ export class TimelineView extends ItemView {
         // Lane headers
         for (const lane of laneKeys) {
             const header = grid.createDiv('swimlane-lane-header');
+            if (laneOffPage.has(lane)) header.addClass('sl-km-off-page');
             header.textContent = lane;
             header.setAttribute('title', lane);
         }
@@ -764,6 +769,7 @@ export class TimelineView extends ItemView {
             for (let laneIdx = 0; laneIdx < laneKeys.length; laneIdx++) {
                 const lane = laneKeys[laneIdx];
                 const cell = grid.createDiv('swimlane-lane-cell');
+                if (laneOffPage.has(lane)) cell.addClass('sl-km-off-page');
 
                 if (sceneKeySet.has(lane)) {
                     // Multi-value groups (characters / plotlines) render the scene in every matching lane.

@@ -14196,3 +14196,24 @@ body.sl-focus-active-global.sl-focus-dim-text .markdown-source-view.mod-cm6 .cm-
     color: var(--text-faint);
     white-space: nowrap;
 }
+
+/* Fork: off page plotlines in the Plotlines list, Timeline swimlanes and Plot Grid */
+.sl-km-zone-list-heading {
+    margin: 16px 0 6px;
+    font-size: var(--font-ui-smaller);
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    color: var(--text-faint);
+}
+
+.sl-km-zone-list-heading.is-off-page ~ .storyline-section {
+    background: color-mix(in srgb, var(--background-modifier-hover) 60%, transparent);
+}
+
+/* Overlay tint: works on top of inline cell colours */
+.swimlane-lane-header.sl-km-off-page,
+.swimlane-lane-cell.sl-km-off-page,
+.plot-grid-col-header.sl-km-off-page,
+.plot-grid-cell.sl-km-off-page {
+    box-shadow: inset 0 0 0 9999px color-mix(in srgb, var(--background-modifier-hover) 60%, transparent);
+}

@@ -2,6 +2,32 @@
 
 Changes of this fork compared to the original StoryLine plugin by Jan Sandström. Each `## <version>` section is used as the initial text of the matching GitHub release; texts edited on GitHub (e.g. with screenshots) are never overwritten. Every release also carries `storyline-km-source.zip` (all source files that are new or changed compared to the original, without `main.js`) and `storyline-km.patch` (the full diff against the original).
 
+## 1.12.0-km.9
+
+**Off page plotlines in the Plotlines list, Timeline swimlanes and Plot Grid**
+
+- **Plotlines list view:** plotlines are grouped under **ON PAGE** and **OFF PAGE** headings, off page sections lightly tinted, same order as in the Subway map.
+- **Timeline, swimlanes "By Plotline" / "By Tag":** off page lanes come last and are lightly tinted.
+- **Plot Grid:** plotline columns (created by Sync from scenes) of off page lines are lightly tinted. Their position is not changed, so your column layout stays as you arranged it.
+
+<!-- screenshot: Plotlines list with ON PAGE / OFF PAGE headings -->
+<!-- screenshot: Timeline swimlanes with tinted off page lanes -->
+
+**How and where to use:**
+
+1. Mark a plotline as off page: **Plotlines → Subway** → right-click the line name → **Move to off page**.
+2. **Plotlines → list view** (list icon): the line appears under OFF PAGE.
+3. **Timeline → swimlanes → Group by Plotline**: the line's lane is the last one, tinted.
+4. **Plot Grid**: the plotline's column is tinted.
+
+**Files:**
+
+- `utils/pageZones.ts` (list heading)
+- `views/StorylineView.ts` (list view grouping)
+- `views/TimelineView.ts` (swimlane order and tint)
+- `views/PlotgridView.ts` (column tint)
+- `styles.css` (fork section)
+
 ## 1.12.0-km.8
 
 **Subway map: off page band also behind the line names**

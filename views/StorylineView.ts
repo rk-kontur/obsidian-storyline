@@ -2,7 +2,7 @@
 import { ButtonComponent, ItemView, Menu, MenuItem, Modal, Notice, Setting, TFile, TextComponent, WorkspaceLeaf } from 'obsidian';
 import { aliasRealizedColumns, drawRealizedLinks, removeRealizedStations, resolveRealizations, splitRealizedLanes } from '../utils/arcRealization';
 import { renderVolumeScopeSelect, scopeFilter } from '../utils/volumeScope';
-import { attachZoneMenu, drawOffPageBand, getOffPageLines, orderByZone, renderOffPageLabelBand, renderZoneHeader, ZONE_GAP } from '../utils/pageZones';
+import { attachZoneMenu, drawOffPageBand, getOffPageLines, orderByZone, renderOffPageLabelBand, renderZoneHeader, renderZoneListHeading, ZONE_GAP } from '../utils/pageZones';
 import { drawSubwayVolumeMarker, getProjectVolumes, getVolumeForAct, VolumeDividerTracker } from '../utils/volumes';
 import * as obsidian from 'obsidian';
 import { Scene } from '../models/Scene';
@@ -338,11 +338,15 @@ export class StorylineView extends ItemView {
             helpSpan.appendText(' delete. Click any scene to assign/remove it from plotlines.');
         }
 
-        // Render each plotline
-        for (const plotline of plotlineKeys) {
+        // Render each plotline (fork: on page first, off page below with headings)
+        const listOffPage = getOffPageLines(this.app, this.sceneManager.activeProject?.filePath);
+        const listZoned = orderByZone(plotlineKeys, listOffPage);
+        listZoned.keys.forEach((plotline, i) => {
+            if (listZoned.split >= 0 && i === 0 && listZoned.split > 0) renderZoneListHeading(content, false);
+            if (i === listZoned.split) renderZoneListHeading(content, true);
             const plotScenes = plotlines.get(plotline) || [];
             this.renderPlotline(content, plotline, plotScenes, scenes);
-        }
+        });
 
         // Unassigned scenes
         const unassigned = scenes.filter(s => !s.tags || s.tags.length === 0);

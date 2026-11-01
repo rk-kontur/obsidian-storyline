@@ -5,6 +5,7 @@ import { CellData, ColumnMeta, RowMeta, PlotGridData } from '../models/PlotGridD
 import { renderArcPointIcon } from '../components/ArcPointUI';
 import { getProjectVolumes, VolumeDividerTracker } from '../utils/volumes';
 import { scopeFilter } from '../utils/volumeScope';
+import { getOffPageLines } from '../utils/pageZones';
 import { columnTemplate, findEmptyAutoColumns, hiddenColumnsWidth, renderHiddenColumnsHint, updateHiddenColumnsHint } from '../utils/plotgridVolume';
 import { LocationManager } from '../services/LocationManager';
 import type { SceneFilter, SortConfig } from '../models/Scene';
@@ -1091,6 +1092,11 @@ export class PlotgridView extends ItemView {
             if (filteredPaths.has(row.sourceId)) visibleRows.add(ri);
         }
 
+        // fork: plotline columns marked off page are tinted
+        const kmOffPage = getOffPageLines(this.app, this.plugin?.sceneManager?.activeProject?.filePath);
+        const kmOffPageCols = new Set<number>();
+        this.data.columns.forEach((c, ci) => { if (c.sourceKind === 'tags' && c.sourceId && kmOffPage.has(c.sourceId)) kmOffPageCols.add(ci); });
+
         // fork: with a volume selected, hide auto columns that are empty in the visible rows
         const kmScoped = scopedFilter !== this.currentFilter;
         this.kmHiddenCols = kmScoped && !this.kmShowEmptyCols ? findEmptyAutoColumns(this.data, visibleRows) : new Set();
@@ -1266,6 +1272,7 @@ export class PlotgridView extends ItemView {
             const col = this.data.columns[ci];
             const el = this.canvasEl.createDiv('plot-grid-col-header');
             if (this.kmHiddenCols.has(ci)) el.addClass('sl-km-col-hidden');
+            if (kmOffPageCols.has(ci)) el.addClass('sl-km-off-page');
             el.setCssStyles({
                 position: (this.data.stickyHeaders === false) ? 'relative' : 'sticky',
                 top: '0',
@@ -1618,6 +1625,7 @@ export class PlotgridView extends ItemView {
 
                 const cellEl = this.canvasEl.createDiv('plot-grid-cell');
                 if (this.kmHiddenCols.has(ci)) cellEl.addClass('sl-km-col-hidden');
+                if (kmOffPageCols.has(ci)) cellEl.addClass('sl-km-off-page');
                 // expose coordinates
                 cellEl.setAttr('data-row', String(ri));
                 cellEl.setAttr('data-col', String(ci));
