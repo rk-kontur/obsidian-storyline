@@ -4,7 +4,7 @@ Changes of this fork compared to the original StoryLine plugin by Jan Sandström
 
 ## 1.12.0-km.3
 
-**Statistics per volume and across all volumes**
+**Statistics per volume and across all volumes, volume filter in the filter bar, Plot Grid hides empty plotlines, fixes**
 
 The Statistics view now follows the shared volume selector (same dropdown as in the other views). Every section counts either one volume or the whole series.
 
@@ -32,6 +32,35 @@ The Statistics view now follows the shared volume selector (same dropdown as in 
 
 - **Writing Sprint, Writing History, Writing Trail and the pace projection** are based on the words you write per day. StoryLine records them per project, not per scene or volume, so they cannot be split by volume.
 
+### Volume selector in the filter bar
+
+- In **Board**, **Manuscript** and **Plot Grid** the volume dropdown now sits at the very left of the filter bar: **Filter by [Volume ▾]**, then **Search scenes…** and the other filter controls. (Before, it was in the toolbar; in Manuscript it did not appear at all.)
+- Timeline, Plotlines (Subway), Navigator and Statistics have no filter bar; there the dropdown stays in the toolbar.
+- The selection is now stored **per project**. Switching to another book of a series no longer carries the selected volume over.
+
+### Plot Grid: empty plotlines are hidden automatically
+
+- While a volume is selected, plotline columns (and other columns created by **Sync from scenes**) that have no content and no linked scene in that volume are hidden, just like the Subway map only shows lines that are active in the volume.
+- Columns you created by hand always stay visible.
+- On the right of the filter bar: **"3 empty plotlines hidden · show"**. Click to show them for this session, click **Hide empty plotlines** to hide them again.
+- With **All volumes** every column is shown. Nothing is deleted; hidden columns keep their cells.
+
+### Fixes
+
+- **Corkboard / Kanban:** sticky notes, image notes and scenes without an act no longer disappear while a volume is selected.
+- **Plot Grid:** rows were shifted by one track as soon as `volumes:` was defined (wrong row heights, row resize on the wrong row). Fixed.
+- **Timeline, chronological order:** dragging a scene while a volume (or the Arc Point filter) was active renumbered only the visible scenes and could mix up the chronological order of the whole project. The order is now always renumbered across all scenes.
+- **Timeline:** empty act placeholders of other volumes are no longer shown while a volume is selected.
+- **New scenes** created while a volume is selected start in the first act of that volume (Board and Timeline "+ new scene"), so they do not vanish right after creation.
+- **Statistics, one volume selected:** setups/payoffs that cross a volume border were reported as "doesn't exist" in Warnings and as broken in the Setup & Payoff Map. Linked scenes of other volumes are now taken into account.
+- **Statistics:** Writing Sprint always uses the project word total, so session words are correct while a volume is selected.
+- **Subway:** a realized Arc Point that shares a plotline with its scene no longer hides that scene's station on the shared line.
+- **Export:** a volume export is named "… Acts 5,6,7,8" instead of "… Chapters 5,6,7,8".
+- **Manage volumes command:** works even if the Board tab has not been loaded yet.
+- **Volumes editor:** sees acts added in the same dialog (beat sheet, Add acts).
+
+<!-- screenshot: filter bar with "Filter by" volume dropdown -->
+<!-- screenshot: Plot Grid with hidden empty plotlines hint -->
 <!-- screenshot: Statistics with "Volume 2 statistics" heading and the volumes table with the All volumes row -->
 
 **How and where to use:**
@@ -39,11 +68,25 @@ The Statistics view now follows the shared volume selector (same dropdown as in 
 1. Open the **Statistics** view.
 2. Choose a volume in the volume dropdown in the toolbar (or in any other view; the selection is shared).
 3. All sections update to that volume. Choose **All volumes** for the whole series.
+5. **Filter bar:** in Board, Manuscript or Plot Grid, use **Filter by [Volume ▾]** at the left of the filter bar.
+6. **Plot Grid:** select a volume; empty plotline columns disappear. Use the hint on the right of the filter bar to show them.
 4. Set word goals and deadlines per volume in **Manage story structure → Volumes** (or **Edit volumes** in the Volumes table).
 
 **Files:**
 
-- `utils/volumeStatsScope.ts` (new: goal and deadline per volume / all volumes, heading)
+- `utils/volumeStatsScope.ts` (new: goal and deadline per volume / all volumes, heading, link partners, validation)
+- `utils/plotgridVolume.ts` (new: hide empty auto columns)
+- `utils/volumeScope.ts` (per-project selection, act-less scenes kept, default act, filter bar control, reorder helper)
+- `utils/arcRealization.ts` (shared lane fix)
+- `components/Filters.ts` (+5: volume control at the left, extra controls at the right)
+- `components/StructureModalSections.ts`, `components/VolumesEditor.ts` (live act list)
+- `views/PlotgridView.ts` (hidden columns, hint, volume band track)
+- `views/TimelineView.ts` (chronological renumber, empty acts, default act)
+- `views/BoardView.ts` (dropdown moved to filter bar, default act)
+- `views/ManuscriptView.ts` (dropdown moved to filter bar)
+- `views/StorylineView.ts` (+1: deduplicate columns)
+- `services/ExportService.ts` (+1: "Acts" label)
+- `services/ForkCommands.ts` (load deferred tab)
 - `components/VolumeStatsSection.ts` (All volumes row, highlight)
 - `views/StatsView.ts` (volume dropdown, scoped scenes and statistics, goal, deadline, tension curve, Pacing Coach, read time)
 - `services/SceneQueryService.ts` (+2: `getStatistics` accepts an optional scene subset)

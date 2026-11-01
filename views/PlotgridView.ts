@@ -4,7 +4,8 @@ import * as obsidian from 'obsidian';
 import { CellData, ColumnMeta, RowMeta, PlotGridData } from '../models/PlotGridData';
 import { renderArcPointIcon } from '../components/ArcPointUI';
 import { getProjectVolumes, VolumeDividerTracker } from '../utils/volumes';
-import { renderVolumeScopeSelect, scopeFilter } from '../utils/volumeScope';
+import { scopeFilter } from '../utils/volumeScope';
+import { columnTemplate, findEmptyAutoColumns, hiddenColumnsWidth, renderHiddenColumnsHint, updateHiddenColumnsHint } from '../utils/plotgridVolume';
 import { LocationManager } from '../services/LocationManager';
 import type { SceneFilter, SortConfig } from '../models/Scene';
 import { SceneManager } from '../services/SceneManager';
@@ -51,6 +52,10 @@ export class PlotgridView extends ItemView {
     private wrapperEl: HTMLDivElement | null = null;
     private scrollAreaEl: HTMLDivElement | null = null;
     private canvasEl: HTMLDivElement | null = null;
+    /** fork: hidden empty auto columns while a volume is selected */
+    private kmHiddenCols: Set<number> = new Set();
+    private kmShowEmptyCols = false;
+    private kmHiddenColsHint: HTMLElement | null = null;
     private selectedRow: number | null = null;
     private selectedCol: number | null = null;
     private inspectorComponent: InspectorComponent | null = null;
@@ -520,6 +525,10 @@ export class PlotgridView extends ItemView {
                 },
                 this.plugin
             );
+            // fork: hint "N empty plotlines hidden · show" at the right of the filter bar
+            this.filtersComponent.extraBarRight = (bar) => {
+                this.kmHiddenColsHint = renderHiddenColumnsHint(bar, () => { this.kmShowEmptyCols = !this.kmShowEmptyCols; this.renderGrid(); });
+            };
             this.filtersComponent.render();
         }
 
@@ -583,7 +592,6 @@ export class PlotgridView extends ItemView {
         // add a small left margin so there's a bit more space between the view switcher and action buttons
         controls.setCssStyles({ marginLeft: '24px' });
 
-        if (this.plugin) renderVolumeScopeSelect(controls, this.plugin); // fork: shared volume scope
         const left = controls.createDiv('plot-grid-toolbar-left');
         left.setCssStyles({
             display: 'flex',
@@ -1083,6 +1091,12 @@ export class PlotgridView extends ItemView {
             if (filteredPaths.has(row.sourceId)) visibleRows.add(ri);
         }
 
+        // fork: with a volume selected, hide auto columns that are empty in the visible rows
+        const kmScoped = scopedFilter !== this.currentFilter;
+        this.kmHiddenCols = kmScoped && !this.kmShowEmptyCols ? findEmptyAutoColumns(this.data, visibleRows) : new Set();
+        updateHiddenColumnsHint(this.kmHiddenColsHint, this.kmHiddenCols.size, this.kmShowEmptyCols, kmScoped);
+        if (this.kmHiddenCols.size > 0) colTemplate = columnTemplate(this.getLabelColumnWidth(), this.data, this.kmHiddenCols);
+
         // ── Build act/chapter divider positions (visible rows only) ──
         const dividersBefore = new Map<number, Array<{type: 'act'|'chapter', label: string, key: string}>>();
         {
@@ -1147,11 +1161,17 @@ export class PlotgridView extends ItemView {
         const rowHeightParts: string[] = [];
         this.renderedRowTrackIndices.clear();
         let gridTrackIndex = 1;
+        const volumeTrackTracker = new VolumeDividerTracker(getProjectVolumes(this.app, this.plugin?.sceneManager?.activeProject?.filePath));
         for (const ri of rowIndices) {
             if (!visibleRows.has(ri)) continue;
             const divs = dividersBefore.get(ri);
             if (divs) {
                 for (const d of divs) {
+                    // fork: the volume band rendered before this act divider needs its own track
+                    if (d.type === 'act' && volumeTrackTracker.next(d.key.slice(4))) {
+                        rowHeightParts.push('34px');
+                        gridTrackIndex++;
+                    }
                     rowHeightParts.push(d.type === 'act' ? '32px' : '26px');
                     gridTrackIndex++;
                 }
@@ -1175,7 +1195,7 @@ export class PlotgridView extends ItemView {
         });
         // If there are no columns, allow the canvas to stretch to the container width.
         if (this.data.columns.length === 0) this.canvasEl.setCssStyles({ width: '100%' });
-        else this.canvasEl.setCssStyles({ width: this.computeTotalWidth() + 'px' });
+        else this.canvasEl.setCssStyles({ width: (this.computeTotalWidth() - hiddenColumnsWidth(this.data, this.kmHiddenCols)) + 'px' });
 
         const corner = this.canvasEl.createDiv('plot-grid-corner');
         corner.setAttr('data-type', 'corner');
@@ -1245,6 +1265,7 @@ export class PlotgridView extends ItemView {
         for (let ci = 0; ci < this.data.columns.length; ci++) {
             const col = this.data.columns[ci];
             const el = this.canvasEl.createDiv('plot-grid-col-header');
+            if (this.kmHiddenCols.has(ci)) el.addClass('sl-km-col-hidden');
             el.setCssStyles({
                 position: (this.data.stickyHeaders === false) ? 'relative' : 'sticky',
                 top: '0',
@@ -1596,6 +1617,7 @@ export class PlotgridView extends ItemView {
                 if (!cell.align) cell.align = 'center';
 
                 const cellEl = this.canvasEl.createDiv('plot-grid-cell');
+                if (this.kmHiddenCols.has(ci)) cellEl.addClass('sl-km-col-hidden');
                 // expose coordinates
                 cellEl.setAttr('data-row', String(ri));
                 cellEl.setAttr('data-col', String(ci));

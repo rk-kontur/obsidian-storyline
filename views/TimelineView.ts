@@ -4,7 +4,7 @@ import { enhanceStructureModal } from '../components/StructureModalSections';
 import { SceneManager } from '../services/SceneManager';
 import { SceneCardComponent } from '../components/SceneCard';
 import { getProjectVolumes, VolumeDividerTracker } from '../utils/volumes';
-import { renderVolumeScopeSelect, scopeFilter } from '../utils/volumeScope';
+import { defaultActForScope, placeInFullList, renderVolumeScopeSelect, scopeActs, scopeFilter } from '../utils/volumeScope';
 import { ArcFilterMode, arcFilterQuery, loadArcFilter, renderArcFilterToggle, renderArcPointBadge, saveArcFilter } from '../components/ArcPointUI';
 import { InspectorComponent } from '../components/Inspector';
 import { QuickAddModal } from '../components/QuickAddModal';
@@ -335,7 +335,7 @@ export class TimelineView extends ItemView {
         });
 
         // Also get defined acts so we can show empty act dividers
-        const definedActs = this.sceneManager.getDefinedActs();
+        const definedActs = scopeActs(this.app, this.sceneManager.activeProject?.filePath, this.sceneManager.getDefinedActs()); // fork: volume scope
         const actsWithScenes = new Set<number>();
         for (const s of scenes) {
             if (s.act !== undefined) actsWithScenes.add(Number(s.act));
@@ -415,9 +415,15 @@ export class TimelineView extends ItemView {
 
             if (this.timelineOrder === 'chronological') {
                 // Chronological order is a single global counter — flat 1..N is correct.
-                for (let i = 0; i < scenes.length; i++) {
+                // fork: `scenes` may be scoped (volume / Arc Point filter); renumber the FULL list.
+                const full = placeInFullList(
+                    this.sceneManager.queryService.getFilteredScenes(undefined, { field: 'chronologicalOrder', direction: 'asc' })
+                        .filter(sc => !this.isNoteScene(sc)),
+                    moved, scenes[insertAt - 1], scenes[insertAt + 1],
+                );
+                for (let i = 0; i < full.length; i++) {
                     await this.sceneManager.updateScene(
-                        scenes[i].filePath,
+                        full[i].filePath,
                         { chronologicalOrder: i + 1 } as Partial<Scene>,
                     );
                 }
@@ -1297,6 +1303,8 @@ export class TimelineView extends ItemView {
      * Open the Quick Add modal, optionally pre-setting the act
      */
     private openQuickAdd(presetAct?: number): void {
+        // fork: while a volume is selected, new scenes start in its first act
+        presetAct = presetAct ?? defaultActForScope(this.app, this.sceneManager.activeProject?.filePath);
         const modal = new QuickAddModal(
             this.app,
             this.plugin,
@@ -1692,7 +1700,7 @@ export class TimelineView extends ItemView {
         });
 
         // Fork: regroup into collapsible sections (Volumes, Acts, Chapters, Templates)
-        enhanceStructureModal(modal, { app: this.app, projectFilePath: this.sceneManager.activeProject?.filePath, definedActs: this.sceneManager.getDefinedActs() });
+        enhanceStructureModal(modal, { app: this.app, projectFilePath: this.sceneManager.activeProject?.filePath, getDefinedActs: () => this.sceneManager.getDefinedActs() });
         modal.open();
     }
 

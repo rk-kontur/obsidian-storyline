@@ -4,7 +4,7 @@ import { renderVolumeStatsSection } from '../components/VolumeStatsSection';
 import { getProjectVolumes } from '../utils/volumes';
 import { openStructureDialog } from '../services/ForkCommands';
 import { getVolumeScope, inVolumeScope, renderVolumeScopeSelect, scopeFilter } from '../utils/volumeScope';
-import { getStatsScope, scopedDeadline, scopedWordGoal, statsHeading } from '../utils/volumeStatsScope';
+import { getStatsScope, scopedDeadline, scopedWordGoal, statsHeading, validateForScope, withLinkPartners } from '../utils/volumeStatsScope';
 import { renderViewSwitcher } from '../components/ViewSwitcher';
 import * as obsidian from 'obsidian';
 import type SceneCardsPlugin from '../main';
@@ -110,22 +110,29 @@ export class StatsView extends ItemView {
         const projectPath = this.sceneManager.activeProject?.filePath;
         const projectScenes = this.sceneManager.getAllScenes()
             .filter(scene => !scene.inactive && !scene.corkboardNote);
-        const allScenes = projectScenes.filter(scene => inVolumeScope(this.app, projectPath, scene));
+        const allScenes = projectScenes.filter(scene => inVolumeScope(this.app, projectPath, scene, false));
+        const isScoped = allScenes.length !== projectScenes.length;
         const stats = this.sceneManager.queryService.getStatistics(this.plugin.settings.excludeArcAnchorFromWordcount ?? true,
-            allScenes.length !== projectScenes.length ? allScenes : undefined);
+            isScoped ? allScenes : undefined);
+        // Writing sessions are tracked per project: always feed them the project total
+        const projectTotalWords = isScoped
+            ? this.sceneManager.queryService.getStatistics(this.plugin.settings.excludeArcAnchorFromWordcount ?? true).totalWords
+            : stats.totalWords;
+        // Setup/payoff across volume borders: include linked scenes of other volumes
+        const linkScenes = withLinkPartners(allScenes, projectScenes);
 
         // Per-volume statistics and goals (fork) — only when `volumes:` is defined
         renderVolumeStatsSection(content, getProjectVolumes(this.app, projectPath),
             projectScenes, this.plugin.settings.excludeArcAnchorFromWordcount ?? true,
             (scene) => { const f = this.app.vault.getFileByPath(scene.filePath); if (f) void this.app.workspace.getLeaf('tab').openFile(f); },
             () => { void openStructureDialog(this.plugin, 'volumes'); },
-            getVolumeScope(this.app));
+            getVolumeScope(this.app, projectPath));
 
         if (redesigned) {
             // Section order, icons, and default open states follow Scribe's
             // redesigned Statistics view so both apps stay interchangeable.
             this.renderOverview(content, stats);
-            this.renderWritingSprint(content, stats.totalWords);
+            this.renderWritingSprint(content, projectTotalWords);
 
             this.renderCollapsible(content, 'target', 'Progress Breakdown', true, body =>
                 this.renderProgressBreakdown(body, stats, allScenes));
@@ -152,7 +159,7 @@ export class StatsView extends ItemView {
                 this.renderDialogueRatio(body, allScenes));
 
             this.renderCollapsible(content, 'link-2', 'Setup & Payoff Map', false, body =>
-                this.renderSetupPayoffMap(body, allScenes));
+                this.renderSetupPayoffMap(body, linkScenes));
 
             this.renderCollapsible(content, 'search', 'Echo Finder', false, body =>
                 this.renderEchoFinderPlaceholder(body, allScenes));
@@ -172,7 +179,7 @@ export class StatsView extends ItemView {
         this.renderOverview(content, stats);
 
         // 2. Writing Sprint (always open)
-        this.renderWritingSprint(content, stats.totalWords);
+        this.renderWritingSprint(content, projectTotalWords);
 
         // 3. Writing History (collapsible, default open)
         this.renderCollapsible(content, 'calendar', 'Writing History', true, body =>
@@ -191,7 +198,7 @@ export class StatsView extends ItemView {
 
         // 5b. Setup & Payoff Map (collapsible, default collapsed)
         this.renderCollapsible(content, 'link', 'Setup & Payoff Map', false, body =>
-            this.renderSetupPayoffMap(body, allScenes));
+            this.renderSetupPayoffMap(body, linkScenes));
 
         // 6. Pacing & Tension (collapsible, default collapsed)
         this.renderCollapsible(content, 'activity', 'Pacing & Tension', false, body =>
@@ -2239,7 +2246,8 @@ export class StatsView extends ItemView {
 
     private renderWarnings(parent: HTMLElement, allScenes: Scene[]): void {
         if (this.plugin.settings.enablePlotHoleDetection && allScenes.length > 0) {
-            const warnings = Validator.validate(allScenes);
+            // fork: with a volume selected, validate with cross-volume link partners
+            const warnings = validateForScope(allScenes, this.sceneManager.getAllScenes().filter(sc => !sc.inactive && !sc.corkboardNote));
             if (warnings.length === 0) {
                 const ok = parent.createDiv('stats-ok');
                 const ic = ok.createSpan();

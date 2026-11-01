@@ -69,7 +69,7 @@ export function renderVolumesEditor(
     container: HTMLElement,
     app: App,
     projectFilePath: string | undefined,
-    definedActs: number[],
+    getDefinedActs: () => number[],
 ): void {
     container.empty();
     container.addClass('sl-km-volumes-editor');
@@ -152,7 +152,7 @@ export function renderVolumesEditor(
 
         // Defined acts not covered by any volume
         const covered = new Set(volumes.flatMap(v => v.acts));
-        const free = definedActs.filter(a => !covered.has(a) && a !== 0 && a !== 99);
+        const free = getDefinedActs().filter(a => !covered.has(a) && a !== 0 && a !== 99);
         if (volumes.length > 0 && free.length > 0) {
             warn.createDiv({ cls: 'sl-km-muted', text: `Acts without volume: ${free.join(', ')}` });
         }
@@ -163,7 +163,7 @@ export function renderVolumesEditor(
     addBtn.addEventListener('click', () => {
         const used = volumes.flatMap(v => v.acts);
         const lastSize = volumes.length ? volumes[volumes.length - 1].acts.length : 4;
-        const start = used.length ? Math.max(...used) + 1 : (definedActs.filter(a => a > 0 && a !== 99)[0] ?? 1);
+        const start = used.length ? Math.max(...used) + 1 : (getDefinedActs().filter(a => a > 0 && a !== 99)[0] ?? 1);
         const ids = new Set(volumes.map(v => v.id));
         let n = volumes.length + 1;
         while (ids.has(`v${n}`)) n++;

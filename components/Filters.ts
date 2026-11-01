@@ -8,6 +8,7 @@ import { getStatusOrder } from '../models/Scene';
 import { getActDisplayLabel } from '../utils/actChapter';
 import { renderVolumeFilterChips } from './VolumeFilterChips';
 import { getProjectVolumes } from '../utils/volumes';
+import { renderVolumeFilterBarStart } from '../utils/volumeScope';
 
 type FocusModeCallback = (active: boolean) => void;
 
@@ -30,6 +31,8 @@ export class FiltersComponent {
     private container: HTMLElement;
     private sceneManager: SceneManager;
     private plugin: SceneCardsPlugin | null;
+    /** fork: lets a view add controls at the right end of the filter bar */
+    extraBarRight?: (bar: HTMLElement) => void;
     private currentFilter: SceneFilter = {};
     private currentSort: SortConfig = { field: 'sequence', direction: 'asc' };
     private onChange: (filter: SceneFilter, sort: SortConfig) => void;
@@ -158,6 +161,10 @@ export class FiltersComponent {
                 this.emitChange();
             });
         }
+
+        // fork: "Filter by [Volume]" at the far left; optional extra controls at the far right
+        if (this.plugin) renderVolumeFilterBarStart(topBar, this.plugin);
+        this.extraBarRight?.(topBar);
 
         // Filter toggle button (Lucide icon)
         const toggleBtn = topBar.createEl('button', {

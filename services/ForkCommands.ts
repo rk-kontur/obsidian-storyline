@@ -24,6 +24,7 @@ export async function openStructureDialog(plugin: SceneCardsPlugin, section?: St
         await plugin.activateView(BOARD_VIEW_TYPE);
         leaf = find();
     }
+    if (leaf) await leaf.loadIfDeferred(); // deferred tabs have no real view yet
     const view = leaf?.view as unknown as Partial<HasStructureModal> | undefined;
     if (view && typeof view.openStructureModal === 'function') view.openStructureModal();
 }

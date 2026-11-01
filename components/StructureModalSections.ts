@@ -49,7 +49,8 @@ export function setNextStructureSection(app: App, section: StructureSection): vo
 export interface StructureModalContext {
     app: App;
     projectFilePath: string | undefined;
-    definedActs: number[];
+    /** Getter, so acts added in the same dialog (beat sheet, Add acts) are seen. */
+    getDefinedActs: () => number[];
 }
 
 export function enhanceStructureModal(modal: Modal, ctx: StructureModalContext): void {
@@ -114,7 +115,7 @@ export function enhanceStructureModal(modal: Modal, ctx: StructureModalContext):
         }
         g.heading.remove();
     }
-    renderVolumesEditor(bodies.get('volumes')!, ctx.app, ctx.projectFilePath, ctx.definedActs);
+    renderVolumesEditor(bodies.get('volumes')!, ctx.app, ctx.projectFilePath, ctx.getDefinedActs);
 
     content.empty();
     preamble.forEach(n => content.appendChild(n));

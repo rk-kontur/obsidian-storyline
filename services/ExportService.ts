@@ -179,7 +179,7 @@ export class ExportService {
         const rangeText = this.exportRange.sequenceRanges
             .map(range => range.start === range.end ? String(range.start) : `${range.start}-${range.end}`)
             .join(',');
-        const rangeLabel = this.exportRange.field === 'sequence' ? 'Scenes' : 'Chapters';
+        const rangeLabel = this.exportRange.field === 'sequence' ? 'Scenes' : this.exportRange.field === 'act' ? 'Acts' : 'Chapters';
         return `${base} - ${rangeLabel} ${rangeText}`;
     }
 

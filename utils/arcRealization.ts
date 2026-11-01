@@ -100,7 +100,11 @@ export function aliasRealizedColumns(
         const col = colOf.get(target.filePath);
         if (col === undefined) continue;
         colOf.set(arcPath, col);
-        for (const tag of arc.tags ?? []) laneScene.set(`${tag}|${col}`, arc);
+        // On a lane the target scene also sits on, the scene's node wins (no diamond over it)
+        for (const tag of arc.tags ?? []) {
+            if (target.tags?.includes(tag)) continue;
+            laneScene.set(`${tag}|${col}`, arc);
+        }
     }
     return laneScene;
 }

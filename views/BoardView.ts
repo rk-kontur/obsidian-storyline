@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-floating-promises, @typescript-eslint/no-misused-promises, @typescript-eslint/no-unnecessary-type-assertion -- Obsidian's API surface and several untyped third-party libraries force dynamic dispatch; floating promises are intentional in DOM/event handlers; matching enable at end of file */
 import { ItemView, WorkspaceLeaf, Menu, Notice, TFile, Modal, Setting, MarkdownRenderer, normalizePath } from 'obsidian';
 import { enhanceStructureModal } from '../components/StructureModalSections';
-import { renderVolumeScopeSelect, scopeActs, scopeFilter } from '../utils/volumeScope';
+import { defaultActForScope, scopeActs, scopeFilter } from '../utils/volumeScope';
 import { actFromColumnKey, getProjectVolumes, renderVolumeColumnDivider, VolumeDividerTracker } from '../utils/volumes';
 import * as obsidian from 'obsidian';
 import { Scene, SceneFilter, SortConfig, BoardGroupBy, SceneStatus, SceneTemplate, BeatSheetTemplate, BUILTIN_BEAT_SHEETS, getStatusOrder, getStatusConfig, resolveStatusCfg } from '../models/Scene';
@@ -252,7 +252,6 @@ export class BoardView extends ItemView {
         renderViewSwitcher(toolbar, BOARD_VIEW_TYPE, this.plugin, this.leaf);
 
         const controls = toolbar.createDiv('story-line-toolbar-controls');
-        renderVolumeScopeSelect(controls, this.plugin); // fork: shared volume scope
 
         const modeToggle = controls.createDiv('story-line-board-mode-toggle');
         const corkboardBtn = modeToggle.createEl('button', {
@@ -3840,7 +3839,7 @@ export class BoardView extends ItemView {
         });
 
         // Fork: regroup into collapsible sections (Volumes, Acts, Chapters, Templates)
-        enhanceStructureModal(modal, { app: this.app, projectFilePath: this.sceneManager.activeProject?.filePath, definedActs: this.sceneManager.getDefinedActs() });
+        enhanceStructureModal(modal, { app: this.app, projectFilePath: this.sceneManager.activeProject?.filePath, getDefinedActs: () => this.sceneManager.getDefinedActs() });
         modal.open();
 
         // Issue #214 — on iOS/iPadOS the modal opens scrolled past the top,
@@ -3879,6 +3878,9 @@ export class BoardView extends ItemView {
     private openQuickAdd(presetColumn?: string): void {
         // Build defaults based on groupBy and column title
         const defaults: Partial<Scene> = {};
+        // fork: while a volume is selected, new scenes start in its first act (else they would be hidden)
+        const scopedAct = defaultActForScope(this.app, this.sceneManager.activeProject?.filePath);
+        if (scopedAct !== undefined) defaults.act = scopedAct;
         if (presetColumn) {
             if (this.groupBy === 'act') {
                 // Accept any value after "Act " (numeric, decimal, or string)

@@ -14,6 +14,9 @@
 import type { App } from 'obsidian';
 import { getProjectVolumes, type VolumeDef } from './volumes';
 import { getScopedVolume } from './volumeScope';
+import type { Scene } from '../models/Scene';
+import { Validator } from '../services/Validator';
+import type { PlotWarning } from '../services/Validator';
 
 export interface StatsScope {
     volumes: VolumeDef[];
@@ -66,4 +69,39 @@ export function scopedDeadline<T extends { deadline: string | null | undefined }
         if (latest) return { ...project, deadline: latest };
     }
     return project;
+}
+
+/**
+ * Scoped scenes plus the scenes they are linked to by setup/payoff (from any
+ * volume). Used for the Setup & Payoff map and the Validator so links that
+ * cross volume borders are not reported as missing.
+ */
+export function withLinkPartners(scoped: Scene[], project: Scene[]): Scene[] {
+    if (scoped.length === project.length) return scoped;
+    const inScope = new Set(scoped.map(s => s.filePath));
+    const byTitle = new Map(project.map(s => [s.title, s]));
+    const extra = new Map<string, Scene>();
+    const add = (title: string) => {
+        const t = byTitle.get(String(title).replace(/^\[\[|\]\]$/g, '').split('|')[0]);
+        if (t && !inScope.has(t.filePath)) extra.set(t.filePath, t);
+    };
+    for (const s of scoped) {
+        (s.setup_scenes ?? []).forEach(add);
+        (s.payoff_scenes ?? []).forEach(add);
+    }
+    // Scenes of other volumes that point INTO the scope
+    for (const s of project) {
+        if (inScope.has(s.filePath)) continue;
+        const links = [...(s.setup_scenes ?? []), ...(s.payoff_scenes ?? [])].map(String);
+        if (scoped.some(sc => links.includes(sc.title))) extra.set(s.filePath, s);
+    }
+    return [...scoped, ...extra.values()];
+}
+
+/** Validator warnings for the scope, computed with cross-volume link partners. */
+export function validateForScope(scoped: Scene[], project: Scene[]): PlotWarning[] {
+    if (scoped.length === project.length) return Validator.validate(scoped);
+    const inScope = new Set(scoped.map(s => s.filePath));
+    return Validator.validate(withLinkPartners(scoped, project))
+        .filter(w => (w.scenePaths ?? []).some(p => inScope.has(p)));
 }

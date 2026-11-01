@@ -14090,3 +14090,34 @@ body.sl-focus-active-global.sl-focus-dim-text .markdown-source-view.mod-cm6 .cm-
 .sl-km-volume-stats-table tr.is-selected td {
     background: var(--background-modifier-hover);
 }
+
+/* Fork: "Filter by [Volume]" in the filter bar, Plot Grid hidden empty columns */
+.sl-km-filter-by {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex: 0 0 auto;
+    margin-right: 8px;
+}
+
+.sl-km-filter-by-label {
+    color: var(--text-muted);
+    font-size: var(--font-ui-small);
+    white-space: nowrap;
+}
+
+.sl-km-hidden-cols-hint {
+    margin-left: auto;
+    padding: 2px 8px;
+    font-size: var(--font-ui-smaller);
+    color: var(--text-muted);
+    white-space: nowrap;
+}
+
+.plot-grid-canvas > .sl-km-col-hidden {
+    visibility: hidden;
+    overflow: hidden;
+    padding: 0 !important;
+    border: none !important;
+    min-width: 0 !important;
+}

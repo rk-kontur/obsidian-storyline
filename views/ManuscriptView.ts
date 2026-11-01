@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-floating-promises, @typescript-eslint/no-misused-promises, @typescript-eslint/no-unnecessary-type-assertion, @typescript-eslint/no-unused-vars -- Obsidian's API surface and several untyped third-party libraries force dynamic dispatch; floating promises are intentional in DOM/event handlers; matching enable at end of file */
 import { ItemView, WorkspaceLeaf, WorkspaceSplit, MarkdownRenderer, TFile, setIcon, Notice, Menu } from 'obsidian';
-import { renderVolumeScopeSelect, scopeFilter, volumeScopeKey } from '../utils/volumeScope';
+import { scopeFilter, volumeScopeKey } from '../utils/volumeScope';
 import { getProjectVolumes, VolumeDividerTracker } from '../utils/volumes';
 import { EditorView, Decoration } from '@codemirror/view';
 import { RangeSetBuilder, StateEffect, Compartment, EditorSelection } from '@codemirror/state';
@@ -236,7 +236,6 @@ export class ManuscriptView extends ItemView {
             this.currentFilter,
             this.currentSort,
         );
-        renderVolumeScopeSelect(filterContainer, this.plugin); // fork: shared volume scope
         this.filtersComponent.render();
 
         // Plain-text toggle (same style as Board view's Scenes on/off)
@@ -361,7 +360,7 @@ export class ManuscriptView extends ItemView {
 
     /** Build a cache key from the current filter + sort configuration */
     private computeFilterKey(): string {
-        return JSON.stringify(this.currentFilter) + '|' + JSON.stringify(this.currentSort) + '|' + volumeScopeKey(this.app);
+        return JSON.stringify(this.currentFilter) + '|' + JSON.stringify(this.currentSort) + '|' + volumeScopeKey(this.app, this.sceneManager.activeProject?.filePath);
     }
 
     private scheduleManuscriptViewStateSave(): void {
