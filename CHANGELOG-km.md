@@ -2,6 +2,54 @@
 
 Changes of this fork compared to the original StoryLine plugin by Jan Sandström. Each `## <version>` section is used as the initial text of the matching GitHub release; texts edited on GitHub (e.g. with screenshots) are never overwritten. Every release also carries `storyline-km-source.zip` (all source files that are new or changed compared to the original, without `main.js`) and `storyline-km.patch` (the full diff against the original).
 
+## 1.12.0-km.3
+
+**Statistics per volume and across all volumes**
+
+The Statistics view now follows the shared volume selector (same dropdown as in the other views). Every section counts either one volume or the whole series.
+
+### One volume selected
+
+- Heading: "<Volume> statistics".
+- **All sections count only the acts of that volume:** overview (scenes, words, read time), Progress Breakdown (status, acts), **Characters & World (POV share, characters, locations)**, Pacing & Tension incl. tension curve and Pacing Coach, Prose Analysis, Dialogue vs Narrative, Setup & Payoff Map, Echo Finder, Folder Word Counts, Warnings.
+- **Word goal:** the volume's word goal; if none is set, the sum of the scene targets in that volume; otherwise the project goal from the settings.
+- **Deadline:** the volume's deadline; otherwise the project deadline. Remaining words and words per day are calculated against it.
+
+### All volumes
+
+- Heading: "Project statistics (all volumes)".
+- All sections count the whole project (collected word counts of all volumes), exactly as before.
+- **Word goal:** the sum of all volume word goals that are set; if no volume has a goal, the project goal from the settings.
+- **Deadline:** the project deadline from the settings; if none is set, the latest volume deadline.
+
+### Volumes table
+
+- New last row **All volumes** with the totals: scenes, Arc Points, words, summed word goal, progress, latest deadline, words per day needed.
+- The selected volume (or "All volumes") is highlighted.
+- The table and the "Open setups at end of volume" report always show all volumes, independent of the selection.
+
+### Stays project-wide on purpose
+
+- **Writing Sprint, Writing History, Writing Trail and the pace projection** are based on the words you write per day. StoryLine records them per project, not per scene or volume, so they cannot be split by volume.
+
+<!-- screenshot: Statistics with "Volume 2 statistics" heading and the volumes table with the All volumes row -->
+
+**How and where to use:**
+
+1. Open the **Statistics** view.
+2. Choose a volume in the volume dropdown in the toolbar (or in any other view; the selection is shared).
+3. All sections update to that volume. Choose **All volumes** for the whole series.
+4. Set word goals and deadlines per volume in **Manage story structure → Volumes** (or **Edit volumes** in the Volumes table).
+
+**Files:**
+
+- `utils/volumeStatsScope.ts` (new: goal and deadline per volume / all volumes, heading)
+- `components/VolumeStatsSection.ts` (All volumes row, highlight)
+- `views/StatsView.ts` (volume dropdown, scoped scenes and statistics, goal, deadline, tension curve, Pacing Coach, read time)
+- `services/SceneQueryService.ts` (+2: `getStatistics` accepts an optional scene subset)
+- `styles.css` (fork section)
+- `.github/workflows/release-km.yml` (compare links, delta patch)
+
 ## 1.12.0-km.2
 
 **"Manage story structure": collapsible sections like the plugin settings, wider dialog**

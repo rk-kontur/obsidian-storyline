@@ -3,6 +3,8 @@ import { SceneManager } from '../services/SceneManager';
 import { renderVolumeStatsSection } from '../components/VolumeStatsSection';
 import { getProjectVolumes } from '../utils/volumes';
 import { openStructureDialog } from '../services/ForkCommands';
+import { getVolumeScope, inVolumeScope, renderVolumeScopeSelect, scopeFilter } from '../utils/volumeScope';
+import { getStatsScope, scopedDeadline, scopedWordGoal, statsHeading } from '../utils/volumeStatsScope';
 import { renderViewSwitcher } from '../components/ViewSwitcher';
 import * as obsidian from 'obsidian';
 import type SceneCardsPlugin from '../main';
@@ -92,6 +94,7 @@ export class StatsView extends ItemView {
         titleRow.createEl('h3', { cls: 'story-line-view-title', text: 'StoryLine' });
 
         renderViewSwitcher(toolbar, STATS_VIEW_TYPE, this.plugin, this.leaf);
+        renderVolumeScopeSelect(toolbar.createDiv('story-line-toolbar-controls'), this.plugin); // fork: shared volume scope
 
         const content = container.createDiv('story-line-stats-content');
         const redesigned = this.plugin.settings.statsViewMode !== 'original';
@@ -100,18 +103,23 @@ export class StatsView extends ItemView {
         if (redesigned) {
             content.createEl('h2', {
                 cls: 'sl-stats__heading sl-stats-redesigned__heading',
-                text: 'Project statistics',
+                text: statsHeading(getStatsScope(this.app, this.sceneManager.activeProject?.filePath)), // fork: volume scope
             });
         }
-        const stats = this.sceneManager.queryService.getStatistics(this.plugin.settings.excludeArcAnchorFromWordcount ?? true);
-        const allScenes = this.sceneManager.getAllScenes()
+        // fork: with a volume selected, all sections count only that volume (scoped scenes + stats)
+        const projectPath = this.sceneManager.activeProject?.filePath;
+        const projectScenes = this.sceneManager.getAllScenes()
             .filter(scene => !scene.inactive && !scene.corkboardNote);
+        const allScenes = projectScenes.filter(scene => inVolumeScope(this.app, projectPath, scene));
+        const stats = this.sceneManager.queryService.getStatistics(this.plugin.settings.excludeArcAnchorFromWordcount ?? true,
+            allScenes.length !== projectScenes.length ? allScenes : undefined);
 
         // Per-volume statistics and goals (fork) — only when `volumes:` is defined
-        renderVolumeStatsSection(content, getProjectVolumes(this.app, this.sceneManager.activeProject?.filePath),
-            allScenes, this.plugin.settings.excludeArcAnchorFromWordcount ?? true,
+        renderVolumeStatsSection(content, getProjectVolumes(this.app, projectPath),
+            projectScenes, this.plugin.settings.excludeArcAnchorFromWordcount ?? true,
             (scene) => { const f = this.app.vault.getFileByPath(scene.filePath); if (f) void this.app.workspace.getLeaf('tab').openFile(f); },
-            () => { void openStructureDialog(this.plugin, 'volumes'); });
+            () => { void openStructureDialog(this.plugin, 'volumes'); },
+            getVolumeScope(this.app));
 
         if (redesigned) {
             // Section order, icons, and default open states follow Scribe's
@@ -366,7 +374,8 @@ export class StatsView extends ItemView {
         let readMinutes: number;
         if (cpm > 0 && isScriptioContinuaLocale(locale)) {
             // Sum CJK chars across all scenes (cheaper than re-tokenising).
-            const scenes = this.plugin.sceneManager?.getAllScenes?.() ?? [];
+            const scenes = (this.plugin.sceneManager?.getAllScenes?.() ?? [])
+                .filter(sc => inVolumeScope(this.app, this.sceneManager.activeProject?.filePath, sc)); // fork: volume scope
             let chars = 0;
             for (const s of scenes) if (s.body) chars += countReadingCharacters(s.body);
             readMinutes = chars > 0 ? Math.round(chars / cpm) : Math.round(stats.totalWords / wpm);
@@ -379,7 +388,11 @@ export class StatsView extends ItemView {
             readH > 0 ? `${readH}h ${readM}m` : `${readMinutes}m`);
 
         const renderProjectOverview = (section: HTMLElement): void => {
-            const totalTarget = this.plugin.settings.projectWordGoal || stats.totalTargetWords || 80000;
+            // fork: volume goal / sum of volume goals when volumes are defined
+            const statsScope = getStatsScope(this.app, this.sceneManager.activeProject?.filePath);
+            const totalTarget = (statsScope.volumes.length
+                ? scopedWordGoal(statsScope, this.plugin.settings.projectWordGoal, stats.totalTargetWords)
+                : undefined) || this.plugin.settings.projectWordGoal || stats.totalTargetWords || 80000;
             const wordPct = Math.round((stats.totalWords / totalTarget) * 100);
             const goalRow = section.createDiv('stats-sprint-goal sl-stats-redesigned__goal');
             goalRow.createSpan({
@@ -395,7 +408,7 @@ export class StatsView extends ItemView {
             });
 
             const tracker = this.plugin.writingTracker;
-            const deadline = tracker.getProjectDeadline();
+            const deadline = scopedDeadline(statsScope, tracker.getProjectDeadline()); // fork: volume deadline
             const deadlinePlan = buildDeadlinePlan(
                 deadline.deadline,
                 totalTarget,
@@ -1610,7 +1623,7 @@ export class StatsView extends ItemView {
     }
 
     private renderTensionSection(parent: HTMLElement): void {
-        const ordered = this.sceneManager.queryService.getFilteredScenes(undefined, { field: 'sequence', direction: 'asc' });
+        const ordered = this.sceneManager.queryService.getFilteredScenes(scopeFilter(this.app, this.sceneManager.activeProject?.filePath, undefined), { field: 'sequence', direction: 'asc' }); // fork: volume scope
         const intensityScenes = ordered.filter(scene => scene.intensity !== undefined);
         if (intensityScenes.length > 2) {
             this.renderTensionCurve(parent, intensityScenes);
@@ -2141,7 +2154,7 @@ export class StatsView extends ItemView {
     // ════════════════════════════════════════════════════
 
     private renderPacingCoach(parent: HTMLElement, _allScenes: Scene[]): void {
-        const ordered = this.sceneManager.queryService.getFilteredScenes(undefined, { field: 'sequence', direction: 'asc' });
+        const ordered = this.sceneManager.queryService.getFilteredScenes(scopeFilter(this.app, this.sceneManager.activeProject?.filePath, undefined), { field: 'sequence', direction: 'asc' }); // fork: volume scope
         if (ordered.length < 3) return;
 
         const sec = parent.createDiv('stats-subsection');

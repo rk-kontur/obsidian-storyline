@@ -272,8 +272,9 @@ export class SceneQueryService {
     /**
      * Get project statistics
      */
-    getStatistics(excludeArcAnchor = false) {
-        const scenes = this.sceneStore.getAllScenes();
+    getStatistics(excludeArcAnchor = false, scenesOverride?: Scene[]) {
+        // scenesOverride: compute the same statistics for a subset (fork: one volume)
+        const scenes = scenesOverride ?? this.sceneStore.getAllScenes();
         const activeScenes = scenes.filter(scene => !scene.inactive && !scene.corkboardNote);
         const totalScenes = activeScenes.length;
         const statusCounts: Record<string, number> = {};

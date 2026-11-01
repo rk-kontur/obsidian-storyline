@@ -59,6 +59,43 @@ export function computeVolumeStats(
     return volumes.map(v => rows.get(v.id)!);
 }
 
+/**
+ * "All volumes" row: sums of all volume rows. Goal = sum of the volume goals
+ * that are set, deadline = latest volume deadline.
+ */
+export function computeTotalRow(rows: VolumeStatsRow[], today: Date = new Date()): VolumeStatsRow {
+    const goals = rows.map(r => r.volume.wordGoal).filter((g): g is number => !!g);
+    const deadlines = rows.map(r => r.volume.deadline).filter((d): d is string => !!d).sort();
+    const total: VolumeStatsRow = {
+        volume: {
+            id: '__all__',
+            title: 'All volumes',
+            acts: rows.flatMap(r => r.volume.acts).sort((a, b) => a - b),
+            wordGoal: goals.length ? goals.reduce((a, b) => a + b, 0) : undefined,
+            deadline: deadlines.length ? deadlines[deadlines.length - 1] : undefined,
+        },
+        scenes: rows.reduce((a, r) => a + r.scenes, 0),
+        words: rows.reduce((a, r) => a + r.words, 0),
+        arcPoints: rows.reduce((a, r) => a + r.arcPoints, 0),
+    };
+    // Reuse the per-volume maths for progress, days left and words per day
+    return computeVolumeStatsRowMetrics(total, today);
+}
+
+function computeVolumeStatsRowMetrics(row: VolumeStatsRow, today: Date): VolumeStatsRow {
+    const startOfToday = new Date(today.getFullYear(), today.getMonth(), today.getDate()).getTime();
+    const goal = row.volume.wordGoal;
+    if (goal) row.progress = Math.min(1, row.words / goal);
+    if (row.volume.deadline) {
+        const d = new Date(row.volume.deadline);
+        if (!isNaN(d.getTime())) {
+            row.daysLeft = Math.ceil((d.getTime() - startOfToday) / 86400000);
+            if (goal && row.daysLeft > 0) row.wordsPerDay = Math.max(0, Math.ceil((goal - row.words) / row.daysLeft));
+        }
+    }
+    return row;
+}
+
 export function renderVolumeStatsSection(
     parent: HTMLElement,
     volumes: VolumeDef[],
@@ -66,6 +103,7 @@ export function renderVolumeStatsSection(
     excludeArcPoints: boolean,
     openScene?: (scene: Scene) => void,
     onEditVolumes?: () => void,
+    selectedVolumeId?: string,
 ): void {
     if (volumes.length === 0) return;
     const rows = computeVolumeStats(volumes, scenes, excludeArcPoints);
@@ -84,11 +122,14 @@ export function renderVolumeStatsSection(
 
     const body = table.createEl('tbody');
     const fmt = (n: number) => n.toLocaleString();
-    for (const r of rows) {
+    const totalRow = computeTotalRow(rows);
+    for (const r of [...rows, totalRow]) {
         const tr = body.createEl('tr');
+        if (r === totalRow) tr.addClass('sl-km-volume-total');
+        if (r.volume.id === (selectedVolumeId || '__all__')) tr.addClass('is-selected');
         tr.createEl('td', { text: r.volume.title });
         const acts = r.volume.acts;
-        tr.createEl('td', { text: acts.length > 1 ? `${acts[0]}–${acts[acts.length - 1]}` : String(acts[0]) });
+        tr.createEl('td', { text: acts.length === 0 ? '–' : acts.length > 1 ? `${acts[0]}–${acts[acts.length - 1]}` : String(acts[0]) });
         tr.createEl('td', { text: fmt(r.scenes) });
         tr.createEl('td', { text: fmt(r.arcPoints) });
         tr.createEl('td', { text: fmt(r.words) });
