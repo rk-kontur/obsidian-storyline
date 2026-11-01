@@ -2,7 +2,7 @@
 
 Changes of this fork compared to the original StoryLine plugin by Jan Sandström. Each `## <version>` section is used as the initial text of the matching GitHub release; texts edited on GitHub (e.g. with screenshots) are never overwritten. Every release also carries `storyline-km-source.zip` (all source files that are new or changed compared to the original, without `main.js`) and `storyline-km.patch` (the full diff against the original).
 
-## 1.12.0-km.14
+## 1.11.8-km.14
 
 **"Delete plotline" shows what is really affected, per volume**
 
