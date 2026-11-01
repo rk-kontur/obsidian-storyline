@@ -147,9 +147,9 @@ export function drawRealizedLinks(
         line.setAttribute('y2', String(y2));
         line.setAttribute('stroke', opts.color(al));
         line.setAttribute('stroke-width', '5');
-        line.setAttribute('stroke-dasharray', '12,8');
+        line.setAttribute('stroke-dasharray', '12,4');
         line.setAttribute('stroke-linecap', 'butt');
-        line.setAttribute('opacity', '0.75');
+        line.setAttribute('opacity', '0.55');
         line.addClass('sl-km-realized-link');
         svg.appendChild(line);
     }

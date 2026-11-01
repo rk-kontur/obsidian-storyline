@@ -2,6 +2,21 @@
 
 Changes of this fork compared to the original StoryLine plugin by Jan Sandström. Each `## <version>` section is used automatically as the text of the matching GitHub release. Every release also carries `storyline-km-source.zip` (all source files that are new or changed compared to the original, without `main.js`) and `storyline-km.patch` (the full diff against the original).
 
+## 1.11.8-km.9
+
+**Subway map: finer dashed link for realized Arc Points**
+
+- The dashed link between a realized Arc Point and its scene has shorter gaps (12/4 instead of 12/8) and lower opacity (55 % instead of 75 %).
+
+**How and where to use:**
+
+1. Open **Plotlines** in **Subway** mode with at least one Arc Point linked via **realized by** (Inspector).
+2. The link between the diamond and the scene is now a denser, lighter dashed line.
+
+**Files:**
+
+- `utils/arcRealization.ts` (dash pattern, opacity)
+
 ## 1.11.8-km.8
 
 **Realized by: one-line dropdown, dashed link in the Subway map**
