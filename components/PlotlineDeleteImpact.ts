@@ -182,3 +182,40 @@ export function renderTagDeleteImpact(
         if (g.scenes.length === 0) list.createEl('li', { cls: 'sl-km-muted', text: 'None' });
     }
 }
+
+/**
+ * Impact text for the upstream "Rename plotline" dialog: renaming changes the
+ * tag in every scene of the project too, so with a volume selected it says
+ * how many scenes in the selection and how many more elsewhere get the new name.
+ */
+export function renderTagRenameImpact(
+    parent: HTMLElement,
+    app: App,
+    projectFilePath: string | undefined | null,
+    allScenes: Scene[],
+    tag: string,
+): void {
+    const volumes = getProjectVolumes(app, projectFilePath);
+    const scoped = getScopedVolume(app, projectFilePath);
+    const i = computeTagImpact(volumes, scoped, allScenes, tag);
+    if (!scoped) {
+        parent.createEl('p', {
+            cls: 'setting-item-description',
+            text: `${plural(i.total, 'scene gets', 'scenes get')} the new name.`,
+        });
+        return;
+    }
+    parent.createEl('p', {
+        cls: 'setting-item-description',
+        text: `${plural(i.inSelection, 'scene', 'scenes')} in the current selection (${i.selectionTitle}) ${i.inSelection === 1 ? 'gets' : 'get'} the new name.`,
+    });
+    if (i.elsewhere > 0) {
+        const where: string[] = [];
+        if (i.inOtherVolumes) where.push(`${i.inOtherVolumes} in ${plural(i.otherVolumes, 'other volume', 'other volumes')}`);
+        if (i.outsideVolumes) where.push(`${i.outsideVolumes} outside any volume`);
+        parent.createEl('p', {
+            cls: 'mod-warning sl-km-delete-impact-warning',
+            text: `${plural(i.elsewhere, 'more scene', 'more scenes')} ${i.elsewhere === 1 ? 'is' : 'are'} renamed as well: ${where.join(', ')}.`,
+        });
+    }
+}

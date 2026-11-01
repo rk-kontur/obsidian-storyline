@@ -2,8 +2,8 @@
 import { ButtonComponent, ItemView, Menu, MenuItem, Modal, Notice, Setting, TFile, TextComponent, WorkspaceLeaf } from 'obsidian';
 import { aliasRealizedColumns, drawRealizedLinks, removeRealizedStations, resolveRealizations, splitRealizedLanes } from '../utils/arcRealization';
 import { renderVolumeScopeSelect, scopeFilter } from '../utils/volumeScope';
-import { renderTagDeleteImpact } from '../components/PlotlineDeleteImpact';
-import { attachZoneMenu, drawOffPageBand, getOffPageLines, orderByZone, renderOffPageLabelBand, renderZoneHeader, renderZoneListHeading, ZONE_GAP } from '../utils/pageZones';
+import { renderTagDeleteImpact, renderTagRenameImpact } from '../components/PlotlineDeleteImpact';
+import { addZoneMenuItem, attachZoneMenu, drawOffPageBand, getOffPageLines, orderByZone, renderOffPageLabelBand, renderZoneHeader, renderZoneListHeading, transferOffPage, ZONE_GAP } from '../utils/pageZones';
 import { drawSubwayVolumeMarker, getProjectVolumes, getVolumeForAct, VolumeDividerTracker } from '../utils/volumes';
 import * as obsidian from 'obsidian';
 import { Scene } from '../models/Scene';
@@ -967,6 +967,7 @@ export class StorylineView extends ItemView {
                     .setIcon('plus')
                     .onClick(() => this.openAddSceneToPlotlineModal(plotline, scenes, allScenes));
             });
+            addZoneMenuItem(menu, this.app, this.sceneManager.activeProject?.filePath, plotline, () => this.refresh()); // fork: on / off page
             menu.addSeparator();
             menu.addItem((item: MenuItem) => {
                 item.setTitle('Delete plotline')
@@ -1144,6 +1145,8 @@ export class StorylineView extends ItemView {
                 text.setValue(plotline);
                 text.onChange((v: string) => (newName = v));
             });
+        // fork: the tag is renamed project-wide; show the impact per volume
+        renderTagRenameImpact(modal.contentEl, this.app, this.sceneManager.activeProject?.filePath, this.sceneManager.getAllScenes(), plotline);
 
         new Setting(modal.contentEl)
             .addButton((btn: ButtonComponent) => {
@@ -1154,6 +1157,7 @@ export class StorylineView extends ItemView {
                         return;
                     }
                     const count = await this.sceneManager.renameTag(plotline, slug);
+                    await transferOffPage(this.app, this.sceneManager.activeProject?.filePath, plotline, slug); // fork: keep off page status
                     // Carry over the description to the new tag name
                     const desc = this.plugin.settings.plotlineDescriptions?.[plotline];
                     if (desc) {
@@ -1224,6 +1228,7 @@ export class StorylineView extends ItemView {
             .addButton((btn: ButtonComponent) => {
                 btn.setButtonText('Delete').setClass('mod-warning').onClick(async () => {
                     const count = await this.sceneManager.deleteTag(plotline);
+                    await transferOffPage(this.app, this.sceneManager.activeProject?.filePath, plotline, null); // fork: drop off page entry
                     // Also remove any stored description for the deleted plotline
                     if (this.plugin.settings.plotlineDescriptions?.[plotline]) {
                         delete this.plugin.settings.plotlineDescriptions[plotline];

@@ -9,7 +9,12 @@
 //
 // Stored in the project file frontmatter:
 //
-//   offPageLines: [Mark, Politics]
+//   offPageLines: [mark, politics]
+//
+// Entries follow the plotline tag rule (lowercase, spaces become dashes), so
+// a hand-written `[Mark, Politics]` or `offPageLines: mark, politics` works
+// too; it is written back as a normalized list on the next change. Renaming
+// or deleting a plotline updates the list (transferOffPage).
 //
 // The Subway map shows on-page lines first and the off-page lines below in
 // their own tinted band. Without `offPageLines` nothing changes.
@@ -22,25 +27,65 @@ export const OFF_PAGE_KEY = 'offPageLines';
 /** Vertical space added above the off-page band (room for its header). */
 export const ZONE_GAP = 44;
 
+/** Upstream's plotline tag rule (StorylineView rename / new plotline). */
+export function normalizePlotlineTag(name: string): string {
+    return name.trim().toLowerCase().replace(/\s+/g, '-');
+}
+
+/** Shared parser for read and write: a YAML list or a comma separated string. */
+export function parseOffPageValue(raw: unknown): string[] {
+    const items: unknown[] = Array.isArray(raw) ? raw : typeof raw === 'string' ? raw.split(',') : [];
+    const out = items
+        .filter(v => typeof v === 'string' || typeof v === 'number')
+        .map(v => normalizePlotlineTag(String(v)))
+        .filter(Boolean);
+    return Array.from(new Set(out));
+}
+
 export function getOffPageLines(app: App, projectFilePath: string | undefined | null): Set<string> {
     if (!projectFilePath) return new Set();
     const file = app.vault.getAbstractFileByPath(projectFilePath);
     if (!(file instanceof TFile)) return new Set();
-    const raw: unknown = app.metadataCache.getFileCache(file)?.frontmatter?.[OFF_PAGE_KEY];
-    if (Array.isArray(raw)) return new Set(raw.map(v => String(v).trim()).filter(Boolean));
-    if (typeof raw === 'string' && raw.trim()) return new Set(raw.split(',').map(v => v.trim()).filter(Boolean));
-    return new Set();
+    return new Set(parseOffPageValue(app.metadataCache.getFileCache(file)?.frontmatter?.[OFF_PAGE_KEY]));
 }
 
-export async function setOffPage(app: App, projectFilePath: string | undefined | null, line: string, off: boolean): Promise<void> {
+/** Pure update of the list: mark `line` off page (or on page again). */
+export function withOffPage(current: string[], line: string, off: boolean): string[] {
+    const tag = normalizePlotlineTag(line);
+    if (!tag) return current;
+    return off ? Array.from(new Set([...current, tag])) : current.filter(l => l !== tag);
+}
+
+/**
+ * Pure update for a rename (`newTag` set) or delete (`newTag` null): the old
+ * entry is removed; on rename an off page status moves to the new tag.
+ */
+export function withTransferredOffPage(current: string[], oldTag: string, newTag: string | null): string[] {
+    const from = normalizePlotlineTag(oldTag);
+    if (!current.includes(from)) return current;
+    const next = current.filter(l => l !== from);
+    const to = newTag ? normalizePlotlineTag(newTag) : '';
+    return to && !next.includes(to) ? [...next, to] : next;
+}
+
+async function updateOffPage(app: App, projectFilePath: string | undefined | null, update: (current: string[]) => string[]): Promise<void> {
     if (!projectFilePath) return;
     const file = app.vault.getAbstractFileByPath(projectFilePath);
     if (!(file instanceof TFile)) return;
     await app.fileManager.processFrontMatter(file, (fm: Record<string, unknown>) => {
-        const current = Array.isArray(fm[OFF_PAGE_KEY]) ? (fm[OFF_PAGE_KEY] as unknown[]).map(String) : [];
-        const next = off ? Array.from(new Set([...current, line])) : current.filter(l => l !== line);
+        const next = update(parseOffPageValue(fm[OFF_PAGE_KEY]));
         if (next.length) fm[OFF_PAGE_KEY] = next; else delete fm[OFF_PAGE_KEY];
     });
+}
+
+export async function setOffPage(app: App, projectFilePath: string | undefined | null, line: string, off: boolean): Promise<void> {
+    await updateOffPage(app, projectFilePath, current => withOffPage(current, line, off));
+}
+
+/** Hook for renaming (`newTag`) or deleting (`newTag` null) a plotline. */
+export async function transferOffPage(app: App, projectFilePath: string | undefined | null, oldTag: string, newTag: string | null): Promise<void> {
+    if (!getOffPageLines(app, projectFilePath).has(normalizePlotlineTag(oldTag))) return;
+    await updateOffPage(app, projectFilePath, current => withTransferredOffPage(current, oldTag, newTag));
 }
 
 /**
@@ -78,6 +123,25 @@ export function renderZoneHeader(labelCol: HTMLElement, text: string, top: numbe
     el.setCssStyles({ position: 'absolute', top: `${top}px`, left: `${left}px` });
 }
 
+/** "Move to off page" / "Move to on page" entry for an existing menu. */
+export function addZoneMenuItem(
+    menu: Menu,
+    app: App,
+    projectFilePath: string | undefined | null,
+    line: string,
+    onChanged: () => void,
+    isOff: boolean = getOffPageLines(app, projectFilePath).has(normalizePlotlineTag(line)),
+): void {
+    menu.addItem(item => item
+        .setTitle(isOff ? 'Move to on page' : 'Move to off page')
+        .setIcon(isOff ? 'file-text' : 'cloud')
+        .onClick(async () => {
+            await setOffPage(app, projectFilePath, line, !isOff);
+            // Give the metadata cache time to pick up the frontmatter change
+            window.setTimeout(onChanged, 150);
+        }));
+}
+
 /** Right-click on a line name: move it between the zones. */
 export function attachZoneMenu(
     el: HTMLElement,
@@ -91,13 +155,7 @@ export function attachZoneMenu(
     el.addEventListener('contextmenu', (evt: MouseEvent) => {
         evt.preventDefault();
         const menu = new Menu();
-        menu.addItem(item => item
-            .setTitle(isOff ? 'Move to on page' : 'Move to off page')
-            .setIcon(isOff ? 'file-text' : 'cloud')
-            .onClick(async () => {
-                await setOffPage(app, projectFilePath, line, !isOff);
-                window.setTimeout(onChanged, 150);
-            }));
+        addZoneMenuItem(menu, app, projectFilePath, line, onChanged, isOff);
         menu.showAtMouseEvent(evt);
     });
 }

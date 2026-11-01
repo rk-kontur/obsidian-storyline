@@ -32,8 +32,12 @@ export function computeOffPageCoverage(
     projectScenes: Scene[],
 ): OffPageLineCoverage[] {
     if (offPageLines.size === 0) return [];
+    // Ignore orphaned entries (hand-edited or left over): only lines that exist as a tag
+    const known = new Set(projectScenes.flatMap(s => s.tags ?? []));
+    const lines = [...offPageLines].filter(l => known.has(l));
+    if (lines.length === 0) return [];
     const targets = projectScenes.filter(s => !s.arcAnchor);
-    return [...offPageLines].sort((a, b) => a.localeCompare(b)).map(line => {
+    return lines.sort((a, b) => a.localeCompare(b)).map(line => {
         const onLine = scopedScenes.filter(s => s.tags?.includes(line));
         const stages = onLine.filter(s => s.arcAnchor)
             .sort((a, b) => (Number(a.act) || 0) - (Number(b.act) || 0) || (a.sequence ?? 0) - (b.sequence ?? 0));
@@ -54,6 +58,9 @@ export function offPageCardValue(coverage: OffPageLineCoverage[]): string {
     return `${done} / ${total}`;
 }
 
+/** Stage titles listed in one off page warning before "and N more". */
+const MAX_WARNING_TITLES = 5;
+
 /**
  * Validator warnings adjusted for off page lines: act gap warnings for these
  * lines are dropped, unrealized stages are reported per line instead.
@@ -64,10 +71,12 @@ export function adjustOffPageWarnings(warnings: PlotWarning[], coverage: OffPage
     const kept = warnings.filter(w => !(w.category === 'Plotlines' && lines.some(l => w.message.startsWith(`Plotline "${l}"`))));
     for (const c of coverage) {
         if (c.open.length === 0) continue;
+        const titles = c.open.slice(0, MAX_WARNING_TITLES).map(s => s.title || s.filePath);
+        const more = c.open.length - titles.length;
         kept.push({
             severity: 'info',
             category: 'Off page',
-            message: `Off page line "${c.line}": ${c.open.length} stage${c.open.length === 1 ? ' is' : 's are'} not yet told in a scene (${c.open.map(s => s.title).join(', ')})`,
+            message: `Off page line "${c.line}": ${c.open.length} stage${c.open.length === 1 ? ' is' : 's are'} not yet told in a scene (${titles.join(', ')}${more > 0 ? ` and ${more} more` : ''})`,
             scenePaths: c.open.map(s => s.filePath),
         });
     }
@@ -82,7 +91,7 @@ export function renderOffPageCoverage(
 ): void {
     body.createEl('p', {
         cls: 'stats-hint',
-        text: 'Stages (Arc Points) on off page lines and whether they are already told in a scene (Realized in the Inspector).',
+        text: 'Stages (arc points) on off page lines and whether they are already told in a scene (link them in the inspector).',
     });
     for (const c of coverage) {
         const block = body.createEl('details', { cls: 'sl-km-offpage-line' });

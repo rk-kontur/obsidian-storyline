@@ -4,7 +4,9 @@ Changes of this fork compared to the original StoryLine plugin by Jan Sandström
 
 ## 1.11.8-km.14
 
-**"Delete plotline" shows what is really affected, per volume**
+**Plotlines and off page: delete and rename show what is really affected, off page status follows**
+
+### "Delete plotline" shows what is really affected, per volume
 
 - Deleting a plotline removes its tag from **every** scene of the project. With a volume selected, the dialog used to count only the scenes of that volume, so it promised far fewer changes than it made.
 - The dialog now says how many scenes carry the plotline in the current selection, and warns how many **more** scenes in how many **other volumes** will lose the tag as well.
@@ -15,16 +17,41 @@ Changes of this fork compared to the original StoryLine plugin by Jan Sandström
 
 <!-- screenshot: Delete plotline dialog with one column per volume -->
 
+### "Rename plotline" states the impact too
+
+- Renaming also changes the tag in every scene of the project. With a volume selected, the dialog says how many scenes in the current selection get the new name, and warns how many **more** scenes in other volumes (or outside any volume) are renamed as well. Without volumes it gives the total.
+- Renaming a plotline to a name a scene already carries no longer gives that scene the tag twice (upstream bug).
+
+<!-- screenshot: Rename plotline dialog with the impact sentence -->
+
+### On page / off page in the Plotlines list view
+
+- The plotline header's right-click menu in the **list view** now has **Move to off page** / **Move to on page**, the same switch as in the Subway map. The list regroups right away under ON PAGE / OFF PAGE.
+
+<!-- screenshot: Plotlines list view, header context menu with Move to off page -->
+
+### Off page status is kept on rename and delete
+
+- Renaming an off page plotline moves its off page status to the new name; deleting a plotline removes it from `offPageLines` in the project file. Before, the old name stayed in the list and the renamed line jumped back to on page.
+- `offPageLines` entries follow the plotline tag rule (lowercase, spaces become dashes), so hand-written `[Mark, Politics]` matches the plotlines `mark` and `politics`. A comma separated value (`offPageLines: mark, politics`) is read as well and is no longer wiped when a line is moved; it is written back as a list.
+- Statistics ignore entries in `offPageLines` that no longer exist as a tag in any scene.
+- The off page warning in Statistics lists at most 5 open stages per line, followed by "and N more".
+
 **How and where to use:**
 
-1. Select a volume in any volume dropdown.
-2. **Plotlines** (list view) → plotline header → delete icon, or right-click → delete.
-3. Read the overview, then **Delete** or **Cancel**.
+1. Select a volume in any volume dropdown (optional; without one, the dialogs show project totals).
+2. Delete: **Plotlines** (list view) → plotline header → delete icon, or right-click the header → **Delete plotline**. Read the overview, then **Delete** or **Cancel**.
+3. Rename: **Plotlines** (list view) → plotline header → pencil icon, or right-click the header → **Rename plotline**. The sentence below the name field says how many scenes get the new name, here and in other volumes. Enter the new name and click **Rename**; an off page line stays off page.
+4. On page / off page: **Plotlines** (list view) → right-click a plotline header → **Move to off page** (or **Move to on page**). In the Subway map: right-click the line name, as before.
+5. **Statistics** → Warnings: off page lines with many open stages show the first 5 and "and N more".
 
 **Files:**
 
-- `components/PlotlineDeleteImpact.ts` (new: impact per volume and dialog text)
-- `views/StorylineView.ts` (+3: dialog uses it)
+- `components/PlotlineDeleteImpact.ts` (new: impact per volume and dialog texts for delete and rename)
+- `utils/pageZones.ts` (shared parser and tag normalization for `offPageLines`, rename/delete hook `transferOffPage`, menu entry `addZoneMenuItem`)
+- `components/OffPageStatsSection.ts` (ignore orphaned entries, cap warning titles)
+- `views/StorylineView.ts` (+9: delete and rename dialogs, off page hooks, list view context menu entry)
+- `services/SceneManager.ts` (+2: no duplicate tag on rename)
 - `styles.css` (fork section: columns)
 
 ## 1.12.0-km.13
@@ -172,7 +199,7 @@ Details:
 - **Explicit choice per plotline**, independent of its content: an off-page line may contain scenes and Arc Points, an on-page line as well. Arc Points work the same in both zones.
 - **Realized Arc Points** connect across the zones: the dashed link runs from the off-page stage up to the scene that tells it. This shows at a glance which background development already reaches the text.
 - Without off-page lines, nothing changes (no band, no headers).
-- Stored in the project file as `offPageLines: [Mark, Politics]`; it can also be edited by hand.
+- Stored in the project file as `offPageLines: [mark, politics]` (the plotline tags); it can also be edited by hand.
 - The band colour and the headers can be styled with CSS (`.sl-km-offpage-band`, `.sl-km-zone-header`).
 
 <!-- screenshot: Subway map with ON PAGE and OFF PAGE zones -->
