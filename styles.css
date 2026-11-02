@@ -6991,12 +6991,16 @@ body.sl-auto-hide-tab-labels .story-line-view-switcher.sl-collapsed .story-line-
 
 /* Collapsible sections of the "Manage story structure" dialog */
 .structure-section > summary {
-    display: flex;
-    align-items: center;
-    gap: var(--size-4-1);
+    display: block;
     cursor: pointer;
     list-style: none;
     user-select: none;
+}
+
+.structure-section > summary > h3 {
+    display: flex;
+    align-items: center;
+    gap: var(--size-4-1);
 }
 
 .structure-section > summary::-webkit-details-marker {

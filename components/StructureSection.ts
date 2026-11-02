@@ -23,8 +23,9 @@ export function createStructureSection(
     const details = parent.createEl('details', { cls: 'structure-section' });
     details.open = !collapsed;
     const summary = details.createEl('summary', { cls: 'structure-section-summary' });
-    setIcon(summary.createSpan('structure-section-icon'), 'chevron-down');
-    summary.createEl('h3', { text: title });
+    const heading = summary.createEl('h3');
+    setIcon(heading.createSpan('structure-section-icon'), 'chevron-down');
+    heading.appendText(title);
 
     details.addEventListener('toggle', () => {
         if (collapsed === !details.open) return;
