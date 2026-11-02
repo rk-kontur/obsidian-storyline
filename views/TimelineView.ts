@@ -18,6 +18,7 @@ import * as obsidian from 'obsidian';
 import { BUILTIN_BEAT_SHEETS, Scene, SceneStatus, TIMELINE_MODES, TIMELINE_MODE_ICONS, TIMELINE_MODE_LABELS, TimelineMode, formatSceneLength, getStatusOrder, resolveStatusCfg } from '../models/Scene';
 import { getActDisplayLabel, getChapterDisplayLabel } from '../utils/actChapter';
 import { parseSceneLocations } from '../services/MetadataParser';
+import { sceneCharacterNames } from '../utils/sceneCharacters';
 
 /**
  * Timeline ordering mode
@@ -756,7 +757,7 @@ export class TimelineView extends ItemView {
             case 'pov':
                 return [scene.pov || '(no POV)'];
             case 'character':
-                if (scene.characters && scene.characters.length > 0) return this.cleanLaneKeys(scene.characters);
+                if (sceneCharacterNames(scene).length > 0) return this.cleanLaneKeys(sceneCharacterNames(scene));
                 return ['(no character)'];
             case 'location':
                 return parseSceneLocations(scene.location).length > 0

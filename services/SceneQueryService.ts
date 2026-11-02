@@ -1,6 +1,7 @@
  
 import { Scene, SceneFilter, SortConfig, getStatusOrder } from '../models/Scene';
 import { compareActChapter, getActDisplayLabel } from '../utils/actChapter';
+import { sceneHasAnyCharacter } from '../utils/sceneCharacters';
 import { parseSceneLocations } from './MetadataParser';
 
 /**
@@ -371,7 +372,7 @@ export class SceneQueryService {
             return false;
         }
         if (filter.characters?.length) {
-            if (!scene.characters || !filter.characters.some(c => scene.characters!.includes(c))) {
+            if (!sceneHasAnyCharacter(scene, filter.characters)) {
                 return false;
             }
         }
