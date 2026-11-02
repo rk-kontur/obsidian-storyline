@@ -9,8 +9,8 @@ The "Delete plotline" confirmation now states the number of scenes that deleting
 ## How it works
 `confirmDeletePlotline()` receives the listed scenes instead of their count and counts `getAllScenes()` with the same condition as `deleteTag()` (`tags.includes(tag)`). It splits the scenes the list does not show into corkboard notes, inactive scenes and scenes hidden by the current filter. The rest of the dialog and the delete itself are unchanged.
 
-- Compare: https://github.com/PixeroJan/obsidian-storyline/compare/main...rk-kontur:obsidian-storyline:_suggest-fix-delete-plotline-count
-- Code: [`confirmDeletePlotline()`](https://github.com/rk-kontur/obsidian-storyline/blob/_suggest-fix-delete-plotline-count/views/StorylineView.ts#L1157-L1203), [call sites](https://github.com/rk-kontur/obsidian-storyline/blob/_suggest-fix-delete-plotline-count/views/StorylineView.ts#L877-L880), [`deleteTag()`](https://github.com/rk-kontur/obsidian-storyline/blob/_suggest-fix-delete-plotline-count/services/SceneManager.ts#L1886-L1899)
+- Compare: https://github.com/PixeroJan/obsidian-storyline/compare/main...rk-kontur:obsidian-storyline:suggest-fix/delete-plotline-count
+- Code: [`confirmDeletePlotline()`](https://github.com/rk-kontur/obsidian-storyline/blob/suggest-fix/delete-plotline-count/views/StorylineView.ts#L1157-L1203), [call sites](https://github.com/rk-kontur/obsidian-storyline/blob/suggest-fix/delete-plotline-count/views/StorylineView.ts#L877-L880), [`deleteTag()`](https://github.com/rk-kontur/obsidian-storyline/blob/suggest-fix/delete-plotline-count/services/SceneManager.ts#L1886-L1899)
 
 ## Needed addons
 One screenshot: Plotlines view (list view), a plotline whose tag is also on one inactive scene and one corkboard note; click the plotline's delete icon. It must show the "Delete plotline" dialog with the full count and the "Includes 1 inactive scene, 1 corkboard note. …" line.
