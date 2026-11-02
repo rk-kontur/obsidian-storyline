@@ -21,6 +21,8 @@ Changes of this fork compared to the original StoryLine plugin by Jan Sandström
 
 <!-- screenshot: Manuscript, All volumes: Volume 1 band, end separator before act 3 (outside every volume), Volume 2 band, end separator before the Epilogue -->
 
+- With a sort that ignores the structure (e.g. by title), scenes without an act do not close the volume band, so act and volume headings are not repeated more than upstream already repeats act dividers in that order.
+
 **How and where to use:**
 
 1. Open the **Manuscript** in a project with volumes (e.g. Volume 1 = acts 1–2, Volume 2 = acts 5–6) and select **All volumes** in the **Filter by** dropdown.

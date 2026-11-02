@@ -465,10 +465,12 @@ export class ManuscriptView extends ItemView {
 
         const editorContainers: { el: HTMLElement; path: string }[] = [];
 
+        const kmSort = this.currentSort?.field; // fork: band end only in structural order
+        const kmStructural = !kmSort || kmSort === 'sequence' || kmSort === 'status';
         const volumeTracker = new VolumeDividerTracker(getProjectVolumes(this.app, this.sceneManager.activeProject?.filePath), { bandEnd: true }); // fork: band end
         for (const scene of scenes) {
             // fork: scenes without act end the volume band (no act divider of their own)
-            if (scene.act === undefined && volumeTracker.renderBefore(this.scrollArea, undefined)) {
+            if (scene.act === undefined && kmStructural && volumeTracker.renderBefore(this.scrollArea, undefined)) {
                 if (prevBlock) prevBlock.classList.add('is-before-divider');
                 lastAct = undefined; // a later act scene starts its divider and band again
             }
