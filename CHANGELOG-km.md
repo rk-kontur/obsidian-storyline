@@ -8,31 +8,31 @@ Changes of this fork compared to the original StoryLine plugin by Jan Sandström
 
 ### "+ add scene" creates the scene in the column you clicked
 
-- With a volume selected and the Board (Kanban) grouped by **Act**, "+ add scene" in the **No Act**, **Prologue** or **Epilogue** column created the scene in the first act of the volume (e.g. act 5). Now the column decides: **No Act** creates a scene without act, **Prologue** uses act 0 and **Epilogue** act 99 (the same values the act dropdown of the dialog offers). An **Act N** column keeps act N, as before.
+- With a volume selected and the Board (Kanban) grouped by **Act**, "+ add scene" in the **No Act** column created the scene in the first act of the volume (e.g. act 5). Now the column decides: **No Act** creates a scene without act, an **Act N** column keeps act N, as before. Columns of acts 100 and above, which are labelled without "Act" (e.g. "100"), now also get their act when it belongs to the selected volume. The **Prologue** and **Epilogue** columns are not shown while a volume is selected, because they belong to no volume.
 - Without a selected volume nothing changes: as in upstream, "+ add scene" in the **Prologue** / **Epilogue** column opens the dialog with act "None" (the `^Act\s+` column match does not cover these columns). This looks like an upstream bug and is a candidate for an upstream fix (prefill act 0 / 99).
 - Grouped by **Chapter** with a volume selected, "+" in a chapter column uses the act of that chapter inside the volume (from the volume's scenes with this chapter). If the chapter has no act or several acts in the volume, the volume's first act is used, so the new scene stays visible. Without a selected volume the act is inferred as before.
 - The toolbar button "+ new scene" and the columns of the other groupings (**Status**, **POV**, **No Chapter**, ...) keep using the volume's first act while a volume is selected.
 
 ### Grouped by chapter: only the chapters of the selected volume
 
-- With a volume selected and grouping **Chapter**, every defined chapter of the project appeared as an empty column, also chapters of other volumes. Now an empty chapter column is shown only if one of the chapter's scenes has an act of the selected volume; chapters with visible scenes (e.g. scenes without act) keep their column as before. Chapters that cannot be assigned to any act (only defined, or used only by scenes without act) are shown under **All volumes** only.
+- With a volume selected and grouping **Chapter**, every defined chapter of the project appeared as an empty column, also chapters of other volumes. Now, with a volume selected, a chapter column is shown only if it has visible scenes (scenes of the volume's acts, or scenes without act, which are visible in every volume) or if a scene with an act of the volume has this chapter. A chapter that is only defined in the project, without such a scene, appears under **All volumes** only.
 
 ### Volume bands end before columns outside every volume
 
-- In the Kanban grouped by **Act**, the **Prologue**, **Epilogue**, **No Act**, non-numeric acts and acts that belong to no volume looked as if they were part of the last volume. A narrow, unlabelled separator now ends the volume before such a column; a later act column of a volume starts its labelled band again (same rule as the Timeline band end in 1.11.8-km.19).
+- In the Kanban grouped by **Act**, the **Prologue**, **Epilogue**, **No Act**, non-numeric acts and acts that belong to no volume looked as if they were part of the last volume. A single narrow, unlabelled separator now ends the volume before the first such column (the following columns outside every volume share it); a later act column of a volume starts its labelled band again (same rule as the Timeline band end in 1.11.8-km.19).
 - A column is assigned to a volume by the same numeric act rule as the "V2" card badges and the volume filter: "Act 5" (also for act "05") is act 5, act 0 / 99 belong to no volume, and columns such as "Part 5" are no longer read as act 5.
 - On touch devices, dropping a card onto another card now reorders within the scenes of the selected volume, as with the mouse.
 - The Corkboard has no act columns or bands and is unchanged; its cards keep their "V2" badges.
 
 <!-- screenshot: Board (Kanban, grouped by Act), All volumes: Volume 1 and Volume 2 bands, end separator before Epilogue / Prologue / No Act -->
 <!-- screenshot: Board (Kanban, grouped by Chapter), Volume 2 selected: only chapters of Volume 2 -->
-<!-- screenshot: Quick add dialog opened from the Prologue column with act "Prologue" preselected -->
+<!-- screenshot: Volume 2 selected, quick add dialog opened from the No Act column with act "None" -->
 
 **How and where to use:**
 
 1. Open the **Board** in **Kanban** mode in a project with volumes (e.g. Volume 1 = acts 1–4, Volume 2 = acts 5–8) and set **Group by** to **Act**.
-2. With **All volumes** selected, look at the columns: the labelled band "Volume 1" before act 1, "Volume 2" before act 5, and a narrow separator without label before **Epilogue**, **Prologue** and **No Act** (and before acts outside every volume).
-3. Select **Volume 2** in the volume dropdown. Click **+ add scene** in the **No Act** column: the dialog opens with act **None**. In the **Prologue** column it opens with **Prologue**, in the **Epilogue** column with **Epilogue**, in **Act 6** with **Act 6**. The toolbar button **+ new scene** opens it with **Act 5**.
+2. With **All volumes** selected, look at the columns: the labelled band "Volume 1" before act 1, "Volume 2" before act 5, and one narrow separator without label after the last column of a volume, before the first column outside every volume (an act outside every volume, **Epilogue**, **Prologue** or **No Act**). The columns that follow it share this one separator until a column of a volume starts the next labelled band.
+3. Select **Volume 2** in the volume dropdown. Click **+ add scene** in the **No Act** column: the dialog opens with act **None**. In the **Act 6** column it opens with **Act 6**. The **Prologue** and **Epilogue** columns are hidden while a volume is selected. The toolbar button **+ new scene** opens it with **Act 5**.
 4. Set **Group by** to **Chapter**: only chapters with scenes in acts 5–8 have columns. Click **+ add scene** in a chapter column: the act of that chapter in Volume 2 is preselected.
 5. Select **All volumes**: all defined chapters are shown again.
 

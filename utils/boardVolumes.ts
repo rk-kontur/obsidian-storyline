@@ -8,8 +8,7 @@
 // exactly like upstream.
 
 import type { Scene } from '../models/Scene';
-import { EPILOGUE_ACT, PROLOGUE_ACT } from './actChapter';
-import { actNumber, type VolumeDef } from './volumes';
+import { actFromColumnKey, actNumber, type VolumeDef } from './volumes';
 
 type ActValue = number | string | undefined;
 
@@ -61,12 +60,13 @@ export interface BoardQuickAddInput {
 /**
  * Act for a scene created from the Board's quick add.
  *
- * - Without a selected volume: always upstream's act (upstream leaves the
- *   Prologue / Epilogue columns without act).
+ * - Without a selected volume: always upstream's act.
  * - Grouped by act, from a column, with a volume selected: the column
- *   decides. "Act N" keeps upstream's act, "Prologue" / "Epilogue" get
- *   PROLOGUE_ACT / EPILOGUE_ACT, "No Act" and other columns get no act.
- *   The volume's act is never forced onto such a column.
+ *   decides. "Act N" keeps upstream's act; a column upstream does not parse
+ *   ("100": acts >= 100 are labelled without "Act") gets its act if it is
+ *   in the volume; "No Act" and other columns get no act. The volume's act
+ *   is never forced onto such a column. (Prologue / Epilogue columns are
+ *   not shown under a volume: scopeFilter hides acts 0 and 99.)
  * - Grouped by chapter, from a "Chapter N" column with a volume selected: the
  *   chapter's act inside the volume (inferVolumeActForChapter), else
  *   upstream's inferred act if it is in the volume, else the volume's first act.
@@ -77,10 +77,9 @@ export function boardQuickAddAct(input: BoardQuickAddInput): ActValue {
     const { groupBy, presetColumn, upstreamAct, volume, scenes } = input;
     if (!volume || volume.acts.length === 0) return upstreamAct;
     if (presetColumn !== undefined && groupBy === 'act') {
-        const key = presetColumn.trim().toLowerCase();
-        if (key === 'prologue') return PROLOGUE_ACT;
-        if (key === 'epilogue') return EPILOGUE_ACT;
-        return upstreamAct;
+        if (upstreamAct !== undefined) return upstreamAct;
+        const n = actFromColumnKey(presetColumn);
+        return actInVolume(volume, n) ? n : undefined;
     }
     if (presetColumn !== undefined && groupBy === 'chapter') {
         const m = presetColumn.match(/^Chapter\s+(.+)$/);

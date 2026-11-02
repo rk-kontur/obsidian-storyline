@@ -561,7 +561,7 @@ export class BoardView extends ItemView {
             return;
         }
 
-        const volumeTracker = new VolumeDividerTracker(this.groupBy === 'act' ? getProjectVolumes(this.app, projectPath) : [], { bandEnd: true });
+        const volumeTracker = new VolumeDividerTracker(this.groupBy === 'act' ? getProjectVolumes(this.app, projectPath) : [], { bandEnd: true }); // fork: volume bands with band end
         for (const key of sortedKeys) {
             let scenes = groups.get(key) || [];
             if (!this.plugin.settings.showNotesInKanban) {
