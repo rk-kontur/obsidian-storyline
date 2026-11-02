@@ -121,17 +121,32 @@ export function stepVisibleColumn(from: number, dx: number, count: number, hidde
 }
 
 /**
- * Tab / Shift+Tab target while editing: the next visible column in the row,
- * else the first (last) visible column of the next (previous) row, with the
- * same row clamping as upstream. Null if every column is hidden.
+ * Keyboard step over the rows as they are rendered (display order, without
+ * filtered-out rows of other volumes and collapsed rows), clamped at the
+ * first and last rendered row like upstream. `order` are the data row
+ * indices in display order. A `from` that is not rendered stays for dy 0
+ * and goes to the first (dy > 0) or last (dy < 0) rendered row otherwise.
+ * Null if no row is rendered.
  */
-export function tabTarget(row: number, col: number, back: boolean, rowCount: number, colCount: number, hidden: Set<number>): { row: number; col: number } | null {
+export function stepRenderedRow(from: number, dy: number, order: number[]): number | null {
+    if (order.length === 0) return null;
+    const idx = order.indexOf(from);
+    if (idx < 0) return dy === 0 ? from : dy > 0 ? order[0] : order[order.length - 1];
+    return order[Math.max(0, Math.min(order.length - 1, idx + dy))];
+}
+
+/**
+ * Tab / Shift+Tab target while editing: the next visible column in the row,
+ * else the first (last) visible column of the next (previous) rendered row
+ * (`rowOrder`, see stepRenderedRow), clamped like upstream. Null if every
+ * column is hidden.
+ */
+export function tabTarget(row: number, col: number, back: boolean, rowOrder: number[], colCount: number, hidden: Set<number>): { row: number; col: number } | null {
     const dir = back ? -1 : 1;
     for (let c = col + dir; c >= 0 && c < colCount; c += dir) {
         if (!hidden.has(c)) return { row, col: c };
     }
     const nc = firstVisibleColumn(colCount, hidden, back);
     if (nc === null) return null;
-    const nr = back ? Math.max(0, row - 1) : Math.min(rowCount - 1, row + 1);
-    return { row: nr, col: nc };
+    return { row: stepRenderedRow(row, dir, rowOrder) ?? row, col: nc };
 }

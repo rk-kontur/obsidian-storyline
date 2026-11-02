@@ -6,7 +6,7 @@ import { renderArcPointIcon } from '../components/ArcPointUI';
 import { getProjectVolumes, VolumeDividerTracker } from '../utils/volumes';
 import { scopeFilter, volumeScopeKey } from '../utils/volumeScope'; // fork: shared volume scope
 import { getOffPageLines, isOffPage } from '../utils/pageZones';
-import { columnTemplate, findEmptyAutoColumns, firstVisibleColumn, hiddenColumnsWidth, renderHiddenColumnsHint, stepVisibleColumn, tabTarget, updateHiddenColumnsHint } from '../utils/plotgridVolume';
+import { columnTemplate, findEmptyAutoColumns, firstVisibleColumn, hiddenColumnsWidth, renderHiddenColumnsHint, stepRenderedRow, stepVisibleColumn, tabTarget, updateHiddenColumnsHint } from '../utils/plotgridVolume';
 import { LocationManager } from '../services/LocationManager';
 import type { SceneFilter, SortConfig } from '../models/Scene';
 import { SceneManager } from '../services/SceneManager';
@@ -2220,12 +2220,14 @@ export class PlotgridView extends ItemView {
     }
 
     private moveSelection(dx: number, dy: number) {
+        const kmRowOrder = [...this.renderedRowTrackIndices.keys()]; // fork: rendered rows in display order
         if (this.selectedRow === null || this.selectedCol === null) {
             if (this.data.rows.length > 0 && this.data.columns.length > 0) {
-                this.selectedRow = 0; this.selectedCol = firstVisibleColumn(this.data.columns.length, this.kmHiddenCols) ?? 0; // fork
+                this.selectedRow = kmRowOrder[0] ?? 0; this.selectedCol = firstVisibleColumn(this.data.columns.length, this.kmHiddenCols) ?? 0; // fork
             } else return;
         }
-        const nr = Math.max(0, Math.min(this.data.rows.length - 1, this.selectedRow + dy));
+        const nr = stepRenderedRow(this.selectedRow, dy, kmRowOrder); // fork: skip hidden and collapsed rows, display order
+        if (nr === null) return;
         const nc = stepVisibleColumn(this.selectedCol, dx, this.data.columns.length, this.kmHiddenCols); // fork: skip hidden empty columns
         if (nc === null) return;
         const el = this.getCellElement(nr, nc);
@@ -2949,7 +2951,7 @@ export class PlotgridView extends ItemView {
                 commit();
                 const curR = Number(cellEl.getAttribute('data-row'));
                 const curC = Number(cellEl.getAttribute('data-col'));
-                const target = tabTarget(curR, curC, e.shiftKey, this.data.rows.length, this.data.columns.length, this.kmHiddenCols); // fork: skip hidden empty columns
+                const target = tabTarget(curR, curC, e.shiftKey, [...this.renderedRowTrackIndices.keys()], this.data.columns.length, this.kmHiddenCols); // fork: skip hidden columns and rows
                 if (!target) return;
                 const { row: nr, col: nc } = target;
                 window.setTimeout(() => {

@@ -4,7 +4,7 @@ Changes of this fork compared to the original StoryLine plugin by Jan Sandström
 
 ## 1.11.8-km.18
 
-**Plot Grid with volumes: inactive scenes stay, hidden columns stay hidden, sticky band follows the setting**
+**Plot Grid with volumes: inactive scenes stay, keyboard skips hidden rows and columns, sticky band follows the setting**
 
 ### Inactive scenes are no longer hidden by a volume selection
 
@@ -16,6 +16,7 @@ Changes of this fork compared to the original StoryLine plugin by Jan Sandström
 
 - **Arrow keys** and **Tab** / **Shift+Tab** skip hidden empty columns, in both directions, also when wrapping to the next or previous row. Before, the selection could land in an invisible cell, and **Enter** opened the editor there.
 - **Tab** / **Shift+Tab** while editing a cell also skips them.
+- **↑** / **↓** move through the rows as they are shown: in the shown order (also when the grid is sorted), skipping rows of other volumes, rows hidden by a filter and rows of collapsed acts or chapters. Before, the selection got stuck on a row that was not shown, or jumped in the order of the data instead of the shown order. At the first and last shown row the selection stays, as before. **Tab** at the end of a row and **Shift+Tab** at its start continue in the next or previous shown row.
 - A selected cell whose column becomes hidden (e.g. after switching the volume) is deselected.
 - **Dragging a column border** (or the border of the label column) keeps the hidden columns collapsed. Before, all of them opened up as empty gaps while dragging.
 - **Zooming** keeps the grid as wide as the visible columns. Before, the canvas became too wide after zooming.
@@ -33,14 +34,15 @@ Changes of this fork compared to the original StoryLine plugin by Jan Sandström
 1. Open the **Plot Grid** of a project with volumes (e.g. Volume 2 = acts 5–8) and columns from **Sync from scenes**.
 2. Mark a scene in act 6 as inactive. Select **All volumes**, then **Volume 2** in the volume dropdown: the scene's row is visible in both cases. Click **Inactive** in the filter bar: only inactive scenes of Volume 2 are shown. Add a status filter: inactive scenes are hidden, as without a volume selection.
 3. With **Volume 2** selected, click a cell left of a hidden empty column and press **→**: the selection jumps over the hidden column. Press **←**, **Tab** and **Shift+Tab** at the first and last visible column: the selection never lands in a hidden column. Press **Enter**: the editor opens in the selected, visible cell.
-4. Drag the right border of a column header: no gaps open up. Zoom in and out with the zoom buttons: the grid ends at the last visible column.
-5. Turn off **Sticky headers** (pin button in the toolbar, or the header context menu) and scroll right: the volume band scrolls with the grid. Turn it on again: the band stays at the left edge.
-6. Look at the hint at the right of the filter bar: it names the kinds of the hidden columns. Click it to show them, click **Hide empty columns** to hide them again.
+4. Collapse an act divider and sort the grid (sort dropdown), then press **↓** and **↑** repeatedly: the selection moves row by row in the shown order, jumps over the collapsed act, and stops at the first and last shown row.
+5. Drag the right border of a column header: no gaps open up. Zoom in and out with the zoom buttons: the grid ends at the last visible column.
+6. Turn off **Sticky headers** (pin button in the toolbar, or the header context menu) and scroll right: the volume band scrolls with the grid. Turn it on again: the band stays at the left edge.
+7. Look at the hint at the right of the filter bar: it names the kinds of the hidden columns. Click it to show them, click **Hide empty columns** to hide them again.
 
 **Files:**
 
-- `views/PlotgridView.ts` (`renderGrid`: volume scope keeps inactive scenes, deselects a hidden column, sticky volume band; `computeTotalWidth`; `moveSelection`; Tab in `enterEditMode`; `startColResize`; `startLabelColumnResize`)
-- `utils/plotgridVolume.ts` (`hiddenColumnsHintText`, `updateHiddenColumnsHint`, `firstVisibleColumn`, `stepVisibleColumn`, `tabTarget`)
+- `views/PlotgridView.ts` (`renderGrid`: volume scope keeps inactive scenes, deselects a hidden column, sticky volume band; `computeTotalWidth`; `moveSelection` (columns and rows); Tab in `enterEditMode`; `startColResize`; `startLabelColumnResize`)
+- `utils/plotgridVolume.ts` (`hiddenColumnsHintText`, `updateHiddenColumnsHint`, `firstVisibleColumn`, `stepVisibleColumn`, `stepRenderedRow`, `tabTarget`)
 - `utils/volumes.ts` (`VolumeDividerTracker.renderBefore` returns the band)
 - `styles.css` (fork section: `.plot-grid-canvas > .sl-km-volume-divider` without fixed `position: sticky`)
 - `CHANGELOG-km.md`
