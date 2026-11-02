@@ -4,7 +4,7 @@
 Renaming a plotline to a tag a scene already has no longer leaves that tag twice in the scene's `tags`.
 
 ## What it does
-When a plotline is renamed (Plotlines list view, pencil icon or right-click the header, then **Rename plotline**) to a name that some scenes already carry, those scenes keep the tag once instead of getting it twice. This effectively merges two plotlines cleanly. Scenes without the new tag are renamed exactly as before.
+When a plotline is renamed (Plotlines list view, pencil icon or right-click the header, then **Rename plotline**) to a name that some scenes already carry, those scenes keep the tag once instead of getting it twice. So renaming onto an existing plotline merges the scenes' tags. Scenes without the new tag are renamed exactly as before.
 
 ## How it works
 `SceneManager.renameTag()` now passes the mapped tag list through a `Set` before writing it, so the first occurrence keeps its position and the duplicate is dropped. The rest of the rename flow is unchanged.
