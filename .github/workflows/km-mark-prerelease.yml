@@ -7,6 +7,9 @@ name: Mark old km releases as pre-release
 
 on:
   workflow_dispatch:
+  push:
+    branches: [km/base]
+    paths: ['.github/workflows/km-mark-prerelease.yml']
 
 permissions:
   contents: write
