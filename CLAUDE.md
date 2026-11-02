@@ -11,7 +11,7 @@ Fork of PixeroJan/obsidian-storyline (MIT). Obsidian plugin in TypeScript, built
 - Branch layout:
 	- `main`: unchanged mirror of upstream.
 	- `_testing`: the owner's test build with all fork changes; all BRAT releases come from here (formerly `km/base`).
-	- `_suggest-fix-<name>` / `_suggest-feature-<name>`: one clean change each for upstream, based on `main`, without any fork scaffolding (no `km` prefixes, no CLAUDE.md, CHANGELOG-km.md or release workflow). Never create releases or tags on these branches (BRAT reads every release of the repo).
+	- `suggest-fix/<name>` / `suggest-feature/<name>`: one clean change each for upstream, based on `main`, without any fork scaffolding (no `km` prefixes, no CLAUDE.md, CHANGELOG-km.md or release workflow). Never create releases or tags on these branches (BRAT reads every release of the repo).
 	- `various/<name>`: archived material that belongs nowhere else (e.g. `various/releases-1.12.0`, `various/corkboard-volume`).
 - Pulling upstream: `git fetch upstream`, update `main`, then `git merge main` into the working branch. `rerere` is enabled.
 
