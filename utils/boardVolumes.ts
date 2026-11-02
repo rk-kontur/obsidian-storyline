@@ -4,9 +4,8 @@
 //
 // Pure helpers for the Board view: which act a scene created with "+" in a
 // column gets while a volume is selected, and which defined chapters belong
-// to the selected volume. Without a selected volume the Board behaves like
-// upstream (only the Prologue / Epilogue columns get their act, see
-// boardQuickAddAct).
+// to the selected volume. Without a selected volume the Board behaves
+// exactly like upstream.
 
 import type { Scene } from '../models/Scene';
 import { EPILOGUE_ACT, PROLOGUE_ACT } from './actChapter';
@@ -62,10 +61,12 @@ export interface BoardQuickAddInput {
 /**
  * Act for a scene created from the Board's quick add.
  *
- * - Grouped by act, from a column: the column decides. "Act N" keeps
- *   upstream's act, "Prologue" / "Epilogue" get PROLOGUE_ACT / EPILOGUE_ACT,
- *   "No Act" and other columns get no act. The volume's act is never forced
- *   onto such a column.
+ * - Without a selected volume: always upstream's act (upstream leaves the
+ *   Prologue / Epilogue columns without act).
+ * - Grouped by act, from a column, with a volume selected: the column
+ *   decides. "Act N" keeps upstream's act, "Prologue" / "Epilogue" get
+ *   PROLOGUE_ACT / EPILOGUE_ACT, "No Act" and other columns get no act.
+ *   The volume's act is never forced onto such a column.
  * - Grouped by chapter, from a "Chapter N" column with a volume selected: the
  *   chapter's act inside the volume (inferVolumeActForChapter), else
  *   upstream's inferred act if it is in the volume, else the volume's first act.
@@ -74,13 +75,13 @@ export interface BoardQuickAddInput {
  */
 export function boardQuickAddAct(input: BoardQuickAddInput): ActValue {
     const { groupBy, presetColumn, upstreamAct, volume, scenes } = input;
+    if (!volume || volume.acts.length === 0) return upstreamAct;
     if (presetColumn !== undefined && groupBy === 'act') {
         const key = presetColumn.trim().toLowerCase();
         if (key === 'prologue') return PROLOGUE_ACT;
         if (key === 'epilogue') return EPILOGUE_ACT;
         return upstreamAct;
     }
-    if (!volume || volume.acts.length === 0) return upstreamAct;
     if (presetColumn !== undefined && groupBy === 'chapter') {
         const m = presetColumn.match(/^Chapter\s+(.+)$/);
         if (m) {

@@ -9,7 +9,7 @@ Changes of this fork compared to the original StoryLine plugin by Jan Sandström
 ### "+ add scene" creates the scene in the column you clicked
 
 - With a volume selected and the Board (Kanban) grouped by **Act**, "+ add scene" in the **No Act**, **Prologue** or **Epilogue** column created the scene in the first act of the volume (e.g. act 5). Now the column decides: **No Act** creates a scene without act, **Prologue** uses act 0 and **Epilogue** act 99 (the same values the act dropdown of the dialog offers). An **Act N** column keeps act N, as before.
-- The **Prologue** / **Epilogue** columns now also prefill their act without volumes; before, the dialog opened with act "None".
+- Without a selected volume nothing changes: as in upstream, "+ add scene" in the **Prologue** / **Epilogue** column opens the dialog with act "None" (the `^Act\s+` column match does not cover these columns). This looks like an upstream bug and is a candidate for an upstream fix (prefill act 0 / 99).
 - Grouped by **Chapter** with a volume selected, "+" in a chapter column uses the act of that chapter inside the volume (from the volume's scenes with this chapter). If the chapter has no act or several acts in the volume, the volume's first act is used, so the new scene stays visible. Without a selected volume the act is inferred as before.
 - The toolbar button "+ new scene" and the columns of the other groupings (**Status**, **POV**, **No Chapter**, ...) keep using the volume's first act while a volume is selected.
 
