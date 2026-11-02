@@ -23,6 +23,7 @@ export class ExportModal extends Modal {
     private numberScenesOnExport = false;
     private includeCorkboardNotes = false;
     private includeInactiveScenes = false;
+    private includeArcPoints = true;
     private sceneSeparatorType: 'blank' | 'asterisks' | 'custom' = 'blank';
     private sceneSeparatorCustom = '';
 
@@ -136,6 +137,14 @@ export class ExportModal extends Modal {
                     t.onChange(v => { this.includeInactiveScenes = v; });
                 });
 
+            new Setting(manuscriptOptions)
+                .setName('Include arc points')
+                .setDesc('Include scenes marked as arc point. On by default.')
+                .addToggle(t => {
+                    t.setValue(this.includeArcPoints);
+                    t.onChange(v => { this.includeArcPoints = v; });
+                });
+
             if (this.exportScope !== 'manuscript') return;
 
             let titlesToggle: ToggleComponent | undefined;
@@ -232,6 +241,7 @@ export class ExportModal extends Modal {
                     numberScenesOnExport: this.numberScenesOnExport,
                     includeCorkboardNotes: this.includeCorkboardNotes,
                     includeInactiveScenes: this.includeInactiveScenes,
+                    includeArcPoints: this.includeArcPoints,
                 });
                 this.exportService.setSeparatorSettings(
                     this.sceneSeparatorType,

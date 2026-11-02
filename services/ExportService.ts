@@ -30,6 +30,8 @@ export interface ExportOptions {
     includeCorkboardNotes?: boolean;
     /** Include inactive / parked scenes in the export (default false). */
     includeInactiveScenes?: boolean;
+    /** Include scenes marked as arc point (default true). */
+    includeArcPoints?: boolean;
 }
 
 /**
@@ -49,6 +51,7 @@ export class ExportService {
         numberScenesOnExport: false,
         includeCorkboardNotes: false,
         includeInactiveScenes: false,
+        includeArcPoints: true,
     };
     private separatorType: 'blank' | 'asterisks' | 'custom' = 'blank';
     private separatorCustom = '';
@@ -146,6 +149,9 @@ export class ExportService {
         // or outline exports unless the user explicitly opts in.
         if (!this.exportOptions.includeCorkboardNotes) {
             scenes = scenes.filter(s => !this.isCorkboardNoteScene(s));
+        }
+        if (this.exportOptions.includeArcPoints === false) {
+            scenes = scenes.filter(s => !s.arcAnchor);
         }
         if (this.exportRange) {
             const selectedRanges = this.exportRange.sequenceRanges;
