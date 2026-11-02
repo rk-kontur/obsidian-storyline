@@ -5,6 +5,7 @@ import { SceneCardComponent } from '../components/SceneCard';
 import { InspectorComponent } from '../components/Inspector';
 import { QuickAddModal } from '../components/QuickAddModal';
 import { openStructureLabelModal } from '../components/StructureLabelModal';
+import { createStructureSection } from '../components/StructureSection';
 import { ShiftDatesModal } from '../components/ShiftDatesModal';
 import { renderViewSwitcher } from '../components/ViewSwitcher';
 import { enableDragToPan } from '../components/DragToPan';
@@ -1316,13 +1317,13 @@ export class TimelineView extends ItemView {
         const { contentEl } = modal;
 
         // ── Beat Sheet Templates section ──
-        contentEl.createEl('h3', { text: 'Beat sheet templates' });
-        contentEl.createEl('p', {
+        const beatSheetsSection = createStructureSection(contentEl, this.plugin, 'beat-sheet-templates', 'Beat sheet templates');
+        beatSheetsSection.createEl('p', {
             cls: 'setting-item-description',
             text: 'Apply a template to pre-populate your act/chapter structure with named beats.'
         });
 
-        const templateGrid = contentEl.createDiv('beat-sheet-list');
+        const templateGrid = beatSheetsSection.createDiv('beat-sheet-list');
         for (const template of BUILTIN_BEAT_SHEETS) {
             const row = templateGrid.createDiv('beat-sheet-row');
 
@@ -1370,13 +1371,13 @@ export class TimelineView extends ItemView {
         }
 
         // ── Acts section ──
-        contentEl.createEl('h3', { text: 'Acts' });
-        contentEl.createEl('p', {
+        const actsSection = createStructureSection(contentEl, this.plugin, 'acts', 'Acts');
+        actsSection.createEl('p', {
             cls: 'setting-item-description',
             text: 'Define acts for your story. Empty acts appear on the timeline even without scenes.'
         });
 
-        const actsList = contentEl.createDiv('structure-list');
+        const actsList = actsSection.createDiv('structure-list');
         const scenesPerAct = new Map<number, number>();
         for (const scene of this.sceneManager.getAllScenes()) {
             if (scene.act !== undefined) {
@@ -1472,7 +1473,7 @@ export class TimelineView extends ItemView {
         };
         renderActsList();
 
-        const addActRow = contentEl.createDiv('structure-add-row');
+        const addActRow = actsSection.createDiv('structure-add-row');
         new Setting(addActRow)
             .setName('Add acts')
             .setDesc('Enter act numbers (e.g. "1,2,3,4,5")')
@@ -1499,13 +1500,13 @@ export class TimelineView extends ItemView {
             });
 
         // ── Chapters section ──
-        contentEl.createEl('h3', { text: 'Chapters' });
-        contentEl.createEl('p', {
+        const chaptersSection = createStructureSection(contentEl, this.plugin, 'chapters', 'Chapters');
+        chaptersSection.createEl('p', {
             cls: 'setting-item-description',
             text: 'Define chapters. Empty chapters appear when grouping by chapter.'
         });
 
-        const chaptersList = contentEl.createDiv('structure-list');
+        const chaptersList = chaptersSection.createDiv('structure-list');
 
         const renderChaptersList = () => {
             chaptersList.empty();
@@ -1598,7 +1599,7 @@ export class TimelineView extends ItemView {
         };
         renderChaptersList();
 
-        const addChapterRow = contentEl.createDiv('structure-add-row');
+        const addChapterRow = chaptersSection.createDiv('structure-add-row');
         let createScenesForChapters = false;
         new Setting(addChapterRow)
             .setName('Add chapters')

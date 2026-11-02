@@ -6989,6 +6989,35 @@ body.sl-auto-hide-tab-labels .story-line-view-switcher.sl-collapsed .story-line-
     border-top: 1px solid var(--background-modifier-border);
 }
 
+/* Collapsible sections of the "Manage story structure" dialog */
+.structure-section > summary {
+    display: flex;
+    align-items: center;
+    gap: var(--size-4-1);
+    cursor: pointer;
+    list-style: none;
+    user-select: none;
+}
+
+.structure-section > summary::-webkit-details-marker {
+    display: none;
+}
+
+.structure-section-icon {
+    display: flex;
+    color: var(--text-muted);
+}
+
+.structure-section-icon svg {
+    width: var(--icon-s);
+    height: var(--icon-s);
+    transition: transform 0.15s ease;
+}
+
+.structure-section:not([open]) .structure-section-icon svg {
+    transform: rotate(-90deg);
+}
+
 /* ============================================
    Timeline — Empty entries & selected state
    ============================================ */

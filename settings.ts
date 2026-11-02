@@ -1275,7 +1275,7 @@ export class SceneCardsSettingTab extends PluginSettingTab {
 
         new Setting(generalBody)
             .setName('Default section state')
-            .setDesc('Choose whether character, location, Codex, and stats sections start expanded, collapsed, or remember their last state.')
+            .setDesc('Choose whether character, location, Codex, stats, and story structure sections start expanded, collapsed, or remember their last state.')
             .addDropdown(dropdown => {
                 dropdown.addOption('expanded', 'Expanded');
                 dropdown.addOption('collapsed', 'Collapsed');

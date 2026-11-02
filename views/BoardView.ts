@@ -4,6 +4,7 @@ import * as obsidian from 'obsidian';
 import { Scene, SceneFilter, SortConfig, BoardGroupBy, SceneStatus, SceneTemplate, BeatSheetTemplate, BUILTIN_BEAT_SHEETS, getStatusOrder, getStatusConfig, resolveStatusCfg } from '../models/Scene';
 import { openConfirmModal } from '../components/ConfirmModal';
 import { openStructureLabelModal } from '../components/StructureLabelModal';
+import { createStructureSection } from '../components/StructureSection';
 import { SceneManager } from '../services/SceneManager';
 import { SceneCardComponent } from '../components/SceneCard';
 import { FiltersComponent } from '../components/Filters';
@@ -3281,15 +3282,15 @@ export class BoardView extends ItemView {
         const { contentEl } = modal;
 
         // ── Beat Sheet Templates section ──
-        contentEl.createEl('h3', { text: 'Beat sheet templates' });
-        contentEl.createEl('p', {
+        const beatSheetsSection = createStructureSection(contentEl, this.plugin, 'beat-sheet-templates', 'Beat sheet templates');
+        beatSheetsSection.createEl('p', {
             cls: 'setting-item-description',
             text: 'Apply a template to pre-populate your act/chapter structure with named beats.'
         });
 
         // Global toggle: create placeholder scenes from beats
         let createPlaceholderScenes = false;
-        new Setting(contentEl)
+        new Setting(beatSheetsSection)
             .setName('Create placeholder scenes from beats')
             .setDesc('When enabled, applying a beat sheet also creates one "idea" scene per beat with the beat\'s title, act, chapter, and synopsis.')
             .addToggle(toggle => {
@@ -3303,7 +3304,7 @@ export class BoardView extends ItemView {
             const parts = [`${template.beats.length} beats`, `${template.acts.length} acts`];
             if (template.chapters.length > 0) parts.push(`${template.chapters.length} chapters`);
 
-            const s = new Setting(contentEl)
+            const s = new Setting(beatSheetsSection)
                 .setName(template.name)
                 .addButton(btn => {
                     btn.setButtonText('Apply').setCta().onClick(async () => {
@@ -3352,13 +3353,13 @@ export class BoardView extends ItemView {
         }
 
         // ── Acts section ──
-        contentEl.createEl('h3', { text: 'Acts' });
-        contentEl.createEl('p', {
+        const actsSection = createStructureSection(contentEl, this.plugin, 'acts', 'Acts');
+        actsSection.createEl('p', {
             cls: 'setting-item-description',
             text: 'Define acts for your story. Empty acts will appear as columns even without scenes.'
         });
 
-        const actsList = contentEl.createDiv('structure-list');
+        const actsList = actsSection.createDiv('structure-list');
         const scenesPerAct = new Map<number, number>();
         for (const scene of this.sceneManager.getAllScenes()) {
             if (scene.act !== undefined) {
@@ -3397,7 +3398,7 @@ export class BoardView extends ItemView {
         renderActsList();
 
         // Add acts controls
-        const addActRow = contentEl.createDiv('structure-add-row');
+        const addActRow = actsSection.createDiv('structure-add-row');
         new Setting(addActRow)
             .setName('Add acts')
             .setDesc('Enter act numbers (e.g. "1,2,3,4,5" or "6" to add one)')
@@ -3425,13 +3426,13 @@ export class BoardView extends ItemView {
             });
 
         // ── Chapters section ──
-        contentEl.createEl('h3', { text: 'Chapters' });
-        contentEl.createEl('p', {
+        const chaptersSection = createStructureSection(contentEl, this.plugin, 'chapters', 'Chapters');
+        chaptersSection.createEl('p', {
             cls: 'setting-item-description',
             text: 'Define chapters. Empty chapters appear as columns when grouping by chapter.'
         });
 
-        const chaptersList = contentEl.createDiv('structure-list');
+        const chaptersList = chaptersSection.createDiv('structure-list');
 
         const renderChaptersList = () => {
             chaptersList.empty();
@@ -3475,7 +3476,7 @@ export class BoardView extends ItemView {
         };
         renderChaptersList();
 
-        const addChapterRow = contentEl.createDiv('structure-add-row');
+        const addChapterRow = chaptersSection.createDiv('structure-add-row');
         let createScenesForChapters = false;
         new Setting(addChapterRow)
             .setName('Add chapters')
@@ -3540,12 +3541,12 @@ export class BoardView extends ItemView {
             });
 
         // ── Saved custom beat sheets ──
-        contentEl.createEl('h3', { text: 'Saved custom beat sheets' });
-        contentEl.createEl('p', {
+        const savedBeatSheetsSection = createStructureSection(contentEl, this.plugin, 'saved-beat-sheets', 'Saved custom beat sheets');
+        savedBeatSheetsSection.createEl('p', {
             cls: 'setting-item-description',
             text: 'Save a custom act/chapter pattern here so it can be reused in another project.'
         });
-        const customBeatSheetsList = contentEl.createDiv('structure-list');
+        const customBeatSheetsList = savedBeatSheetsSection.createDiv('structure-list');
         const renderCustomBeatSheets = () => {
             customBeatSheetsList.empty();
             const templates = this.plugin.settings.customBeatSheets || [];
@@ -3600,8 +3601,8 @@ export class BoardView extends ItemView {
         renderCustomBeatSheets();
 
         // ── Custom Structure Builder ──
-        contentEl.createEl('h3', { text: 'Custom structure builder' });
-        contentEl.createEl('p', {
+        const customBuilderSection = createStructureSection(contentEl, this.plugin, 'custom-structure-builder', 'Custom structure builder');
+        customBuilderSection.createEl('p', {
             cls: 'setting-item-description',
             text: 'Name your acts and scene beats, choose how many beats belong in each act, then apply or save the structure.'
         });
@@ -3621,7 +3622,7 @@ export class BoardView extends ItemView {
             })),
         }));
 
-        const customRow = contentEl.createDiv('structure-add-row');
+        const customRow = customBuilderSection.createDiv('structure-add-row');
         new Setting(customRow)
             .setName('Template name')
             .setDesc('Optional name for saving this structure')
@@ -3630,7 +3631,7 @@ export class BoardView extends ItemView {
                 text.onChange(value => { customTemplateName = value.trim(); });
             });
 
-        const customEditor = contentEl.createDiv('custom-structure-editor');
+        const customEditor = customBuilderSection.createDiv('custom-structure-editor');
         const renderCustomEditor = () => {
             customEditor.empty();
             customActsDraft.forEach((act, actIndex) => {
@@ -3724,7 +3725,7 @@ export class BoardView extends ItemView {
         };
         renderCustomEditor();
 
-        new Setting(contentEl)
+        new Setting(customBuilderSection)
             .setName('Create placeholder scenes')
             .setDesc('Generate one "idea" scene for every named beat, using its name, subtitle, act, and arc point setting.')
             .addToggle(toggle => {
@@ -3779,7 +3780,7 @@ export class BoardView extends ItemView {
             };
         };
 
-        const customApplyRow = contentEl.createDiv('structure-close-row');
+        const customApplyRow = customBuilderSection.createDiv('structure-close-row');
         customApplyRow.createEl('button', { text: 'Apply custom structure', cls: 'mod-cta' })
             .addEventListener('click', async () => {
                 const template = buildCustomTemplate();
