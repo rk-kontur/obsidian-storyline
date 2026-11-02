@@ -56,6 +56,7 @@ import { WritingTracker } from './services/WritingTracker';
 import { SnapshotManager } from './services/SnapshotManager';
 import { ViewSnapshotService } from './services/ViewSnapshotService';
 import { openManageSnapshotsModal } from './components/ViewSnapshotModal';
+import { registerStructureCommand } from './services/StructureCommand';
 import { LinkScanner } from './services/LinkScanner';
 import { CascadeRenameService } from './services/CascadeRenameService';
 import { FieldTemplateService } from './services/FieldTemplateService';
@@ -425,6 +426,8 @@ export default class SceneCardsPlugin extends Plugin {
             id: 'open-codex-view',
             name: 'Open Codex',            callback: () => this.activateView(CODEX_VIEW_TYPE),
         });
+
+        registerStructureCommand(this);
 
         this.addCommand({
             id: 'create-new-scene',

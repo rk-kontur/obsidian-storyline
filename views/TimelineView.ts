@@ -1309,7 +1309,7 @@ export class TimelineView extends ItemView {
     /**
      * Open the structure modal to add/remove acts, chapters, and apply beat sheet templates
      */
-    private openStructureModal(): void {
+    openStructureModal(): void {
         const modal = new Modal(this.app);
         modal.titleEl.setText('Manage story structure');
 

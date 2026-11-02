@@ -3273,7 +3273,7 @@ export class BoardView extends ItemView {
     /**
      * Open the structure modal to add/remove empty acts and chapters
      */
-    private openStructureModal(): void {
+    openStructureModal(): void {
         const modal = new Modal(this.app);
         modal.titleEl.setText('Manage story structure');
         modal.containerEl.addClass('sl-structure-modal');
