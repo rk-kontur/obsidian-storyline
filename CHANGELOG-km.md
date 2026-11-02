@@ -2,6 +2,30 @@
 
 Changes of this fork compared to the original StoryLine plugin by Jan Sandström. Each `## <version>` section is used as the initial text of the matching GitHub release; texts edited on GitHub (e.g. with screenshots) are never overwritten. Every release also carries `storyline-km-source.zip` (all source files that are new or changed compared to the original, without `main.js`) and `storyline-km.patch` (the full diff against the original).
 
+## 1.11.8-km.26
+
+**Corkboard follows the selected volume: camera per volume, new scenes placed next to their volume**
+
+- When you select a volume, the **Corkboard** hides the cards of the other volumes, but the camera stayed where it was. Later volumes sat far away and you had to pan a long way to find them.
+- Now the camera moves to the volume: at the current zoom, the top-left card of the volume sits just inside the top-left corner of the board. Only scenes whose act belongs to the volume count; corkboard notes and scenes without an act (they are shown in every volume) do not. If the volume has no placed scenes yet, all visible cards are used.
+- The camera is remembered per volume while the board is open: switching back to a volume, or to **All volumes**, returns to where you were there. Without a remembered camera, **All volumes** keeps the current camera as before.
+- Only the camera moves. No card position is changed or saved, and the **All volumes** layout stays as it is.
+- New scenes that have no corkboard position yet used to land near the top-left of the whole board when a volume was selected, on top of Volume 1's cards in **All volumes**. With a volume selected they are now placed in a grid one row below the volume's lowest card (below all cards if the volume has none yet).
+- Projects without volumes, and **All volumes**, behave exactly as before.
+
+**How and where to use:**
+
+1. Open the **Board** and switch it to **Corkboard** mode.
+2. In the filter bar, pick a volume in **Filter by [Volume]**: the board pans to that volume's cards.
+3. Pan and zoom as you like, pick another volume, then pick the first one again: you are back where you left it. **All volumes** also returns to its own view.
+4. Create a new scene while a volume is selected: on the Corkboard it appears below that volume's cards, not at the top-left of the board.
+
+**Files:**
+
+- `utils/corkboardVolume.ts` (new: camera per volume, volume bounding box, grid for new scenes)
+- `views/BoardView.ts` (corkboard render: two marked hooks)
+- `CHANGELOG-km.md`
+
 ## 1.11.8-km.25
 
 **Manuscript with Pane Relief "Maximize active tab": no blank page, no scroll jump**
