@@ -305,17 +305,39 @@ export class VolumeDividerTracker {
         return vol;
     }
 
-    /** Render an HTML volume band before the act divider if a new volume starts; returns the band. */
-    renderBefore(parent: HTMLElement, act: number | string | undefined, gridColumn?: string): HTMLElement | undefined {
+    /**
+     * Like next(), but with `bandEnd` returns 'end' when an act outside every
+     * volume follows a volume (the band ends there).
+     */
+    advance(act: number | string | undefined): VolumeDef | 'end' | undefined {
         if (this.opts.bandEnd && this.active && this.lastId !== null && !getVolumeForAct(this.volumes, act)) {
             this.lastId = null;
+            return 'end';
+        }
+        return this.next(act);
+    }
+
+    /** Render an HTML volume band before the act divider if a new volume starts; returns the band. */
+    renderBefore(parent: HTMLElement, act: number | string | undefined, gridColumn?: string): HTMLElement | undefined {
+        const step = this.advance(act);
+        if (step === 'end') {
             const end = parent.createDiv('sl-km-volume-divider sl-km-volume-end');
             if (gridColumn) end.setCssStyles({ gridColumn });
             return end;
         }
-        const vol = this.next(act);
-        if (!vol) return undefined;
-        return this.renderBand(parent, vol, gridColumn);
+        if (!step) return undefined;
+        return this.renderBand(parent, step, gridColumn);
+    }
+
+    /**
+     * Kanban: render a vertical volume band before an act column if a new
+     * volume starts, or (with `bandEnd`) an unlabelled end band before a
+     * column outside every volume.
+     */
+    renderColumnBefore(parent: HTMLElement, act: number | string | undefined): void {
+        const step = this.advance(act);
+        if (step === 'end') parent.createDiv('sl-km-volume-column sl-km-volume-end');
+        else if (step) renderVolumeColumnDivider(parent, step);
     }
 
     /**
@@ -375,11 +397,16 @@ export function renderVolumeColumnDivider(parent: HTMLElement, vol: VolumeDef): 
     band.createSpan({ cls: 'sl-km-volume-column-label', text: vol.title });
 }
 
-/** Act number from a Kanban act column key ("Act 5", "Prologue", "Epilogue"). */
+/**
+ * Act number from a Kanban act column key, as upstream's getActDisplayLabel
+ * builds it: "Act 5" (also for "05"), "100", "Prologue", "Epilogue".
+ * Other keys ("No Act", "Part 5", "1.1.2") are no numeric act and belong to
+ * no volume, like their scenes under actNumber.
+ */
 export function actFromColumnKey(key: string): number | undefined {
     const k = key.trim().toLowerCase();
-    if (k === 'prologue') return 0;
-    if (k === 'epilogue') return 99;
-    const m = k.match(/(\d+(?:\.\d+)?)/);
+    if (k === 'prologue') return PROLOGUE_ACT;
+    if (k === 'epilogue') return EPILOGUE_ACT;
+    const m = k.match(/^(?:act\s+)?(\d+(?:\.\d+)?)$/);
     return m ? Number(m[1]) : undefined;
 }

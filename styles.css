@@ -14305,3 +14305,10 @@ body.sl-focus-active-global.sl-focus-dim-text .markdown-source-view.mod-cm6 .cm-
     padding: 0;
     background: none;
 }
+
+/* Kanban: end of a volume before Prologue / Epilogue / "No Act" / act columns outside every volume */
+.sl-km-volume-column.sl-km-volume-end {
+    flex: 0 0 6px;
+    padding-top: 0;
+    background: none;
+}

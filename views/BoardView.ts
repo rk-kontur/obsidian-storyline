@@ -1,8 +1,9 @@
 /* eslint-disable @typescript-eslint/no-floating-promises, @typescript-eslint/no-misused-promises, @typescript-eslint/no-unnecessary-type-assertion -- Obsidian's API surface and several untyped third-party libraries force dynamic dispatch; floating promises are intentional in DOM/event handlers; matching enable at end of file */
 import { ItemView, WorkspaceLeaf, Menu, Notice, TFile, Modal, Setting, MarkdownRenderer, normalizePath } from 'obsidian';
 import { enhanceStructureModal } from '../components/StructureModalSections';
-import { defaultActForScope, scopeActs, scopeFilter } from '../utils/volumeScope';
-import { actFromColumnKey, getProjectVolumes, renderVolumeColumnDivider, VolumeDividerTracker } from '../utils/volumes';
+import { getScopedVolume, scopeActs, scopeFilter } from '../utils/volumeScope';
+import { boardQuickAddAct, scopeDefinedChapters } from '../utils/boardVolumes';
+import { actFromColumnKey, getProjectVolumes, VolumeDividerTracker } from '../utils/volumes';
 import * as obsidian from 'obsidian';
 import { Scene, SceneFilter, SortConfig, BoardGroupBy, SceneStatus, SceneTemplate, BeatSheetTemplate, BUILTIN_BEAT_SHEETS, getStatusOrder, getStatusConfig, resolveStatusCfg } from '../models/Scene';
 import { openConfirmModal } from '../components/ConfirmModal';
@@ -540,7 +541,8 @@ export class BoardView extends ItemView {
         // until a scene was dragged into them).
         const projectPath = this.sceneManager.activeProject?.filePath;
         const definedActs = scopeActs(this.app, projectPath, this.sceneManager.getDefinedActs());
-        const definedChapters = this.sceneManager.getDefinedChapters();
+        // fork: only chapters of the selected volume get empty columns
+        const definedChapters = scopeDefinedChapters(this.sceneManager.getDefinedChapters(), this.sceneManager.getAllScenes(), getScopedVolume(this.app, projectPath));
         const groups = this.sceneManager.queryService.getScenesGroupedByWithEmpty(
             this.groupBy,
             scopeFilter(this.app, projectPath, this.currentFilter),
@@ -559,11 +561,9 @@ export class BoardView extends ItemView {
             return;
         }
 
-        const volumeTracker = new VolumeDividerTracker(this.groupBy === 'act' ? getProjectVolumes(this.app, projectPath) : []);
+        const volumeTracker = new VolumeDividerTracker(this.groupBy === 'act' ? getProjectVolumes(this.app, projectPath) : [], { bandEnd: true });
         for (const key of sortedKeys) {
             let scenes = groups.get(key) || [];
-            const startedVolume = volumeTracker.next(actFromColumnKey(key)); // fork: volume band between act columns
-            if (startedVolume) renderVolumeColumnDivider(this.boardEl, startedVolume);
             if (!this.plugin.settings.showNotesInKanban) {
                 scenes = scenes.filter(scene => !this.isCorkboardNoteScene(scene));
                 const isNoActColumn = this.groupBy === 'act' && key.trim().toLowerCase() === 'no act';
@@ -571,6 +571,7 @@ export class BoardView extends ItemView {
                     continue;
                 }
             }
+            volumeTracker.renderColumnBefore(this.boardEl, actFromColumnKey(key)); // fork: volume band / band end between act columns
             this.renderColumn(this.boardEl, key, scenes);
         }
     }
@@ -2069,7 +2070,7 @@ export class BoardView extends ItemView {
                     const targetColumn = targetEl.closest('.story-line-column');
                     const targetGroupKey = targetColumn?.getAttribute('data-group') || title;
                     const groups = this.sceneManager.queryService.getScenesGroupedByWithEmpty(
-                        this.groupBy, this.currentFilter, this.currentSort
+                        this.groupBy, scopeFilter(this.app, this.sceneManager.activeProject?.filePath, this.currentFilter), this.currentSort // fork: volume scope as in renderBoard
                     );
                     const targetScenes = groups.get(targetGroupKey) || scenes;
 
@@ -3878,9 +3879,6 @@ export class BoardView extends ItemView {
     private openQuickAdd(presetColumn?: string): void {
         // Build defaults based on groupBy and column title
         const defaults: Partial<Scene> = {};
-        // fork: while a volume is selected, new scenes start in its first act (else they would be hidden)
-        const scopedAct = defaultActForScope(this.app, this.sceneManager.activeProject?.filePath);
-        if (scopedAct !== undefined) defaults.act = scopedAct;
         if (presetColumn) {
             if (this.groupBy === 'act') {
                 // Accept any value after "Act " (numeric, decimal, or string)
@@ -3907,6 +3905,9 @@ export class BoardView extends ItemView {
                 if (presetColumn !== 'No POV') defaults.pov = presetColumn;
             }
         }
+        // fork: act from the column (Prologue/Epilogue/No Act) or the selected volume (utils/boardVolumes.ts)
+        const kmAct = boardQuickAddAct({ groupBy: this.groupBy, presetColumn, upstreamAct: defaults.act, volume: getScopedVolume(this.app, this.sceneManager.activeProject?.filePath), scenes: this.sceneManager.getAllScenes() });
+        if (kmAct !== undefined) defaults.act = kmAct; else delete defaults.act;
 
         const modal = new QuickAddModal(
             this.app,
