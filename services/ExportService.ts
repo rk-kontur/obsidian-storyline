@@ -3,6 +3,7 @@ import { StoryLineProject } from '../models/StoryLineProject';
 import { SceneManager } from './SceneManager';
 import { compareActChapter, getActDisplayLabel, getChapterDisplayLabel } from '../utils/actChapter';
 import { actNumber } from '../utils/volumes'; // fork: volume act rule
+import { filterArcPointsForExport, volumeExportLabel } from '../utils/exportFork'; // fork
 import { CharacterManager } from './CharacterManager';
 import { LocationManager } from './LocationManager';
 import { SLMarkdownToDocxConverter, SLDocxSettings, SLObsidianFontSettings } from './DocxConverter';
@@ -31,6 +32,10 @@ export interface ExportOptions {
     includeCorkboardNotes?: boolean;
     /** Include inactive / parked scenes in the export (default false). */
     includeInactiveScenes?: boolean;
+    /** Fork: include Arc Points (scenes with `arcAnchor`); default true, as before. */
+    includeArcPoints?: boolean;
+    /** Fork: title of the exported volume, used in the file name instead of the act list. */
+    volumeTitle?: string;
 }
 
 /**
@@ -50,6 +55,7 @@ export class ExportService {
         numberScenesOnExport: false,
         includeCorkboardNotes: false,
         includeInactiveScenes: false,
+        includeArcPoints: true, // fork
     };
     private separatorType: 'blank' | 'asterisks' | 'custom' = 'blank';
     private separatorCustom = '';
@@ -148,6 +154,7 @@ export class ExportService {
         if (!this.exportOptions.includeCorkboardNotes) {
             scenes = scenes.filter(s => !this.isCorkboardNoteScene(s));
         }
+        scenes = filterArcPointsForExport(scenes, this.exportOptions.includeArcPoints !== false); // fork
         if (this.exportRange) {
             const selectedRanges = this.exportRange.sequenceRanges;
             scenes = scenes.filter(scene => {
@@ -177,6 +184,7 @@ export class ExportService {
     private getExportLabel(scope: ExportScope): string {
         const base = scope === 'manuscript' ? 'Manuscript' : 'Outline';
         if (!this.exportRange) return base;
+        if (this.exportRange.field === 'act') { const label = volumeExportLabel(base, this.exportOptions.volumeTitle); if (label) return label; } // fork: volume title
         const rangeText = this.exportRange.sequenceRanges
             .map(range => range.start === range.end ? String(range.start) : `${range.start}-${range.end}`)
             .join(',');

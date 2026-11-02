@@ -2,6 +2,7 @@
 import { Modal, Setting, Notice, DropdownComponent, ToggleComponent } from 'obsidian';
 import { ExportService, ExportFormat, ExportRange, ExportScope } from '../services/ExportService';
 import { getProjectVolumes, volumeExportRange } from '../utils/volumes';
+import { getScopedVolume } from '../utils/volumeScope'; // fork
 import type SceneCardsPlugin from '../main';
 
 type ExportContent = ExportScope | 'scenes' | 'chapters';
@@ -26,6 +27,8 @@ export class ExportModal extends Modal {
     private numberScenesOnExport = false;
     private includeCorkboardNotes = false;
     private includeInactiveScenes = false;
+    /** Fork: Arc Points are exported unless switched off (not persisted, like the other toggles) */
+    private includeArcPoints = true;
     private sceneSeparatorType: 'blank' | 'asterisks' | 'custom' = 'blank';
     private sceneSeparatorCustom = '';
 
@@ -58,6 +61,8 @@ export class ExportModal extends Modal {
             contentEl.createEl('p', { text: 'No active project. Open a project first.' });
             return;
         }
+        // fork: preselect the volume chosen in the views (shared volume scope)
+        this.exportVolumeId = getScopedVolume(this.app, project.filePath)?.id ?? '';
 
         contentEl.createEl('p', {
             text: `Project: ${project.title}`,
@@ -157,6 +162,15 @@ export class ExportModal extends Modal {
                     t.onChange(v => { this.includeInactiveScenes = v; });
                 });
 
+            // fork: Arc Points are planning notes; all formats and contents
+            new Setting(manuscriptOptions)
+                .setName('Include arc points')
+                .setDesc('Include scenes marked as arc point (plotline stages). On by default.')
+                .addToggle(t => {
+                    t.setValue(this.includeArcPoints);
+                    t.onChange(v => { this.includeArcPoints = v; });
+                });
+
             if (this.exportScope !== 'manuscript') return;
 
             let titlesToggle: ToggleComponent | undefined;
@@ -237,9 +251,10 @@ export class ExportModal extends Modal {
         const exportBtn = actions.createEl('button', { text: 'Export', cls: 'mod-cta' });
         exportBtn.setAttr('type', 'button');
         exportBtn.addEventListener('click', async () => {
+            const volumes = getProjectVolumes(this.app, this.plugin.sceneManager.activeProject?.filePath); // fork
             const exportRange = this.exportContent === 'scenes' || this.exportContent === 'chapters'
                 ? this.parseExportRange(this.exportRangeText)
-                : volumeExportRange(getProjectVolumes(this.app, this.plugin.sceneManager.activeProject?.filePath), this.exportVolumeId);
+                : volumeExportRange(volumes, this.exportVolumeId);
             if ((this.exportContent === 'scenes' || this.exportContent === 'chapters') && !exportRange) {
                 const valueLabel = this.exportContent === 'scenes' ? 'scene' : 'chapter';
                 new Notice(`Enter ${valueLabel} numbers like 1-4, 6, 8.`);
@@ -253,6 +268,9 @@ export class ExportModal extends Modal {
                     numberScenesOnExport: this.numberScenesOnExport,
                     includeCorkboardNotes: this.includeCorkboardNotes,
                     includeInactiveScenes: this.includeInactiveScenes,
+                    includeArcPoints: this.includeArcPoints, // fork
+                    // fork: volume title in the file name (only when the volume's act range is used)
+                    volumeTitle: exportRange?.field === 'act' ? volumes.find(v => v.id === this.exportVolumeId)?.title : undefined,
                 });
                 this.exportService.setSeparatorSettings(
                     this.sceneSeparatorType,

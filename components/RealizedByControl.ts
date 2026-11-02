@@ -22,6 +22,22 @@ async function writeRealizedBy(app: App, arc: Scene, target: Scene | undefined):
 }
 
 /**
+ * Removes `realizedBy` (and the `realized_by` spelling) from a scene that is
+ * no longer an Arc Point, so no orphaned link stays behind. Call after the
+ * `arcAnchor` write has finished; does nothing when neither key is set.
+ */
+export async function clearRealizedBy(app: App, scene: Scene): Promise<void> {
+    const file = app.vault.getAbstractFileByPath(scene.filePath);
+    if (!(file instanceof TFile)) return;
+    const fm = app.metadataCache.getFileCache(file)?.frontmatter;
+    if (fm && !(REALIZED_BY_KEY in fm) && !('realized_by' in fm)) return;
+    await app.fileManager.processFrontMatter(file, (front: Record<string, unknown>) => {
+        delete front[REALIZED_BY_KEY];
+        delete front.realized_by;
+    });
+}
+
+/**
  * Renders "Realized [dropdown: not yet | scenes…]" next to the Arc point checkbox.
  * `container` is the Arc point row of the Inspector.
  * `getScenes` returns the candidate scenes (regular scenes of the project).
@@ -51,6 +67,7 @@ export function renderRealizedByControl(
         const current = raw ? resolveRealizingScene(app, scene, candidates) : undefined;
 
         const select = row.createEl('select', { cls: 'dropdown sl-km-realized-by-select' });
+        // eslint-disable-next-line obsidianmd/ui/sentence-case -- reads as "Realized: not yet" after the label
         select.createEl('option', { text: 'not yet', value: '' });
         for (const c of candidates) {
             const label = `${c.act !== undefined ? `${c.act}-` : ''}${c.sequence ?? ''} ${c.title || c.filePath}`.trim();
@@ -62,11 +79,10 @@ export function renderRealizedByControl(
         }
         select.value = current ? current.filePath : (raw ? '__raw__' : '');
         select.addEventListener('keydown', (e: KeyboardEvent) => e.stopPropagation());
-        select.addEventListener('change', async () => {
+        select.addEventListener('change', () => {
             if (select.value === '__raw__') return;
             const target = candidates.find(c => c.filePath === select.value);
-            await writeRealizedBy(app, scene, target);
-            onChanged?.();
+            void writeRealizedBy(app, scene, target).then(() => onChanged?.());
         });
     };
     render();

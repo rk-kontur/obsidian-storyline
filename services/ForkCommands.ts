@@ -11,6 +11,7 @@ import { BOARD_VIEW_TYPE, TIMELINE_VIEW_TYPE } from '../constants';
 import { clearNextStructureSection, setNextStructureSection, type StructureSection } from '../components/StructureModalSections';
 import { registerVolumeScopeSync } from '../utils/volumeScope';
 import { flushOpenVolumeEditors } from '../components/VolumesEditor';
+import { registerRealizedByRenameSync } from './RealizedByRenameSync';
 
 interface HasStructureModal { openStructureModal(): void }
 
@@ -58,4 +59,6 @@ export function registerForkCommands(plugin: SceneCardsPlugin): void {
     registerVolumeScopeSync(plugin);
     // A volumes change still waiting for its debounce is written on unload
     plugin.register(() => { void flushOpenVolumeEditors(); });
+    // Arc Point realizedBy links follow renamed files while Obsidian does not update links itself
+    registerRealizedByRenameSync(plugin);
 }
