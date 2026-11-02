@@ -32,8 +32,8 @@ Changes of this fork compared to the original StoryLine plugin by Jan Sandström
 
 1. Open the **Board** in **Kanban** mode in a project with volumes (e.g. Volume 1 = acts 1–4, Volume 2 = acts 5–8) and set **Group by** to **Act**.
 2. With **All volumes** selected, look at the columns: the labelled band "Volume 1" before act 1, "Volume 2" before act 5, and one narrow separator without label after the last column of a volume, before the first column outside every volume (an act outside every volume, **Epilogue**, **Prologue** or **No Act**). The columns that follow it share this one separator until a column of a volume starts the next labelled band.
-3. Select **Volume 2** in the volume dropdown. Click **+ add scene** in the **No Act** column: the dialog opens with act **None**. In the **Act 6** column it opens with **Act 6**. The **Prologue** and **Epilogue** columns are hidden while a volume is selected. The toolbar button **+ new scene** opens it with **Act 5**.
-4. Set **Group by** to **Chapter**: only chapters with scenes in acts 5–8 have columns. Click **+ add scene** in a chapter column: the act of that chapter in Volume 2 is preselected.
+3. Select **Volume 2** in the volume dropdown. Click **+ add scene** in the **No Act** column (shown when there are scenes without an act): the dialog opens with act **None**. In the **Act 6** column it opens with **Act 6**. The **Prologue** and **Epilogue** columns are hidden while a volume is selected. The toolbar button **+ new scene** opens it with **Act 5**.
+4. Set **Group by** to **Chapter**: only chapters with scenes in acts 5–8 (or with scenes without an act) have columns. Click **+ add scene** in a chapter column: the act of that chapter in Volume 2 is preselected.
 5. Select **All volumes**: all defined chapters are shown again.
 
 **Files:**
