@@ -9,16 +9,16 @@ The Timeline toolbar gets the same All / Scenes / Arc Points toggle as the Plotl
 ## How it works
 New `components/ArcPointUI.ts` holds the toggle (same markup and CSS classes as in `StorylineView`), the badge and the diamond icon; the Timeline passes `arcAnchorFilter` to `getFilteredScenes` and stores the choice in the new setting `timelineArcFilter`. Empty acts are still decided from the unfiltered scenes, and a drag in chronological order renumbers the full scene list (the moved scene is placed next to its visible neighbours) so hidden scenes keep their order. One CSS rule for the Plot Grid icon is added next to `.scene-card-arc-point-badge`.
 
-- Compare: https://github.com/PixeroJan/obsidian-storyline/compare/main...rk-kontur:obsidian-storyline:_suggest-feature-arc-point-filter
+- Compare: https://github.com/PixeroJan/obsidian-storyline/compare/main...rk-kontur:obsidian-storyline:suggest-feature/arc-point-filter
 - Code:
-  - Helpers: https://github.com/rk-kontur/obsidian-storyline/blob/_suggest-feature-arc-point-filter/components/ArcPointUI.ts#L19-L58
-  - Timeline toolbar toggle: https://github.com/rk-kontur/obsidian-storyline/blob/_suggest-feature-arc-point-filter/views/TimelineView.ts#L234-L240
-  - Timeline empty acts and filter hint: https://github.com/rk-kontur/obsidian-storyline/blob/_suggest-feature-arc-point-filter/views/TimelineView.ts#L366-L379
-  - Timeline chronological drag: https://github.com/rk-kontur/obsidian-storyline/blob/_suggest-feature-arc-point-filter/views/TimelineView.ts#L453-L461 and https://github.com/rk-kontur/obsidian-storyline/blob/_suggest-feature-arc-point-filter/views/TimelineView.ts#L101-L132
-  - Timeline swimlane empty state: https://github.com/rk-kontur/obsidian-storyline/blob/_suggest-feature-arc-point-filter/views/TimelineView.ts#L680-L684
-  - Timeline card badges: https://github.com/rk-kontur/obsidian-storyline/blob/_suggest-feature-arc-point-filter/views/TimelineView.ts#L860 and https://github.com/rk-kontur/obsidian-storyline/blob/_suggest-feature-arc-point-filter/views/TimelineView.ts#L1037
-  - Plot Grid icons: https://github.com/rk-kontur/obsidian-storyline/blob/_suggest-feature-arc-point-filter/views/PlotgridView.ts#L1440 and https://github.com/rk-kontur/obsidian-storyline/blob/_suggest-feature-arc-point-filter/views/PlotgridView.ts#L1715
-  - Setting: https://github.com/rk-kontur/obsidian-storyline/blob/_suggest-feature-arc-point-filter/settings.ts#L626-L627
+  - Helpers: https://github.com/rk-kontur/obsidian-storyline/blob/suggest-feature/arc-point-filter/components/ArcPointUI.ts#L19-L58
+  - Timeline toolbar toggle: https://github.com/rk-kontur/obsidian-storyline/blob/suggest-feature/arc-point-filter/views/TimelineView.ts#L234-L240
+  - Timeline empty acts and filter hint: https://github.com/rk-kontur/obsidian-storyline/blob/suggest-feature/arc-point-filter/views/TimelineView.ts#L366-L379
+  - Timeline chronological drag: https://github.com/rk-kontur/obsidian-storyline/blob/suggest-feature/arc-point-filter/views/TimelineView.ts#L453-L461 and https://github.com/rk-kontur/obsidian-storyline/blob/suggest-feature/arc-point-filter/views/TimelineView.ts#L101-L132
+  - Timeline swimlane empty state: https://github.com/rk-kontur/obsidian-storyline/blob/suggest-feature/arc-point-filter/views/TimelineView.ts#L680-L684
+  - Timeline card badges: https://github.com/rk-kontur/obsidian-storyline/blob/suggest-feature/arc-point-filter/views/TimelineView.ts#L860 and https://github.com/rk-kontur/obsidian-storyline/blob/suggest-feature/arc-point-filter/views/TimelineView.ts#L1037
+  - Plot Grid icons: https://github.com/rk-kontur/obsidian-storyline/blob/suggest-feature/arc-point-filter/views/PlotgridView.ts#L1440 and https://github.com/rk-kontur/obsidian-storyline/blob/suggest-feature/arc-point-filter/views/PlotgridView.ts#L1715
+  - Setting: https://github.com/rk-kontur/obsidian-storyline/blob/suggest-feature/arc-point-filter/settings.ts#L626-L627
 
 ## Needed addons
 - Screenshot: Timeline (linear, Reading order) toolbar with the All / Scenes / Arc Points toggle set to **Arc Points**, showing only Arc Point cards with the "Arc Point" badge.
