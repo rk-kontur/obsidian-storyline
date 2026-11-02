@@ -2,8 +2,8 @@
 //  Link and name normalization (fork: storyline-km)
 // ═══════════════════════════════════════════════════════
 //
-// One rule for every fork module that compares a link or a name with a
-// scene title or a character name:
+// One rule for the fork modules that compare character names (characters,
+// POV, character filter) and resolve Arc Point `realizedBy` links:
 //
 //   "[[Folder/Name.md#Heading|Alias]]" → linkpathOf → "Folder/Name.md"
 //                                      → linkName   → "Name"
@@ -16,10 +16,12 @@
 // - In a plain value (no [[ ]]), "|" and "#" are part of the name: a scene
 //   title such as "Scene #3" stays as it is.
 //
-// The parser already cleans `setup_scenes`, `payoff_scenes`, `pov` and
-// `characters` (MetadataParser.cleanWikilink / cleanEntityWikilinkTarget),
-// so for those parsed values linkName returns the value unchanged; it only
-// matters for raw frontmatter (e.g. `realizedBy`) and filter input.
+// The parser already cleans `pov` and `characters`
+// (MetadataParser.cleanEntityWikilinkTarget), so for those parsed values
+// this only lower-cases; it matters for raw frontmatter (`realizedBy`) and
+// filter input. Setup/payoff links are NOT matched with this rule: they
+// compare the parsed value with the raw scene title exactly as upstream's
+// Validator does (volumeSetups, volumeStatsScope).
 
 /** Inner text of "[[...]]", or undefined for a plain value. */
 function wikilinkInner(raw: string): string | undefined {

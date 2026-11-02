@@ -1181,7 +1181,7 @@ export class PlotgridView extends ItemView {
             const kmActDiv = divs?.find(d => d.type === 'act');
             const kmRow = this.data.rows[ri];
             const kmScene = kmRow.sourceType === 'auto' && kmRow.sourceId ? sceneManager?.getScene(kmRow.sourceId) : undefined;
-            const kmNoAct = !kmActDiv && !!kmScene && kmScene.act === undefined;
+            const kmNoAct = !kmActDiv && !!kmScene && kmScene.act === undefined && !collapsedRows.has(ri); // hidden under a collapsed act: no band end
             const kmStep = kmActDiv ? volumeTrackTracker.advance(kmActDiv.key.slice(4)) : (kmNoAct ? volumeTrackTracker.advance(undefined) : undefined);
             if (kmStep) {
                 kmVolumeSteps.set(ri, kmStep);

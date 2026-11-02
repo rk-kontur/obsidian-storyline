@@ -377,18 +377,25 @@ function textWidth(el: SVGTextContentElement, text: string, fontSize: number): n
     return measured > 0 ? measured : estimateTextWidth(text, fontSize);
 }
 
-/** Set `el`'s text, shortened with "…" until it fits `maxWidth`. Returns true if shortened. */
+/**
+ * Set `el`'s text, shortened with "…" until it fits `maxWidth`. Returns true
+ * if shortened. One fit test for the full text; the cut is found by binary
+ * search (few measurements, each one forces a layout).
+ */
 function setFittedText(el: SVGTextContentElement, text: string, maxWidth: number, fontSize: number): boolean {
     el.textContent = text;
     if (textWidth(el, text, fontSize) <= maxWidth) return false;
-    let n = text.length - 1;
-    while (n > 1) {
-        const shortened = text.slice(0, n).trimEnd() + '…';
-        el.textContent = shortened;
-        if (textWidth(el, shortened, fontSize) <= maxWidth) return true;
-        n--;
+    const cut = (n: number) => text.slice(0, n).trimEnd() + '…';
+    // Longest prefix length in [1, text.length - 1] whose shortened form fits; 1 if none does
+    let lo = 1;
+    let hi = text.length - 1;
+    while (lo < hi) {
+        const mid = Math.ceil((lo + hi) / 2);
+        el.textContent = cut(mid);
+        if (textWidth(el, cut(mid), fontSize) <= maxWidth) lo = mid;
+        else hi = mid - 1;
     }
-    el.textContent = text.slice(0, 1) + '…';
+    el.textContent = cut(lo);
     return true;
 }
 
@@ -396,7 +403,8 @@ function setFittedText(el: SVGTextContentElement, text: string, maxWidth: number
  * Subway act label with the volume title, e.g. "VOLUME 1 ACT 1". If the
  * label is wider than the act's columns (`maxWidth`), the volume title moves
  * onto its own line above the act label; a line that still does not fit is
- * shortened with "…" and the full label is shown as the tooltip.
+ * shortened with "…" and the full label is shown as the tooltip. Acts
+ * outside every volume get upstream's label unchanged.
  */
 export function setSubwayActLabel(
     label: SVGTextElement,
@@ -406,26 +414,25 @@ export function setSubwayActLabel(
     const svgNS = 'http://www.w3.org/2000/svg';
     const act = opts.actLabel.toUpperCase();
     const vol = (opts.volumeTitle ?? '').toUpperCase();
-    const full = vol ? `${vol} ${act}` : act;
-    let shortened = false;
-    if (!vol || setFittedText(label, full, opts.maxWidth, opts.fontSize)) {
-        if (vol) {
-            label.textContent = '';
-            const x = label.getAttribute('x') ?? '0';
-            const volLine = doc.createElementNS(svgNS, 'tspan');
-            volLine.setAttribute('x', x);
-            volLine.setAttribute('dy', String(-opts.lineHeight));
-            label.appendChild(volLine);
-            const actLine = doc.createElementNS(svgNS, 'tspan');
-            actLine.setAttribute('x', x);
-            actLine.setAttribute('dy', String(opts.lineHeight));
-            label.appendChild(actLine);
-            shortened = setFittedText(volLine, vol, opts.maxWidth, opts.fontSize);
-            shortened = setFittedText(actLine, act, opts.maxWidth, opts.fontSize) || shortened;
-        } else {
-            shortened = setFittedText(label, act, opts.maxWidth, opts.fontSize);
-        }
+    if (!vol) {
+        label.textContent = act; // act outside every volume: upstream's label, unchanged
+        return;
     }
+    const full = `${vol} ${act}`;
+    label.textContent = full;
+    if (textWidth(label, full, opts.fontSize) <= opts.maxWidth) return; // one fit test: fits on one line
+    label.textContent = '';
+    const x = label.getAttribute('x') ?? '0';
+    const volLine = doc.createElementNS(svgNS, 'tspan');
+    volLine.setAttribute('x', x);
+    volLine.setAttribute('dy', String(-opts.lineHeight));
+    label.appendChild(volLine);
+    const actLine = doc.createElementNS(svgNS, 'tspan');
+    actLine.setAttribute('x', x);
+    actLine.setAttribute('dy', String(opts.lineHeight));
+    label.appendChild(actLine);
+    let shortened = setFittedText(volLine, vol, opts.maxWidth, opts.fontSize);
+    shortened = setFittedText(actLine, act, opts.maxWidth, opts.fontSize) || shortened;
     if (shortened) {
         const title = doc.createElementNS(svgNS, 'title');
         title.textContent = full;

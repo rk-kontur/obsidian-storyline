@@ -8,7 +8,7 @@ Changes of this fork compared to the original StoryLine plugin by Jan Sandström
 
 ### Subway map: the volume line also ends a volume
 
-- In the Subway map, the solid volume line was only drawn where a volume starts. The Epilogue and acts outside every volume after the last volume act looked like part of that volume. A solid line (the same line as at the start of a volume, without a label) now also separates them from the preceding volume; a later act of a volume starts its volume again (same rule as the Timeline, Board, Manuscript and Navigator). The Prologue and scenes without an act are always drawn first, so they never follow a volume.
+- In the Subway map, the solid volume line was only drawn where a volume starts. The Epilogue and acts outside every volume after the last volume act looked like part of that volume. This also applied to scenes without an act and non-numeric acts (e.g. "Part 5"): the Subway map places their columns at the end, after the last volume. A solid line (the same line as at the start of a volume, without a label) now also separates all of them from the preceding volume; a later act of a volume starts its volume again (same rule as the Timeline, Board, Manuscript and Navigator). The lines follow the order of the scene columns; act grouping and act labels stay as upstream draws them, and without volumes the map is unchanged.
 
 ### Subway map: act labels no longer run into each other
 
@@ -20,7 +20,8 @@ Changes of this fork compared to the original StoryLine plugin by Jan Sandström
 
 ### Internal
 
-- Links and names are compared with one shared rule (`utils/linkKey.ts`: `linkpathOf`, `linkName`, `linkKey`) instead of four slightly different copies (open setups per volume, cross-volume setup/payoff partners in Statistics, characters including POV, Arc Point `realizedBy`). A wikilink names its target (the alias is display text), `#heading` inside a link, folders and `.md` are dropped; in a plain value "|" and "#" are part of the name. Characters compare case-insensitively (as before); setup/payoff titles compare case-sensitively, like upstream's Validator. For the values the scene parser delivers, the result is the same as before, except two fixes: a plain setup/payoff or character value containing "|" was cut at the "|" (a scene "A|B" matched "A"); and for raw links (character filter values, `realizedBy` fallback) "#heading" and Windows "\\" folders are now stripped.
+- Characters (including POV) and Arc Point `realizedBy` use one shared link rule (`utils/linkKey.ts`: `linkpathOf`, `linkName`, `linkKey`) instead of two slightly different copies. A wikilink names its target (the alias is display text), `#heading` inside a link, folders and `.md` are dropped; in a plain value "|" and "#" are part of the name. Characters compare case-insensitively, as before. For the values the scene parser delivers, the result is the same as before, except one fix: a plain character value containing "|" was cut at the "|". For raw values (character filter, `realizedBy` fallback) "#heading" and Windows "\\" folders are now stripped as well.
+- Setup/payoff links (open setups per volume in Statistics, cross-volume link partners for the Setup & Payoff map and the Validator) no longer use their own normalizers: they match the parsed link value against the scene title exactly as upstream's Validator does (the parser already cleans the links). So a payoff the Validator reports as missing is also "missing" in the open setups, and vice versa; before, the fork's own cleanup could disagree for titles such as "Him/Her", "Notes.md" or "A|B".
 - `drawSubwayVolumeMarker`: unused title parameters and text branch removed.
 - Removed unused `inVolumeScope` and `volumeScopeSelectCount` (`utils/volumeScope.ts`).
 - Lint: "Arc Point" tooltip keeps its name (targeted `eslint-disable` with reason). All fork files and the fork lines of upstream files pass `eslint`.
@@ -31,18 +32,18 @@ Changes of this fork compared to the original StoryLine plugin by Jan Sandström
 1. Use a project with volumes, e.g. Volume 1 = acts 1–2, Volume 2 = act 4, plus act 3, an Epilogue and some scenes without an act. Select **All volumes** in the **Filter by** dropdown.
 2. Open the **Subway map** (plotline view, Subway mode): a solid line separates Volume 1 from act 3, Volume 2 from the Epilogue. Between acts of the same volume the dashed act line is shown as before.
 3. Give a volume a long title (e.g. "Volume One: Arrival") and an act with a single scene: the act label shows the volume title on its own line above "ACT 1". If it is still too wide it ends with "…"; hover it to read the full label.
-4. Open the **Plot Grid** and sort by reading order: a thin line ends the volume band before act 3, the Epilogue and the rows of scenes without an act; Volume 2 starts with its labelled band again.
+4. Open the **Plot Grid** with sort **Sequence** (the default) or **Act**: a thin line ends the volume band before act 3, the Epilogue and the rows of scenes without an act; Volume 2 starts with its labelled band again.
 
 **Files:**
 
-- `views/StorylineView.ts` (`renderSubway`: `VolumeDividerTracker` with `{ bandEnd: true }`, volume line also at the band end, act label via `setSubwayActLabel`)
-- `views/PlotgridView.ts` (`renderGrid`: volume steps computed once in the row-track loop (`kmVolumeSteps`, incl. band end before rows without act), drawn from the same map)
+- `views/StorylineView.ts` (`renderSubway`: volume lines decided in column order with `VolumeDividerTracker` `{ bandEnd: true }`, also at the band end; act label via `setSubwayActLabel`)
+- `views/PlotgridView.ts` (`renderGrid`: volume steps computed once in the row-track loop (`kmVolumeSteps`, incl. band end before visible rows without act), drawn from the same map)
 - `utils/volumes.ts` (`drawSubwayVolumeMarker` simplified; `setSubwayActLabel` (new); `renderVolumeStep` (new, used by `VolumeDividerTracker`))
 - `utils/linkKey.ts` (new: `linkpathOf`, `linkName`, `linkKey`)
 - `utils/arcRealization.ts` (`linkpathOf` moved to `utils/linkKey.ts`; `resolveRealizingScene` fallback uses `linkName`)
 - `utils/sceneCharacters.ts` (`characterKey` replaced by `linkKey`; header)
-- `utils/volumeSetups.ts` (`linkTitle` replaced by `linkName`; header)
-- `utils/volumeStatsScope.ts` (`withLinkPartners`: `linkName` in both directions)
+- `utils/volumeSetups.ts` (`computeOpenSetups`: own `linkTitle` removed, exact Validator match; header)
+- `utils/volumeStatsScope.ts` (`withLinkPartners`: own normalization removed, exact Validator match, link set built once per scene)
 - `utils/volumeScope.ts` (unused `inVolumeScope`, `volumeScopeSelectCount` removed; header)
 - `components/VolumeScopeNotes.ts`, `views/TimelineView.ts` (`linkKey` instead of `characterKey`)
 - `components/RealizedByControl.ts` (`linkpathOf` from `utils/linkKey.ts`)

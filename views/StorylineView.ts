@@ -550,18 +550,21 @@ export class StorylineView extends ItemView {
         });
 
         const subwayVolumes = getProjectVolumes(this.app, this.sceneManager.activeProject?.filePath);
-        const volumeTracker = new VolumeDividerTracker(subwayVolumes, { bandEnd: true }); // fork: band end
+        // fork: volume lines follow the column order (no-act and non-numeric acts come last there,
+        // although upstream groups them with act 0): a line where a volume starts or its band ends
+        const volumeTracker = new VolumeDividerTracker(subwayVolumes, { bandEnd: true });
+        const volumeLineCols = new Set<number>();
+        orderedScenes.forEach((s, col) => {
+            if (volumeTracker.advance(s.act) && col > 0) {
+                volumeLineCols.add(col);
+                drawSubwayVolumeMarker(svg, activeDocument, { x: colX(col) - SCENE_SPACING / 2, y1: TOP_MARGIN - 50, y2: trackBottom });
+            }
+        });
         const actEntries = [...acts.entries()].sort((a, b) => a[0] - b[0]);
         for (let ai = 0; ai < actEntries.length; ai++) {
             const [actNum, cols] = actEntries[ai];
             const minCol = Math.min(...cols);
             const maxCol = Math.max(...cols);
-
-            // Volume marker (fork): solid line where a volume starts or its band ends
-            const volumeStep = volumeTracker.advance(actNum);
-            if (volumeStep && ai > 0) {
-                drawSubwayVolumeMarker(svg, activeDocument, { x: colX(minCol) - SCENE_SPACING / 2, y1: TOP_MARGIN - 50, y2: trackBottom });
-            }
 
             // Act label
             const centerX = (colX(minCol) + colX(maxCol)) / 2;
@@ -577,7 +580,7 @@ export class StorylineView extends ItemView {
             setSubwayActLabel(actLabel, activeDocument, { volumeTitle: getVolumeForAct(subwayVolumes, actNum)?.title, actLabel: getActDisplayLabel(actNum), maxWidth: (maxCol - minCol + 1) * SCENE_SPACING - 16, fontSize: 16, lineHeight: 18 });
 
             // Vertical divider line before this act group (clear, visible)
-            if (ai > 0 && !volumeStep) { // fork: no dashed line where a volume line is drawn
+            if (ai > 0 && !volumeLineCols.has(minCol)) { // fork: no dashed line where a volume line is drawn
                 const divX = colX(minCol) - SCENE_SPACING / 2;
                 const line = activeDocument.createElementNS(svgNS, 'line');
                 line.setAttribute('x1', String(divX));

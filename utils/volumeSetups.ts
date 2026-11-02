@@ -5,12 +5,11 @@
 // A setup is "open at the end of volume N" if the setup scene lies in
 // volume N or earlier and none of its payoffs lies in volume N or earlier.
 // Links are read from both directions (payoff_scenes on the setup,
-// setup_scenes on the payoff), matched by scene title like the Validator
-// (case-sensitive; both sides go through linkName, so "[[Title]]" and
-// "Folder/Title.md" also match "Title").
+// setup_scenes on the payoff), matched exactly like upstream's Validator:
+// the parsed link value (MetadataParser already cleaned it) against the raw
+// scene title, case-sensitive, no further normalization.
 
 import type { Scene } from '../models/Scene';
-import { linkName } from './linkKey';
 import { getVolumeForAct, type VolumeDef } from './volumes';
 
 export interface OpenSetup {
@@ -31,7 +30,7 @@ export function computeOpenSetups(volumes: VolumeDef[], scenes: Scene[]): Volume
     const chrono = volumes.map((v, i) => ({ v, i })).sort((a, b) => firstAct(a.v) - firstAct(b.v) || a.i - b.i).map(x => x.v);
     const volIndex = new Map(chrono.map((v, i) => [v.id, i]));
     const byTitle = new Map<string, Scene>();
-    for (const s of scenes) if (s.title) byTitle.set(linkName(s.title), s);
+    for (const s of scenes) if (s.title) byTitle.set(s.title, s);
 
     // setup filePath → set of payoff titles
     const links = new Map<string, Set<string>>();
@@ -40,9 +39,9 @@ export function computeOpenSetups(volumes: VolumeDef[], scenes: Scene[]): Volume
         links.get(setup.filePath)!.add(payoffTitle);
     };
     for (const s of scenes) {
-        for (const p of s.payoff_scenes ?? []) add(s, linkName(p));
+        for (const p of s.payoff_scenes ?? []) add(s, p);
         for (const st of s.setup_scenes ?? []) {
-            const setup = byTitle.get(linkName(st));
+            const setup = byTitle.get(st);
             if (setup && s.title) add(setup, s.title);
         }
     }
@@ -63,7 +62,7 @@ export function computeOpenSetups(volumes: VolumeDef[], scenes: Scene[]): Volume
             const si = idxOf(setup);
             if (!setup || si === undefined || si > n) continue;
             const payoffs = [...payoffTitles].map(title => {
-                const target = byTitle.get(linkName(title));
+                const target = byTitle.get(title);
                 const ti = idxOf(target);
                 return { title, idx: ti, where: target ? (ti !== undefined ? chrono[ti].title : 'no volume') : 'missing' };
             });
