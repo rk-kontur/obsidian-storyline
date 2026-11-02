@@ -3,6 +3,7 @@ import { ItemView, WorkspaceLeaf, Menu, Notice, TFile, Modal, Setting, MarkdownR
 import * as obsidian from 'obsidian';
 import { Scene, SceneFilter, SortConfig, BoardGroupBy, SceneStatus, SceneTemplate, BeatSheetTemplate, BUILTIN_BEAT_SHEETS, getStatusOrder, getStatusConfig, resolveStatusCfg } from '../models/Scene';
 import { openConfirmModal } from '../components/ConfirmModal';
+import { enhanceStructureModal } from '../components/StructureModalSections';
 import { openStructureLabelModal } from '../components/StructureLabelModal';
 import { SceneManager } from '../services/SceneManager';
 import { SceneCardComponent } from '../components/SceneCard';
@@ -3273,7 +3274,7 @@ export class BoardView extends ItemView {
     /**
      * Open the structure modal to add/remove empty acts and chapters
      */
-    private openStructureModal(): void {
+    openStructureModal(): void {
         const modal = new Modal(this.app);
         modal.titleEl.setText('Manage story structure');
         modal.containerEl.addClass('sl-structure-modal');
@@ -3831,6 +3832,8 @@ export class BoardView extends ItemView {
             this.refreshBoard();
         });
 
+        // Regroup into collapsible sections (Volumes, Acts, Chapters, Templates)
+        enhanceStructureModal(modal, { app: this.app, projectFilePath: this.sceneManager.activeProject?.filePath, getDefinedActs: () => this.sceneManager.getDefinedActs() });
         modal.open();
 
         // Issue #214 — on iOS/iPadOS the modal opens scrolled past the top,

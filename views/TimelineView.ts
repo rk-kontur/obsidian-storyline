@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-floating-promises, @typescript-eslint/no-misused-promises, @typescript-eslint/no-unnecessary-type-assertion, @typescript-eslint/no-unused-vars -- Obsidian's API surface and several untyped third-party libraries force dynamic dispatch; floating promises are intentional in DOM/event handlers; matching enable at end of file */
 import { openConfirmModal } from '../components/ConfirmModal';
+import { enhanceStructureModal } from '../components/StructureModalSections';
 import { SceneManager } from '../services/SceneManager';
 import { SceneCardComponent } from '../components/SceneCard';
 import { InspectorComponent } from '../components/Inspector';
@@ -1309,7 +1310,7 @@ export class TimelineView extends ItemView {
     /**
      * Open the structure modal to add/remove acts, chapters, and apply beat sheet templates
      */
-    private openStructureModal(): void {
+    openStructureModal(): void {
         const modal = new Modal(this.app);
         modal.titleEl.setText('Manage story structure');
 
@@ -1669,6 +1670,8 @@ export class TimelineView extends ItemView {
             this.refresh();
         });
 
+        // Regroup into collapsible sections (Volumes, Acts, Chapters, Templates)
+        enhanceStructureModal(modal, { app: this.app, projectFilePath: this.sceneManager.activeProject?.filePath, getDefinedActs: () => this.sceneManager.getDefinedActs() });
         modal.open();
     }
 
