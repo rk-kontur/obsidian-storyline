@@ -7589,6 +7589,15 @@ body.sl-auto-hide-tab-labels .story-line-view-switcher.sl-collapsed .story-line-
     width: 12px;
     height: 12px;
 }
+.story-line-arc-point-icon {
+    display: inline-flex;
+    margin-left: 4px;
+    opacity: 0.8;
+}
+.story-line-arc-point-icon svg {
+    width: 12px;
+    height: 12px;
+}
 
 /* ── Per-mode colors ── */
 .timeline-mode-flashback {

@@ -2,6 +2,7 @@
 import { openConfirmModal } from '../components/ConfirmModal';
 import { SceneManager } from '../services/SceneManager';
 import { SceneCardComponent } from '../components/SceneCard';
+import { ArcFilterMode, arcFilterQuery, renderArcFilterToggle, renderArcPointBadge } from '../components/ArcPointUI';
 import { InspectorComponent } from '../components/Inspector';
 import { QuickAddModal } from '../components/QuickAddModal';
 import { openStructureLabelModal } from '../components/StructureLabelModal';
@@ -47,6 +48,8 @@ export class TimelineView extends ItemView {
     private rootContainer: HTMLElement | null = null;
     private _pendingRefresh: number | null = null;
     private cardComponent: SceneCardComponent;
+    /** Arc Point filter: 'all' | 'scenes' | 'arcPoints' */
+    private arcFilter: ArcFilterMode = 'all';
     private _lastCacheVersion = -1;
     /** When true, display multi-lane swimlane view instead of single-column */
     private swimlaneMode = false;
@@ -62,6 +65,7 @@ export class TimelineView extends ItemView {
         this.cardComponent = new SceneCardComponent(plugin);
         // Restore persisted filter states from settings
         this.timelineOrder = plugin.settings.timelineOrder === 'chronological' ? 'chronological' : 'reading';
+        this.arcFilter = plugin.settings.timelineArcFilter || 'all';
         this.swimlaneMode = plugin.settings.timelineSwimlaneMode ?? false;
         this.swimlaneGroupBy = (plugin.settings.timelineSwimlaneGroupBy as SwimlaneGroupBy) ?? 'pov';
     }
@@ -93,6 +97,39 @@ export class TimelineView extends ItemView {
     }
 
     async onClose(): Promise<void> {}
+
+    /** Timeline scenes without the Arc Point filter, in chronological order. */
+    private getAllTimelineScenes(): Scene[] {
+        return this.sceneManager.queryService.getFilteredScenes(
+            undefined,
+            { field: 'chronologicalOrder', direction: 'asc' }
+        ).filter(scene => !this.isNoteScene(scene));
+    }
+
+    /**
+     * All timeline scenes in chronological order, with the scene moved in the
+     * filtered list `shown` (now at `insertAt`) placed next to its visible neighbours.
+     */
+    private placeAmongAllScenes(shown: Scene[], insertAt: number): Scene[] {
+        const moved = shown[insertAt];
+        const all = this.getAllTimelineScenes().filter(scene => scene.filePath !== moved.filePath);
+        const next = shown[insertAt + 1];
+        const prev = shown[insertAt - 1];
+        let idx = all.length;
+        if (next) {
+            const i = all.findIndex(scene => scene.filePath === next.filePath);
+            if (i >= 0) idx = i;
+        } else if (prev) {
+            const i = all.findIndex(scene => scene.filePath === prev.filePath);
+            if (i >= 0) idx = i + 1;
+        }
+        all.splice(idx, 0, moved);
+        return all;
+    }
+
+    private renderFilterHint(parent: HTMLElement): void {
+        parent.createDiv('story-line-empty').createEl('p', { text: 'No scenes match the current filter.' });
+    }
 
     private isNoteScene(scene: Scene): boolean {
         const value: unknown = (scene as Scene & { corkboardNote?: unknown }).corkboardNote;
@@ -194,6 +231,14 @@ export class TimelineView extends ItemView {
             });
         }
 
+        // Arc Points filter toggle (All / Scenes / Arc Points)
+        renderArcFilterToggle(controls, this.arcFilter, (mode) => {
+            this.arcFilter = mode;
+            this.plugin.settings.timelineArcFilter = mode;
+            void this.plugin.saveSettings();
+            this.refresh();
+        });
+
         // Zoom controls
         const zoomOut = controls.createEl('button', {
             cls: 'clickable-icon',
@@ -268,7 +313,7 @@ export class TimelineView extends ItemView {
         const timelineEl = container.createDiv('story-line-timeline');
         const sortField = this.timelineOrder === 'chronological' ? 'chronologicalOrder' : 'chapter';
         const scenes = this.sceneManager.queryService.getFilteredScenes(
-            undefined,
+            arcFilterQuery(this.arcFilter),
             { field: sortField, direction: 'asc' }
         ).filter(scene => !this.isNoteScene(scene));
 
@@ -320,9 +365,17 @@ export class TimelineView extends ItemView {
 
         // Also get defined acts so we can show empty act dividers
         const definedActs = this.sceneManager.getDefinedActs();
+        // An act is empty only when it has no scene at all; the Arc Point filter only hides scenes
+        const actScenes = this.arcFilter === 'all' ? scenes : this.getAllTimelineScenes();
         const actsWithScenes = new Set<number>();
-        for (const s of scenes) {
+        for (const s of actScenes) {
             if (s.act !== undefined) actsWithScenes.add(Number(s.act));
+        }
+
+        if (scenes.length === 0 && actScenes.length > 0) {
+            // Every scene is hidden by the Arc Point filter; empty acts may still follow
+            this.renderFilterHint(timelineEl);
+            if (definedActs.length === 0) return;
         }
 
         if (scenes.length === 0 && definedActs.length === 0) {
@@ -399,9 +452,11 @@ export class TimelineView extends ItemView {
 
             if (this.timelineOrder === 'chronological') {
                 // Chronological order is a single global counter — flat 1..N is correct.
-                for (let i = 0; i < scenes.length; i++) {
+                // With the Arc Point filter, the hidden scenes are renumbered as well.
+                const ordered = this.arcFilter === 'all' ? scenes : this.placeAmongAllScenes(scenes, insertAt);
+                for (let i = 0; i < ordered.length; i++) {
                     await this.sceneManager.updateScene(
-                        scenes[i].filePath,
+                        ordered[i].filePath,
                         { chronologicalOrder: i + 1 } as Partial<Scene>,
                     );
                 }
@@ -618,11 +673,15 @@ export class TimelineView extends ItemView {
         enableDragToPan(timelineEl);
         const sortField = this.timelineOrder === 'chronological' ? 'chronologicalOrder' : 'chapter';
         const scenes = this.sceneManager.queryService.getFilteredScenes(
-            undefined,
+            arcFilterQuery(this.arcFilter),
             { field: sortField, direction: 'asc' }
         ).filter(scene => !this.isNoteScene(scene));
 
         if (scenes.length === 0) {
+            if (this.arcFilter !== 'all' && this.getAllTimelineScenes().length > 0) {
+                this.renderFilterHint(timelineEl);
+                return;
+            }
             const empty = timelineEl.createDiv('story-line-empty');
             empty.createEl('p', { text: 'No scenes found.' });
             empty.createEl('p', { text: 'Click "+ new scene" to create your first scene.' });
@@ -798,6 +857,7 @@ export class TimelineView extends ItemView {
         card.dataset.path = scene.filePath;
 
         card.createDiv({ cls: 'timeline-card-title', text: scene.title || 'Untitled' });
+        renderArcPointBadge(card, scene);
 
         // Timeline mode badge (for non-linear scenes)
         const slMode = scene.timeline_mode || 'linear';
@@ -974,6 +1034,7 @@ export class TimelineView extends ItemView {
         }
 
         card.createDiv({ cls: 'timeline-card-title', text: scene.title || 'Untitled' });
+        renderArcPointBadge(card, scene);
 
         // Timeline mode badge (for non-linear scenes)
         const tlMode = scene.timeline_mode || 'linear';

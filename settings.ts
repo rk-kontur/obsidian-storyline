@@ -623,6 +623,8 @@ export interface SceneCardsSettings {
     lastStorylineShowTagPills: boolean;
     /** Remembered Timeline order from last session */
     timelineOrder: 'reading' | 'chronological';
+    /** Remembered Timeline Arc Point filter from last session */
+    timelineArcFilter: 'all' | 'scenes' | 'arcPoints';
     /** Remembered Timeline swimlane mode from last session */
     timelineSwimlaneMode: boolean;
     /** Remembered Timeline swimlane group-by from last session */
@@ -1016,6 +1018,7 @@ export const DEFAULT_SETTINGS: SceneCardsSettings = {
     lastStorylineArcFilter: 'all',
     lastStorylineShowTagPills: true,
     timelineOrder: 'reading',
+    timelineArcFilter: 'all',
     timelineSwimlaneMode: false,
     timelineSwimlaneGroupBy: 'pov',
     researchActiveTag: null,
