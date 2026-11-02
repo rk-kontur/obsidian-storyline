@@ -1875,7 +1875,8 @@ export class SceneManager implements ISceneStore {
         let count = 0;
         for (const scene of this.scenes.values()) {
             if (scene.tags && scene.tags.includes(oldTag)) {
-                const newTags = scene.tags.map(t => t === oldTag ? newTag : t);
+                // Deduplicate in case the scene already has newTag
+                const newTags = Array.from(new Set(scene.tags.map(t => t === oldTag ? newTag : t)));
                 await this.updateScene(scene.filePath, { tags: newTags });
                 count++;
             }
