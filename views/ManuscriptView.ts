@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-floating-promises, @typescript-eslint/no-misused-promises, @typescript-eslint/no-unnecessary-type-assertion, @typescript-eslint/no-unused-vars -- Obsidian's API surface and several untyped third-party libraries force dynamic dispatch; floating promises are intentional in DOM/event handlers; matching enable at end of file */
 import { ItemView, WorkspaceLeaf, WorkspaceSplit, MarkdownRenderer, TFile, setIcon, Notice, Menu } from 'obsidian';
-import { scopeFilter, volumeScopeKey } from '../utils/volumeScope';
+import { scopeFilter, volumeScopeFilterKey } from '../utils/volumeScope';
 import { reclaimMaximize } from '../utils/paneReliefCompat';
 import { getProjectVolumes, VolumeDividerTracker } from '../utils/volumes';
 import { EditorView, Decoration } from '@codemirror/view';
@@ -365,7 +365,7 @@ export class ManuscriptView extends ItemView {
 
     /** Build a cache key from the current filter + sort configuration */
     private computeFilterKey(): string {
-        return JSON.stringify(this.currentFilter) + '|' + JSON.stringify(this.currentSort) + '|' + volumeScopeKey(this.app, this.sceneManager.activeProject?.filePath);
+        return JSON.stringify(this.currentFilter) + '|' + JSON.stringify(this.currentSort) + '|' + volumeScopeFilterKey(this.app, this.sceneManager.activeProject?.filePath, this.currentFilter); // fork: volume acts in the key
     }
 
     private scheduleManuscriptViewStateSave(): void {
@@ -465,8 +465,13 @@ export class ManuscriptView extends ItemView {
 
         const editorContainers: { el: HTMLElement; path: string }[] = [];
 
-        const volumeTracker = new VolumeDividerTracker(getProjectVolumes(this.app, this.sceneManager.activeProject?.filePath));
+        const volumeTracker = new VolumeDividerTracker(getProjectVolumes(this.app, this.sceneManager.activeProject?.filePath), { bandEnd: true }); // fork: band end
         for (const scene of scenes) {
+            // fork: scenes without act end the volume band (no act divider of their own)
+            if (scene.act === undefined && volumeTracker.renderBefore(this.scrollArea, undefined)) {
+                if (prevBlock) prevBlock.classList.add('is-before-divider');
+                lastAct = undefined; // a later act scene starts its divider and band again
+            }
             // Act divider
             if (scene.act !== undefined && scene.act !== lastAct) {
                 lastAct = scene.act;

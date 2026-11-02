@@ -2,6 +2,39 @@
 
 Changes of this fork compared to the original StoryLine plugin by Jan Sandström. Each `## <version>` section is used as the initial text of the matching GitHub release; texts edited on GitHub (e.g. with screenshots) are never overwritten. Every release also carries `storyline-km-source.zip` (all source files that are new or changed compared to the original, without `main.js`) and `storyline-km.patch` (the full diff against the original).
 
+## 1.11.8-km.21
+
+**Manuscript with volumes: scene list follows changed volume acts, focus mode hides volume controls, volume band ends before Prologue / Epilogue / "No Act"**
+
+### The scene list follows changes to the selected volume's acts
+
+- With a volume selected, the Manuscript cached its scene list by the volume id only. After changing the volume's `acts:` in the project file (e.g. Volume 2 from acts 5–6 to 5–7), the Manuscript kept showing the old scenes. The cache now also depends on the volume's resolved acts (numeric, without 0 / 99) and on the act values the volume filter matches (including spellings such as "05"), so the list is rebuilt when any of them changes.
+
+### Focus mode hides the volume dropdown and the volume bands
+
+- Focus mode in the Manuscript hides act and chapter dividers and most of the toolbar, but the fork's "Filter by [Volume]" dropdown and the volume bands stayed visible. They are now hidden in focus mode in the same way as upstream's act dividers, including the volume band end separators.
+
+### Volume bands end before scenes outside every volume
+
+- In the Manuscript, the **Prologue**, **Epilogue**, scenes without an act ("No Act"), non-numeric acts and acts that belong to no volume looked as if they were part of the preceding volume. A narrow, unlabelled separator now ends the volume band before the first such scene; a later act of a volume starts its labelled band again (same rule as the Timeline and the Board).
+- Volume membership follows the numeric act rule used everywhere else: act "05" is act 5, act 0 (Prologue) and 99 (Epilogue) belong to no volume. With a volume selected, the Manuscript shows the scenes of that volume's acts plus scenes without an act, as the other views do.
+
+<!-- screenshot: Manuscript, All volumes: Volume 1 band, end separator before act 3 (outside every volume), Volume 2 band, end separator before the Epilogue -->
+
+**How and where to use:**
+
+1. Open the **Manuscript** in a project with volumes (e.g. Volume 1 = acts 1–2, Volume 2 = acts 5–6) and select **All volumes** in the **Filter by** dropdown.
+2. Scroll through the manuscript: the labelled band "Volume 1" is shown before act 1, "Volume 2" before act 5. A thin unlabelled line ends the band before the first act outside every volume, the **Epilogue** or the first scene without an act.
+3. Select **Volume 2** in the **Filter by** dropdown. Then change `acts:` of Volume 2 in the project file (e.g. to `5-7`): the Manuscript now also shows the scenes of act 7 (including scenes with act "07").
+4. Click the **Focus mode** button (glasses icon) in the filter bar: the **Filter by** dropdown and all volume bands are hidden together with the act and chapter dividers. Click it again to show them.
+
+**Files:**
+
+- `views/ManuscriptView.ts` (`computeFilterKey`: volume acts in the cache key; `renderManuscript`: `VolumeDividerTracker` with `bandEnd`, band end before scenes without an act)
+- `utils/volumeScope.ts` (`volumeScopeFilterKey` (new))
+- `styles.css` (fork section: focus mode hides `.sl-km-filter-by` and `.sl-km-volume-divider`)
+- `CHANGELOG-km.md`
+
 ## 1.11.8-km.20
 
 **Board with volumes: "+" respects the column, chapters of the selected volume only, volume band ends before the Prologue / Epilogue / "No Act"**

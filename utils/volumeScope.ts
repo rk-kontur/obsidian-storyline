@@ -249,6 +249,20 @@ export function volumeScopeKey(app: App, projectFilePath: string | undefined | n
     return `vol:${getVolumeScope(app, projectFilePath)}`;
 }
 
+/**
+ * Cache key for a view that caches the scenes of scopeFilter(filter) (Manuscript):
+ * the scope id plus everything the scoped filter depends on, i.e. the
+ * volume's resolved acts (numeric, without 0/99) and the merged act list
+ * including the raw act strings ("05") of the project's scenes. Changing a
+ * volume's `acts:` or a scene's act spelling invalidates the cache.
+ */
+export function volumeScopeFilterKey(app: App, projectFilePath: string | undefined | null, filter: SceneFilter | undefined): string {
+    const vol = getScopedVolume(app, projectFilePath);
+    if (!vol) return volumeScopeKey(app, projectFilePath);
+    const scoped = scopeFilter(app, projectFilePath, filter);
+    return `${volumeScopeKey(app, projectFilePath)}|acts:${JSON.stringify(vol.acts)}|scope:${JSON.stringify(scoped?.act ?? [])}`;
+}
+
 // ── Self-updating dropdowns ─────────────────────────
 // Every rendered dropdown is registered here. syncVolumeScopeSelects updates
 // options, value and visibility of all of them for the CURRENT project, so a

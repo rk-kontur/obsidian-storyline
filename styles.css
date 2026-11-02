@@ -14312,3 +14312,9 @@ body.sl-focus-active-global.sl-focus-dim-text .markdown-source-view.mod-cm6 .cm-
     padding-top: 0;
     background: none;
 }
+
+/* Manuscript focus mode: hide the volume filter and the volume bands (incl. band ends), like upstream's act dividers */
+.sl-manuscript-focus.sl-manuscript-focus .story-line-filter-bar > .sl-km-filter-by,
+.sl-manuscript-focus.sl-manuscript-focus .sl-km-volume-divider {
+    display: none;
+}
