@@ -876,7 +876,7 @@ export class StorylineView extends ItemView {
         obsidian.setIcon(deleteIcon, 'trash-2');
         deleteBtn.addEventListener('click', (e) => {
             e.stopPropagation();
-            this.confirmDeletePlotline(plotline, scenes.length);
+            this.confirmDeletePlotline(plotline, scenes);
         });
 
         // Right-click context menu
@@ -914,7 +914,7 @@ export class StorylineView extends ItemView {
             menu.addItem((item: MenuItem) => {
                 item.setTitle('Delete plotline')
                     .setIcon('trash-2')
-                    .onClick(() => this.confirmDeletePlotline(plotline, scenes.length));
+                    .onClick(() => this.confirmDeletePlotline(plotline, scenes));
             });
             menu.showAtPosition({ x: e.clientX, y: e.clientY });
         });
@@ -1154,12 +1154,33 @@ export class StorylineView extends ItemView {
 
     // ── Delete ─────────────────────────────────────────────
 
-    private confirmDeletePlotline(plotline: string, sceneCount: number): void {
+    private confirmDeletePlotline(plotline: string, listedScenes: Scene[]): void {
+        // deleteTag() changes every scene in the project that carries the tag,
+        // including scenes this view does not list, so count exactly those.
+        const affected = this.sceneManager.getAllScenes().filter(s => s.tags?.includes(plotline));
+        const sceneCount = affected.length;
+        const listed = new Set(listedScenes.map(s => s.filePath));
+        const others = affected.filter(s => !this.isCorkboardNoteScene(s));
+        const notes = sceneCount - others.length;
+        const inactive = others.filter(s => s.inactive).length;
+        const filtered = others.filter(s => !s.inactive && !listed.has(s.filePath)).length;
+        const plural = (n: number, word: string) => `${n} ${word}${n !== 1 ? 's' : ''}`;
+        const included: string[] = [];
+        if (inactive) included.push(plural(inactive, 'inactive scene'));
+        if (notes) included.push(plural(notes, 'corkboard note'));
+        if (filtered) included.push(`${plural(filtered, 'scene')} hidden by the current filter`);
+
         const modal = new Modal(this.app);
         modal.titleEl.setText('Delete plotline');
         modal.contentEl.createEl('p', {
             text: `Remove the tag "${plotline}" from ${sceneCount} scene${sceneCount !== 1 ? 's' : ''}? The scenes themselves will not be deleted.`
         });
+        if (included.length > 0) {
+            modal.contentEl.createEl('p', {
+                cls: 'setting-item-description',
+                text: `Includes ${included.join(', ')}. ${inactive + notes + filtered === 1 ? 'It is not listed in this view, but loses' : 'They are not listed in this view, but lose'} the tag too.`
+            });
+        }
 
         new Setting(modal.contentEl)
             .addButton((btn: ButtonComponent) => {
