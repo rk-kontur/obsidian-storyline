@@ -1,8 +1,9 @@
 /**
  * StructureCommand — "Manage story structure" command.
  *
- * Opens the structure dialog of an open Board or Timeline view. If neither
- * is open, the Board is opened in a new tab, so the current tab stays.
+ * Opens the structure dialog of the active Board or Timeline view, otherwise
+ * of an open Board (before Timeline). If neither is open, the Board is opened
+ * in a new tab, so the current tab stays.
  */
 
 import type SceneCardsPlugin from '../main';
@@ -12,6 +13,12 @@ import { TimelineView } from '../views/TimelineView';
 
 async function openStructureDialog(plugin: SceneCardsPlugin): Promise<void> {
     const { workspace } = plugin.app;
+    const active = workspace.getActiveViewOfType(BoardView) ?? workspace.getActiveViewOfType(TimelineView);
+    if (active) {
+        active.openStructureModal();
+        return;
+    }
+
     const find = () => workspace.getLeavesOfType(BOARD_VIEW_TYPE)[0] ?? workspace.getLeavesOfType(TIMELINE_VIEW_TYPE)[0];
 
     let leaf = find();
