@@ -1,7 +1,6 @@
 /* eslint-disable @typescript-eslint/no-floating-promises, @typescript-eslint/no-misused-promises, @typescript-eslint/no-unnecessary-type-assertion, @typescript-eslint/no-unused-vars -- Obsidian's API surface and several untyped third-party libraries force dynamic dispatch; floating promises are intentional in DOM/event handlers; matching enable at end of file */
 import { ItemView, WorkspaceLeaf, WorkspaceSplit, MarkdownRenderer, TFile, setIcon, Notice, Menu } from 'obsidian';
 import { scopeFilter, volumeScopeFilterKey } from '../utils/volumeScope';
-import { reclaimMaximize } from '../utils/paneReliefCompat';
 import { getProjectVolumes, VolumeDividerTracker } from '../utils/volumes';
 import { EditorView, Decoration } from '@codemirror/view';
 import { RangeSetBuilder, StateEffect, Compartment, EditorSelection } from '@codemirror/state';
@@ -129,10 +128,6 @@ export class ManuscriptView extends ItemView {
 
     async onOpen(): Promise<void> {
         this.plugin.storyLeaf = this.leaf;
-        // fork: Pane Relief may maximize an embedded scene editor instead of this view
-        const reclaim = () => window.setTimeout(() => reclaimMaximize(this.app, this.leaf, this.containerEl), 0);
-        this.registerEvent(this.app.workspace.on('active-leaf-change', reclaim));
-        this.registerEvent(this.app.workspace.on('layout-change', reclaim));
         const container = this.containerEl.children[1] as HTMLElement;
         container.empty();
         container.addClass('story-line-manuscript-container');
@@ -588,7 +583,6 @@ export class ManuscriptView extends ItemView {
             // scroll position and cursor. On a fresh open (no in-memory state)
             // we fall back to the persisted state on disk.
             this.restoreStateAfterRender();
-            reclaimMaximize(this.app, this.leaf, this.containerEl); // fork: Pane Relief
         } finally {
             if (this._teardownToken === renderToken) {
                 this._isMounting = false;

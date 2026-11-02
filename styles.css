@@ -14318,3 +14318,23 @@ body.sl-focus-active-global.sl-focus-dim-text .markdown-source-view.mod-cm6 .cm-
 .sl-manuscript-focus.sl-manuscript-focus .sl-km-volume-divider {
     display: none;
 }
+
+/* ---------- Pane Relief "Maximize active tab" and the Manuscript ----------
+   The Manuscript hosts each scene editor in a real workspace split + leaf.
+   Pane Relief's maximize rules treat those like tabs: they hide every split
+   and leaf that is not marked maximized (the scene editors), and when a
+   scene editor becomes the active leaf they hide the Manuscript itself.
+   Keep the Manuscript and all of its scene editors visible. */
+.workspace.should-maximize .workspace-split.mod-root .workspace-leaf:has(> .workspace-leaf-content[data-type="story-line-manuscript"] .sl-manuscript-embedded-split .workspace-leaf.is-maximized) {
+    display: flex;
+    flex-basis: calc(100% - 4px);
+}
+
+.workspace.should-maximize .workspace-split.mod-root .sl-manuscript-embedded-split.sl-manuscript-embedded-split.sl-manuscript-embedded-split,
+.workspace.should-maximize .workspace-split.mod-root .sl-manuscript-embedded-split.sl-manuscript-embedded-split .workspace-leaf {
+    display: flex;
+}
+
+.workspace.should-maximize .workspace-split.mod-root .sl-manuscript-embedded-split.sl-manuscript-embedded-split .view-header {
+    display: none;
+}
