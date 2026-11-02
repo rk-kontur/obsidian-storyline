@@ -11035,6 +11035,26 @@ body.sl-hide-manuscript-frontmatter .sl-manuscript-embedded-split .cm-line.Hyper
     display: none;
 }
 
+/* Pane Relief "Maximize active tab": its rules hide every leaf and split
+   that is not maximized. The embedded scene editors are real leaves, so they
+   were hidden, and when one became active the Manuscript itself was hidden
+   (blank page, scroll jump). Keep the Manuscript and its editors visible.
+   The :has() follows a fixed child chain (onOpen/renderView/mountEditor)
+   instead of a descendant search, so it stays cheap while typing (#105). */
+.workspace.should-maximize .workspace-split.mod-root .workspace-leaf:has(> .workspace-leaf-content[data-type="story-line-manuscript"] > .view-content > .sl-manuscript-scroll > .sl-manuscript-scene-block > .sl-manuscript-editor-wrap > .sl-manuscript-embedded-split > .workspace-leaf.is-maximized) {
+    display: flex;
+    flex-basis: calc(100% - 4px);
+}
+
+.workspace.should-maximize .workspace-split.mod-root .sl-manuscript-embedded-split.sl-manuscript-embedded-split.sl-manuscript-embedded-split,
+.workspace.should-maximize .workspace-split.mod-root .sl-manuscript-embedded-split.sl-manuscript-embedded-split .workspace-leaf {
+    display: flex;
+}
+
+.workspace.should-maximize .workspace-split.mod-root .sl-manuscript-embedded-split.sl-manuscript-embedded-split.sl-manuscript-embedded-split .view-header {
+    display: none;
+}
+
 .sl-manuscript-scene-empty {
     font-style: italic;
     color: var(--text-faint);
