@@ -13873,3 +13873,25 @@ body.sl-focus-active-global.sl-focus-dim-text .markdown-source-view.mod-cm6 .cm-
 .sl-series-delete:hover {
     color: var(--text-error);
 }
+
+/* ─── Inspector: Arc Point "realized by" ────────────────────── */
+.inspector-realized-by {
+    display: flex;
+    flex: 1 1 auto;
+    min-width: 0;
+    align-items: center;
+    gap: 8px;
+    margin-left: 12px;
+}
+
+.inspector-realized-by-label {
+    flex: 0 0 auto;
+    font-weight: 600;
+    font-size: var(--font-ui-small);
+    white-space: nowrap;
+}
+
+.inspector-realized-by-select {
+    flex: 1 1 auto;
+    min-width: 0;
+}
