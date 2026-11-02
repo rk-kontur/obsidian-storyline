@@ -31,6 +31,6 @@ Fork of PixeroJan/obsidian-storyline (MIT). Obsidian plugin in TypeScript, built
 
 ## Development
 - Keep changes to existing files small, especially `main.ts`, `settings.ts` and `styles.css` (frequent conflict spots). New features go into new files under `views/`, `services/`, `components/`, `models/`, `utils/`. Own styles go into the clearly marked fork section at the end of `styles.css`.
-- Build: `npm install`, `npm run build`. `main.js` is checked in: on merge conflicts take one side and rebuild.
+- Build: `npm install`, `npm run build`. `main.js` in the repo is upstream's build and is never committed from the fork (run `git checkout main.js` after a local build); the release workflow builds `main.js` fresh. On merge conflicts in `main.js` take upstream's side.
 - No `.gitignore` in the repo: never commit `node_modules/`, add files explicitly with `git add <path>`.
 - Larger features should be discussed with the maintainer first and, where possible, be sent as a pull request to the original.

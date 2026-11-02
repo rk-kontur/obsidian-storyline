@@ -41,6 +41,15 @@ jobs:
             *-km.*) ;;
             *) echo "Version $V has no -km.N suffix"; exit 1 ;;
           esac
+          # A version that is already tagged on another commit must not be rebuilt:
+          # the uploaded files would no longer match the tag. Bump the version instead.
+          if git rev-parse -q --verify "refs/tags/$V" >/dev/null; then
+            TAG_SHA=$(git rev-parse "refs/tags/$V^{commit}")
+            if [ "$TAG_SHA" != "${GITHUB_SHA}" ]; then
+              echo "::error::Version $V is already released at $TAG_SHA, this run is $GITHUB_SHA. Increase the version in manifest.json."
+              exit 1
+            fi
+          fi
           echo "version=$V" >> "$GITHUB_OUTPUT"
 
       - run: npm ci
