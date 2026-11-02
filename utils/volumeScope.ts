@@ -304,6 +304,8 @@ function syncOne(entry: ScopeSelect, volumes: VolumeDef[], current: string): voi
 /** Plugin bound by registerVolumeScopeSync, and the project the dropdowns were last synced for. */
 let boundPlugin: SceneCardsPlugin | null = null;
 let syncedProject: string | null | undefined;
+/** Effective scope at the last sync: "project|id|acts", or '' without a valid volume. */
+let syncedScopeSig = '';
 
 /** Update every rendered volume dropdown to the current project's volumes and scope. */
 export function syncVolumeScopeSelects(plugin: SceneCardsPlugin): void {
@@ -317,8 +319,22 @@ export function syncVolumeScopeSelects(plugin: SceneCardsPlugin): void {
         clearVolumeScope(plugin.app, projectFilePath);
         current = '';
     }
+    const vol = volumes.find(v => v.id === current);
+    syncedScopeSig = vol ? `${projectFilePath ?? ''}|${vol.id}|${JSON.stringify(vol.acts)}` : '';
     pruneRegistry();
     for (const entry of registry) syncOne(entry, volumes, current);
+}
+
+/**
+ * Sync the dropdowns; if the effective scope changed (e.g. the metadata cache
+ * indexed the project file only after the views rendered), refresh the views
+ * too, so they do not stay unfiltered under a dropdown showing a volume.
+ * performRefreshOpenViews syncs again, which updates the signature: no loop.
+ */
+function syncAndRefreshIfScopeChanged(plugin: SceneCardsPlugin): void {
+    const before = syncedScopeSig;
+    syncVolumeScopeSelects(plugin);
+    if (syncedScopeSig !== before) void plugin.refreshOpenViews();
 }
 
 /**
@@ -340,12 +356,12 @@ function ensureDropdownsFollowProject(): void {
 export function registerVolumeScopeSync(plugin: SceneCardsPlugin): void {
     boundPlugin = plugin;
     plugin.registerEvent(plugin.app.metadataCache.on('changed', (file) => {
-        if (file.path === plugin.sceneManager?.activeProject?.filePath) syncVolumeScopeSelects(plugin);
+        if (file.path === plugin.sceneManager?.activeProject?.filePath) syncAndRefreshIfScopeChanged(plugin);
     }));
-    plugin.registerEvent(plugin.app.metadataCache.on('resolved', () => syncVolumeScopeSelects(plugin)));
+    plugin.registerEvent(plugin.app.metadataCache.on('resolved', () => syncAndRefreshIfScopeChanged(plugin)));
     plugin.registerEvent(plugin.app.workspace.on('active-leaf-change', () => ensureDropdownsFollowProject()));
     plugin.registerEvent(plugin.app.workspace.on('layout-change', () => ensureDropdownsFollowProject()));
-    plugin.register(() => { boundPlugin = null; registry.clear(); });
+    plugin.register(() => { boundPlugin = null; registry.clear(); syncedScopeSig = ''; });
 }
 
 function createScopeSelect(parent: HTMLElement, plugin: SceneCardsPlugin, host?: HTMLElement): HTMLSelectElement {

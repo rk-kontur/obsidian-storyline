@@ -2,6 +2,44 @@
 
 Changes of this fork compared to the original StoryLine plugin by Jan Sandström. Each `## <version>` section is used as the initial text of the matching GitHub release; texts edited on GitHub (e.g. with screenshots) are never overwritten. Every release also carries `storyline-km-source.zip` (all source files that are new or changed compared to the original, without `main.js`) and `storyline-km.patch` (the full diff against the original).
 
+## 1.11.8-km.27
+
+**Review fixes: statistics links across volumes, volume selection at startup, volume chips, Corkboard for empty volumes, Pane Relief performance, safer Volumes editor, release workflow**
+
+- **Statistics, Setup & Payoff Map:** with a volume selected, scenes of other volumes that are linked to the volume are shown with only their links into the volume. Before, their own links elsewhere showed up as false **Broken links** ("Z not found" although Z exists in another volume), and chains between two scenes outside the volume were shown and counted. The linked scenes now also keep the project's order, and building the list no longer slows down on large projects. The Setup/Payoff warnings are unchanged (they still match the warnings of the whole project, filtered to the volume).
+- **Volume selection at startup:** if Obsidian indexes the project file only after the views were drawn (mobile, synced folders), the volume dropdown showed e.g. "Volume 2" but the views stayed unfiltered, and "Volume 2" could not be picked again. Now the views refresh as soon as the selected volume (or its acts) becomes known or changes.
+- **Volume chips in the filter panel:** acts are matched by number, like everywhere else. A project that writes acts as `act: "05"` now gets its **Volume 2** chip, and with mixed spellings ("5" and "05") a volume chip selects all of them instead of silently leaving scenes out. The act chips are highlighted by their own value, not by their label (both "5" and "05" read "Act 5").
+- **Corkboard, volume without scenes:** when the selected volume has no placed scenes yet, the board shows the visible notes; the first new scene of that volume used to be placed below all cards at the far left, outside the view, and the camera did not follow. Now that scene is placed at the top-left of the visible area, and as soon as the volume has its own cards the camera moves to them once. Plain refreshes still never move the camera, and the camera move writes nothing.
+- **Manuscript with Pane Relief "Maximize":** the style rule that keeps the Manuscript and its scene editors visible now uses a fixed element path instead of a search through the whole Manuscript, so it no longer costs time on every keystroke while maximize is on (same kind of fix as upstream issue #105). The result is unchanged.
+- **Volumes editor, data safety:**
+	- If `volumes:` in the project file is not a list (e.g. a map or a text), the editor shows a hint and never replaces or deletes it; a change shows the notice "volumes: in the project file is not a list; edit it by hand".
+	- A volume added in the dialog never takes over a file entry that got the same id meanwhile (added on another device or by sync, a hand-added entry without `id`, or a cache that was not up to date). That entry stays untouched and the new volume is saved with a fresh id. An entry without `id` that was added by hand is also never changed or removed in place of a volume of the dialog.
+	- Writing the repaired volume ids (when the dialog opens) and saving changes now run strictly one after the other, so a slow first write cannot overwrite a change.
+- **Release workflow:** feature versions (`x.y.z-km.N.<branch>.M`) get their changelog section as release text and are published as **pre-releases**, so BRAT does not offer them to everyone. The "changes since the previous release" link and patch now use the previous `km/base` release in the history (not the newest tag by date, and never a feature tag). Release runs no longer run in parallel.
+
+**How and where to use:**
+
+1. **Statistics:** define volumes, link a scene of Volume 1 (`payoff_scenes`) to a scene of Volume 2 that has its own links to Volume 3. Open **Statistics**, pick **Volume 1** and open **Setup & Payoff Map**: no false broken links, and only links that touch Volume 1 are shown.
+2. **Startup:** select a volume, restart Obsidian (or open the vault on mobile). As soon as the project file is indexed, all open views show only that volume.
+3. **Volume chips:** with acts written as `"05"`, open the filter panel (filter button "Show/hide filters" in the filter bar of the Board): the **Volume** row shows the chip for the volume of act 5; clicking it highlights every matching **Act** chip.
+4. **Corkboard:** open the **Board** in **Corkboard** mode, pick a volume that has no scenes yet (only notes are visible), and create a scene in it: the card appears in view, and the board then moves to it once.
+5. **Pane Relief:** with Pane Relief installed, maximize a scene editor inside the **Manuscript**: everything stays visible as before, typing stays smooth in long manuscripts.
+6. **Volumes editor:** open **Manage story structure** → **Volumes**. With `volumes:` written as a map, the tab shows the hint and the file is left alone. Adding volumes while another device adds one keeps both.
+7. **Release workflow:** only relevant when releasing a feature branch version; it appears as a pre-release on GitHub.
+
+**Files:**
+
+- `utils/volumeStatsScope.ts` (withLinkPartners)
+- `utils/volumeScope.ts` (registerVolumeScopeSync, syncVolumeScopeSelects)
+- `components/VolumeFilterChips.ts`
+- `utils/corkboardVolume.ts` (camera after a fallback pan, first cell of an empty volume)
+- `views/BoardView.ts` (corkboard hook passes the camera)
+- `styles.css` (fork section: Pane Relief rule)
+- `components/VolumesEditor.ts`
+- `.github/scripts/km-release-notes.js`
+- `.github/workflows/release-km.yml`
+- `CHANGELOG-km.md`
+
 ## 1.11.8-km.26
 
 **Corkboard follows the selected volume: camera per volume, new scenes placed next to their volume**

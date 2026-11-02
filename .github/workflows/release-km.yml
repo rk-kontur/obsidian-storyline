@@ -3,6 +3,8 @@ name: Release km
 # Builds the plugin and publishes a GitHub release for BRAT
 # when a tag of the form 1.2.3-km.N is pushed.
 # The tag must match "version" in manifest.json.
+# Feature versions (1.2.3-km.N.<branch>.M) are published as pre-releases,
+# so BRAT does not install them for everyone.
 #
 # Can also be started manually (workflow_dispatch): the version is taken
 # from manifest.json and the tag is created on the selected branch.
@@ -15,6 +17,11 @@ on:
 
 permissions:
   contents: write
+
+# One release run at a time (never cancel a running one)
+concurrency:
+  group: release-km
+  cancel-in-progress: false
 
 jobs:
   release:
@@ -60,11 +67,16 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           V: ${{ steps.v.outputs.version }}
         run: |
+          # Feature version (x.y.z-km.N.<branch>.M): pre-release
+          PRE=()
+          case "$V" in *-km.*.*.*) PRE=(--prerelease) ;; esac
           if ! gh release view "$V" >/dev/null 2>&1; then
-            gh release create "$V" \
+            gh release create "$V" "${PRE[@]}" \
               --target "${GITHUB_SHA}" \
               --title "$V" \
               --notes "Fork build of StoryLine (id storyline-km) for BRAT testing."
+          elif [ ${#PRE[@]} -gt 0 ]; then
+            gh release edit "$V" --prerelease
           fi
           gh release upload "$V" main.js manifest.json styles.css --clobber
 
@@ -80,8 +92,9 @@ jobs:
           zip -q storyline-km-source.zip -@ < changed-files.txt
           zip -q storyline-km-source.zip changed-files.txt
           git diff origin/main...HEAD -- . "${EXCL[@]}" > storyline-km.patch
-          # Delta against the previous fork release (newest *-km.* tag other than this version)
-          PREV=$(git for-each-ref --sort=-creatordate --format='%(refname:short)' 'refs/tags/*-km.*' | grep -v -x "${{ steps.v.outputs.version }}" | head -n 1 || true)
+          # Delta against the previous fork release: the nearest *-km.N tag in the
+          # history before this commit (by ancestry, not by date), without feature tags
+          PREV=$(git describe --tags --abbrev=0 --match '*-km.*' --exclude '*-km.*.*.*' HEAD^ 2>/dev/null || true)
           echo "prev=$PREV" >> "$GITHUB_OUTPUT"
           if [ -n "$PREV" ]; then
             git diff "$PREV" HEAD -- . "${EXCL[@]}" > "changes-since-$PREV.patch"

@@ -62,18 +62,28 @@ function cloneRaw(value: unknown): unknown {
     return value;
 }
 
+/** `volumes:` is set but is no list (a map, a string, …): the editor must not touch it. */
+function isForeignVolumesValue(value: unknown): boolean {
+    return value !== undefined && value !== null && !Array.isArray(value);
+}
+
+const NOT_A_LIST = 'volumes: in the project file is not a list; edit it by hand.';
+
 function sameActs(a: number[], b: number[]): boolean {
     return a.length === b.length && a.every((x, i) => x === b[i]);
+}
+
+/** Explicit `id` of a raw `volumes:` entry, '' without one. */
+function explicitId(entry: unknown): string {
+    const id: unknown = entry && typeof entry === 'object' ? (entry as Record<string, unknown>).id : undefined;
+    return typeof id === 'string' || typeof id === 'number' ? String(id).trim() : '';
 }
 
 /** All ids in a raw `volumes:` array: explicit ones and the ones parseVolumes assigns. */
 function rawVolumeIds(raw: unknown): string[] {
     if (!Array.isArray(raw)) return [];
     const resolved = resolveVolumeIds(raw);
-    return raw.map((e, i) => {
-        const id: unknown = e && typeof e === 'object' ? (e as Record<string, unknown>).id : undefined;
-        return typeof id === 'string' || typeof id === 'number' ? String(id).trim() : resolved[i];
-    }).filter(id => id);
+    return raw.map((e, i) => explicitId(e) || resolved[i]).filter(id => id);
 }
 
 /** State of one open Volumes tab. */
@@ -113,7 +123,8 @@ function sameFields(a: VolumeFields, b: VolumeFields): boolean {
 function pickDeletions(raw: unknown[], resolved: string[], pending: Map<string, VolumeFields | undefined>): Set<number> {
     const out = new Set<number>();
     for (const [id, fields] of pending) {
-        const candidates = resolved.map((r, i) => (r === id ? i : -1)).filter(i => i >= 0);
+        // Only entries with this explicit id: an entry without `id` was added by hand (see saveVolumes)
+        const candidates = resolved.map((r, i) => (r === id && explicitId(raw[i]) ? i : -1)).filter(i => i >= 0);
         // Never saved (added and deleted before the first save): nothing of ours is in the file
         if (candidates.length === 0 || !fields) continue;
         const match = fields
@@ -133,7 +144,11 @@ function pickDeletions(raw: unknown[], resolved: string[], pending: Map<string, 
  * - A volume deleted in the dialog removes exactly one entry with its id
  *   (preferably the one that still matches), once.
  * - Only volumes added in the dialog are appended. A volume that was in the
- *   file but has been deleted there meanwhile is not re-added.
+ *   file but has been deleted there meanwhile is not re-added. A file entry
+ *   with the id of a volume added in the dialog (added elsewhere meanwhile,
+ *   or a hand-added entry without id that resolves to it) is foreign: it is
+ *   kept untouched and the new volume is appended with a fresh id.
+ * - If `volumes:` is not a list, nothing is written (Notice).
  * - Every other entry is kept untouched in its position: drafts, non-objects,
  *   entries added elsewhere meanwhile, a second entry with an id already written.
  * - `volumeIdSeq` keeps the highest volume number ever used (also of deleted
@@ -158,11 +173,17 @@ async function saveVolumes(
         return;
     }
     const { original, pendingDeletes, retiredIds } = session;
+    if (isForeignVolumesValue(app.metadataCache.getFileCache(file)?.frontmatter?.volumes)) {
+        new Notice(NOT_A_LIST);
+        return;
+    }
+    let notAList = false;
     await app.fileManager.processFrontMatter(file, (fm: Record<string, unknown>) => {
+        if (isForeignVolumesValue(fm.volumes)) { notAList = true; return; }
         const raw: unknown[] = Array.isArray(fm.volumes) ? (fm.volumes as unknown[]) : [];
-        const seq = Math.max(readVolumeIdSeq(fm), ...volumes.map(v => volumeIdNumber(v.id)),
-            ...[...retiredIds].map(volumeIdNumber), ...rawVolumeIds(raw).map(volumeIdNumber));
-        if (seq > 0) fm.volumeIdSeq = seq;
+        const rawIds = rawVolumeIds(raw);
+        let seq = Math.max(readVolumeIdSeq(fm), ...volumes.map(v => volumeIdNumber(v.id)),
+            ...[...retiredIds].map(volumeIdNumber), ...rawIds.map(volumeIdNumber));
 
         const byId = new Map(volumes.map(v => [v.id, v]));
         const resolved = resolveVolumeIds(raw);
@@ -175,19 +196,23 @@ async function saveVolumes(
             if (remove.has(idx)) return; // deleted in this dialog (one entry per id)
             const id = resolved[idx];
             const v = id ? byId.get(id) : undefined;
+            const before = id ? original.get(id) : undefined;
             // Draft, unknown entry, entry not shown in this dialog (e.g. added
-            // elsewhere meanwhile) or a second entry with an id already written: keep untouched
-            if (!id || !v || written.has(id)) { out.push(entry); return; }
+            // elsewhere meanwhile), an entry with the id of a volume added in
+            // this dialog (not ours: no `before`), an entry without explicit id
+            // (the dialog's volumes all have one in the file since the id fix,
+            // so it was added by hand and only resolves to that id by position)
+            // or a second entry with an id already written: keep untouched
+            if (!id || !v || !before || !explicitId(entry) || written.has(id)) { out.push(entry); return; }
             written.add(id);
             const e = { ...(entry as Record<string, unknown>) };
-            const before = original.get(id);
             e.id = id;
-            if (!before || v.title !== before.title) e.title = v.title;
-            if (!before || !sameActs(v.acts, before.acts)) e.acts = v.acts;
-            if (!before || v.wordGoal !== before.wordGoal) {
+            if (v.title !== before.title) e.title = v.title;
+            if (!sameActs(v.acts, before.acts)) e.acts = v.acts;
+            if (v.wordGoal !== before.wordGoal) {
                 if (v.wordGoal) e.wordGoal = v.wordGoal; else delete e.wordGoal;
             }
-            if (!before || v.deadline !== before.deadline) {
+            if (v.deadline !== before.deadline) {
                 if (v.deadline) e.deadline = v.deadline; else delete e.deadline;
             }
             own.push({ pos: out.length, id });
@@ -195,8 +220,14 @@ async function saveVolumes(
         });
         // Append only volumes added in this dialog. A volume the dialog knew
         // to be in the file but that is gone now was deleted elsewhere: not re-added.
+        const taken = new Set(rawIds);
         for (const v of volumes) {
             if (written.has(v.id) || original.has(v.id)) continue;
+            // Its id is in the file already (foreign entry, see above): fresh id
+            if (taken.has(v.id)) {
+                v.id = nextVolumeId([...volumes.map(x => x.id), ...rawIds], retiredIds, getVolumeScope(app, projectFilePath), seq);
+                seq = Math.max(seq, volumeIdNumber(v.id));
+            }
             const e: Record<string, unknown> = { id: v.id, title: v.title, acts: v.acts };
             if (v.wordGoal) e.wordGoal = v.wordGoal;
             if (v.deadline) e.deadline = v.deadline;
@@ -204,6 +235,7 @@ async function saveVolumes(
             out.push(e);
             written.add(v.id);
         }
+        if (seq > 0) fm.volumeIdSeq = seq;
         if (session.orderChanged) {
             const rank = new Map(volumes.map((v, i) => [v.id, i]));
             const entries = own.map(o => ({ id: o.id, entry: out[o.pos] }))
@@ -218,6 +250,7 @@ async function saveVolumes(
         pendingDeletes.clear();
         for (const v of volumes) if (written.has(v.id)) original.set(v.id, fieldsOf(v));
     });
+    if (notAList) new Notice(NOT_A_LIST);
 }
 
 /**
@@ -278,7 +311,6 @@ export function renderVolumesEditor(
     const fmNow = projectFm();
     const rawCopy: unknown = Array.isArray(fmNow?.volumes) ? cloneRaw(fmNow?.volumes) : [];
     const idFix: VolumeIdFix = normalizeVolumeIds(rawCopy, readVolumeIdSeq(fmNow));
-    if (idFix.changed) void persistIdFix(app, projectFilePath);
 
     const volumes: EditableVolume[] = parseVolumes(rawCopy)
         .map(v => ({ ...v, acts: [...v.acts] }));
@@ -295,13 +327,20 @@ export function renderVolumesEditor(
         });
     }
 
+    if (isForeignVolumesValue(fmNow?.volumes)) {
+        container.createEl('p', { cls: 'sl-km-volumes-warning', text: `${NOT_A_LIST} Changes made here are not saved.` });
+    }
+
     const list = container.createDiv('sl-km-volumes-list');
     const rangeHint = container.createDiv('sl-km-volumes-warning');
     const warn = container.createDiv('sl-km-volumes-warning');
     // Saves run one after another (each reads the file afresh); a change is
     // written 400 ms after the last edit, or at once by flush().
     let saveTimer: number | null = null;
-    let saving: Promise<void> = Promise.resolve();
+    // The id fix runs first in the same chain, so every write is serialized
+    let saving: Promise<void> = idFix.changed
+        ? persistIdFix(app, projectFilePath).catch(() => { new Notice('Could not save the volume ids.'); })
+        : Promise.resolve();
     const runSave = (): Promise<void> => {
         saving = saving
             .then(() => saveVolumes(app, projectFilePath, volumes, session))

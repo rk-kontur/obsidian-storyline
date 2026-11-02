@@ -15,13 +15,15 @@
 //   one, the camera stays as it is (upstream behaviour).
 // - The box uses only scenes whose act is in the volume. Corkboard notes and
 //   scenes without an act are visible in every volume and do not count.
-//   Only if the volume has no such cards, all visible cards are used.
+//   Only if the volume has no such cards, all visible cards are used. Such a
+//   fallback pan is remembered: as soon as the volume has own cards, the
+//   camera pans to them once (also on a plain refresh of the same volume).
 //
 // Side fix: a scene without a stored position gets an initial grid position
 // that IS saved. Upstream uses its index in the filtered list, so with a
 // volume selected new scenes landed near the origin, on top of Volume 1 in
 // "All volumes". With a volume selected they now continue a grid below the
-// volume's lowest card (below all cards if the volume has none yet).
+// volume's lowest card (in the visible viewport area if the volume has none yet).
 //
 // Projects without volumes are not touched at all.
 
@@ -86,38 +88,52 @@ export class CorkboardVolumeCameras {
     private cameras = new Map<string, CorkboardCamera>();
     private project: string | undefined;
     private lastVolume: string | undefined;
+    /** Volumes whose last pan used only the fallback box (no own cards yet). */
+    private fallbackPanned = new Set<string>();
 
     /**
      * Called on every corkboard render. Returns the camera to apply, or null
      * to keep the current one. `volumePan` computes the pan for a volume
-     * without a remembered camera (null: keep the camera).
+     * without a remembered camera (null: keep the camera; `fallback`: the box
+     * had no own cards of the volume).
      */
     update(
         project: string,
         volumeId: string,
         current: CorkboardCamera,
-        volumePan: () => { x: number; y: number } | null,
+        volumePan: () => { x: number; y: number; fallback?: boolean } | null,
     ): CorkboardCamera | null {
         if (project !== this.project) {
             // Other project (or first render): no camera of another book is restored.
             this.cameras.clear();
+            this.fallbackPanned.clear();
             this.project = project;
             this.lastVolume = undefined;
         }
         const prev = this.lastVolume;
         this.lastVolume = volumeId;
+        if (prev !== undefined && prev !== volumeId) this.cameras.set(prev, { ...current });
+        // The volume was shown via the fallback box: once it has own cards, pan to them once.
+        if (volumeId && this.fallbackPanned.has(volumeId)) {
+            const pan = volumePan();
+            if (pan && !pan.fallback) {
+                this.fallbackPanned.delete(volumeId);
+                return { x: pan.x, y: pan.y, zoom: current.zoom };
+            }
+        }
         if (prev === volumeId) return null;
-        if (prev !== undefined) this.cameras.set(prev, { ...current });
         const remembered = this.cameras.get(volumeId);
         if (remembered) return { ...remembered };
         if (!volumeId) return null; // "All volumes" without memory: keep the camera
         const pan = volumePan();
+        if (pan?.fallback) this.fallbackPanned.add(volumeId);
         return pan ? { x: pan.x, y: pan.y, zoom: current.zoom } : null;
     }
 
     /** Forget everything (project without volumes). */
     reset(): void {
         this.cameras.clear();
+        this.fallbackPanned.clear();
         this.project = undefined;
         this.lastVolume = undefined;
     }
@@ -144,9 +160,10 @@ export function applyCorkboardVolumeCamera(
     const vol = getScopedVolume(app, projectFilePath);
     const next = state.update(projectFilePath ?? '', vol?.id ?? '', camera, () => {
         if (!vol) return null;
-        const box = volumeBox(vol, visibleScenes, getPos, isNote)
-            ?? positionsBox(visibleScenes.map(s => getPos(s.filePath)));
-        return box ? panToTopLeft(box, camera.zoom) : null;
+        const own = volumeBox(vol, visibleScenes, getPos, isNote);
+        if (own) return panToTopLeft(own, camera.zoom);
+        const box = positionsBox(visibleScenes.map(s => getPos(s.filePath)));
+        return box ? { ...panToTopLeft(box, camera.zoom), fallback: true } : null;
     });
     if (!next) return false;
     camera.x = next.x;
@@ -159,8 +176,10 @@ export function applyCorkboardVolumeCamera(
  * Initial grid position for scenes without a stored position while a volume
  * is selected: a 4-column grid that continues one row below the volume's
  * lowest card, starting at its leftmost card. Without positioned volume
- * cards: one row below the lowest card of the whole board, at x = 0 (the
- * origin if the board is empty). Cells that overlap a stored card (of any
+ * cards: at the top-left of the visible viewport area (`camera`, the same
+ * padding as the volume pan), so the first card of an empty volume appears
+ * where the user looks; without a camera one row below the lowest card of
+ * the whole board, at x = 0 (the origin if the board is empty). Cells that overlap a stored card (of any
  * volume, note or scene without an act) or a cell handed out before are
  * skipped. Returns null without a selected volume, then upstream's index
  * grid applies. Each call returns the next free cell.
@@ -172,17 +191,22 @@ export function corkboardVolumePlacer(
     allPositions: Iterable<WorldPos>,
     getPos: GetPos,
     isNote: IsNote,
+    camera?: CorkboardCamera,
 ): (() => { x: number; y: number }) | null {
     const vol = getScopedVolume(app, projectFilePath);
     if (!vol) return null;
     const taken = Array.from(allPositions);
-    return gridPlacer(volumeBox(vol, allScenes, getPos, isNote), positionsBox(taken), taken);
+    const view = camera && camera.zoom > 0
+        ? { x: (VOLUME_PAN_PADDING - camera.x) / camera.zoom, y: (VOLUME_PAN_PADDING - camera.y) / camera.zoom }
+        : undefined;
+    return gridPlacer(volumeBox(vol, allScenes, getPos, isNote), positionsBox(taken), taken, view);
 }
 
-/** Pure part of corkboardVolumePlacer. */
-export function gridPlacer(volBox: PosBox | null, boardBox: PosBox | null, taken: WorldPos[] = []): () => { x: number; y: number } {
-    const originX = volBox ? volBox.left : 0;
-    const originY = volBox ? volBox.bottom + GRID_DY : boardBox ? boardBox.bottom + GRID_DY : 0;
+/** Pure part of corkboardVolumePlacer. `view`: world point for an empty volume's first cell. */
+export function gridPlacer(volBox: PosBox | null, boardBox: PosBox | null, taken: WorldPos[] = [], view?: WorldPos): () => { x: number; y: number } {
+    const emptyOrigin = view && Number.isFinite(view.x) && Number.isFinite(view.y) ? view : undefined;
+    const originX = volBox ? volBox.left : emptyOrigin ? emptyOrigin.x : 0;
+    const originY = volBox ? volBox.bottom + GRID_DY : emptyOrigin ? emptyOrigin.y : boardBox ? boardBox.bottom + GRID_DY : 0;
     const used: WorldPos[] = [...taken];
     const free = (x: number, y: number) => !used.some(p => Math.abs(p.x - x) < GRID_DX && Math.abs(p.y - y) < GRID_DY);
     let n = 0;

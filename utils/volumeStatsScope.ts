@@ -73,18 +73,21 @@ export function scopedDeadline<T extends { deadline: string | null | undefined }
 
 /**
  * Scoped scenes plus the scenes they are linked to by setup/payoff (from any
- * volume). Used for the Setup & Payoff map and the Validator so links that
- * cross volume borders are not reported as missing.
+ * volume), in project order. Used for the Setup & Payoff map and the Validator
+ * so links that cross volume borders are not reported as missing. Partners from
+ * other volumes are copies that keep only their links into the scope, so their
+ * own links elsewhere are neither drawn nor reported as broken.
  */
 export function withLinkPartners(scoped: Scene[], project: Scene[]): Scene[] {
     if (scoped.length === project.length) return scoped;
     const inScope = new Set(scoped.map(s => s.filePath));
+    const scopedTitles = new Set(scoped.map(s => s.title));
     // Exactly the Validator's match: parsed link value === raw scene title
     const byTitle = new Map(project.map(s => [s.title, s]));
-    const extra = new Map<string, Scene>();
+    const extra = new Set<string>();
     const add = (title: string) => {
         const t = byTitle.get(title);
-        if (t && !inScope.has(t.filePath)) extra.set(t.filePath, t);
+        if (t && !inScope.has(t.filePath)) extra.add(t.filePath);
     };
     for (const s of scoped) {
         (s.setup_scenes ?? []).forEach(add);
@@ -93,10 +96,15 @@ export function withLinkPartners(scoped: Scene[], project: Scene[]): Scene[] {
     // Scenes of other volumes that point INTO the scope
     for (const s of project) {
         if (inScope.has(s.filePath)) continue;
-        const links = new Set([...(s.setup_scenes ?? []), ...(s.payoff_scenes ?? [])]);
-        if (scoped.some(sc => links.has(sc.title))) extra.set(s.filePath, s);
+        if ((s.setup_scenes ?? []).some(t => scopedTitles.has(t)) || (s.payoff_scenes ?? []).some(t => scopedTitles.has(t))) extra.add(s.filePath);
     }
-    return [...scoped, ...extra.values()];
+    return project
+        .filter(s => inScope.has(s.filePath) || extra.has(s.filePath))
+        .map(s => inScope.has(s.filePath) ? s : {
+            ...s,
+            setup_scenes: s.setup_scenes?.filter(t => scopedTitles.has(t)),
+            payoff_scenes: s.payoff_scenes?.filter(t => scopedTitles.has(t)),
+        });
 }
 
 /** Validator category whose warnings are computed with cross-volume link partners. */
