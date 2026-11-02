@@ -118,6 +118,11 @@ export class TimelineView extends ItemView {
         ).filter(scene => !this.isNoteScene(scene)).map(scene => scene.act);
     }
 
+    /** fork: the Arc Point filter hides every scene. */
+    private kmRenderFilterHint(parent: HTMLElement): void {
+        parent.createDiv('story-line-empty').createEl('p', { text: 'No scenes match the current filter.' });
+    }
+
     /** fork: swimlane mode, a selected volume without scenes: band (Reading order) and empty card. */
     private kmRenderEmptyScopedVolume(parent: HTMLElement, shown: Scene[]): boolean {
         const projectPath = this.sceneManager.activeProject?.filePath;
@@ -374,7 +379,11 @@ export class TimelineView extends ItemView {
         const kmEmptyVolumes = emptyTimelineVolumes(kmVolumes, getScopedVolume(this.app, this.sceneManager.activeProject?.filePath),
             kmBaseActs, emptyTimelineActs(definedActs, kmBaseActs), kmActOrder);
 
+        // fork: the Arc Point filter hides every scene of the (scoped) list
+        const kmFilteredAll = this.arcFilter !== 'all' && scenes.length === 0 && kmBaseActs.length > 0;
+
         if (scenes.length === 0 && definedActs.length === 0 && kmEmptyVolumes.length === 0) { // fork: + empty volumes
+            if (kmFilteredAll) { this.kmRenderFilterHint(timelineEl); return; } // fork
             const empty = timelineEl.createDiv('story-line-empty');
             empty.createEl('p', { text: 'No scenes found.' });
             empty.createEl('p', { text: 'Click "+ new scene" to create your first scene, or use the structure button to set up acts and chapters.' });
@@ -382,6 +391,7 @@ export class TimelineView extends ItemView {
         }
 
         // ── Vertical timeline with scene cards ──
+        if (kmFilteredAll) this.kmRenderFilterHint(timelineEl); // fork: placeholders may follow
         const track = timelineEl.createDiv('timeline-track');
 
 
@@ -563,16 +573,17 @@ export class TimelineView extends ItemView {
                 kmExtras.push({ kind: 'empty-act', actLabel, actNum }); // fork: placed in act order below
             }
         }
-        // fork: empty acts and volumes in act order (inside their volume band); appended in chronological order
-        tlItems.splice(0, tlItems.length, ...mergeByAct(tlItems, kmExtras, kmActOrder));
+        // fork: with volumes, empty acts and volumes in act order (inside their volume band);
+        // without volumes or in chronological order appended at the end, as upstream
+        tlItems.splice(0, tlItems.length, ...mergeByAct(tlItems, kmExtras, kmActOrder && kmVolumes.length > 0));
         if (tlItems.length === 0) { // fork: every scene hidden by the Arc Point filter
             track.remove();
-            timelineEl.createDiv('story-line-empty').createEl('p', { text: 'No scenes match the current filter.' });
+            if (!kmFilteredAll) this.kmRenderFilterHint(timelineEl);
             return;
         }
 
         // fork: volume bands only in act order (Reading order); chronological order interleaves the acts
-        const volumeTracker = new VolumeDividerTracker(kmActOrder ? kmVolumes : []);
+        const volumeTracker = new VolumeDividerTracker(kmActOrder ? kmVolumes : [], { bandEnd: true });
         const renderTLItem = (item: TLItem) => {
             if (item.kind === 'empty-volume') { // fork
                 renderEmptyVolumeEntry(track, item.volume, volumeTracker, act => this.openQuickAdd(act));
@@ -694,6 +705,7 @@ export class TimelineView extends ItemView {
 
         if (scenes.length === 0) {
             if (this.kmRenderEmptyScopedVolume(timelineEl, scenes)) return; // fork
+            if (this.arcFilter !== 'all' && this.kmBaseSceneActs(scenes).length > 0) { this.kmRenderFilterHint(timelineEl); return; } // fork
             const empty = timelineEl.createDiv('story-line-empty');
             empty.createEl('p', { text: 'No scenes found.' });
             empty.createEl('p', { text: 'Click "+ new scene" to create your first scene.' });
@@ -760,7 +772,7 @@ export class TimelineView extends ItemView {
 
         // 5. Render each row
         // fork: volume bands only in act order (Reading order)
-        const volumeTracker = new VolumeDividerTracker(this.timelineOrder !== 'chronological' ? getProjectVolumes(this.app, this.sceneManager.activeProject?.filePath) : []);
+        const volumeTracker = new VolumeDividerTracker(this.timelineOrder !== 'chronological' ? getProjectVolumes(this.app, this.sceneManager.activeProject?.filePath) : [], { bandEnd: true });
         for (const row of rows) {
             if (row.type === 'act-divider') {
                 volumeTracker.renderBefore(grid, row.actNum, '1 / -1');

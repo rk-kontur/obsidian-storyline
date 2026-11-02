@@ -284,7 +284,13 @@ export function volumeExportRange(
 export class VolumeDividerTracker {
     private lastId: string | null = null;
 
-    constructor(private volumes: VolumeDef[]) {}
+    /**
+     * `opts.bandEnd` (opt-in): an act outside every volume (Prologue,
+     * Epilogue, "No Act", non-numeric or unassigned acts) after a volume
+     * ends the band with an unlabelled separator, so it is not drawn inside
+     * the last volume's band. A later volume act starts its band again.
+     */
+    constructor(private volumes: VolumeDef[], private opts: { bandEnd?: boolean } = {}) {}
 
     get active(): boolean {
         return this.volumes.length > 0;
@@ -301,6 +307,12 @@ export class VolumeDividerTracker {
 
     /** Render an HTML volume band before the act divider if a new volume starts; returns the band. */
     renderBefore(parent: HTMLElement, act: number | string | undefined, gridColumn?: string): HTMLElement | undefined {
+        if (this.opts.bandEnd && this.active && this.lastId !== null && !getVolumeForAct(this.volumes, act)) {
+            this.lastId = null;
+            const end = parent.createDiv('sl-km-volume-divider sl-km-volume-end');
+            if (gridColumn) end.setCssStyles({ gridColumn });
+            return end;
+        }
         const vol = this.next(act);
         if (!vol) return undefined;
         return this.renderBand(parent, vol, gridColumn);

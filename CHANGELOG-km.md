@@ -10,12 +10,12 @@ Changes of this fork compared to the original StoryLine plugin by Jan Sandström
 
 - With **Arc Points** or **Scenes only** selected in the Arc Point filter, every act without a matching scene appeared at the end as "No scenes in Act 3 · Click + to add a scene", although the act has scenes.
 - An act now counts as empty only when it has no scene at all in the selected volume, exactly as the Timeline decides it without the fork (active scenes, corkboard notes not counted). The Arc Point filter only hides scenes; acts whose scenes are all hidden by it are left out.
-- If the filter hides every scene, the Timeline says "No scenes match the current filter." instead of showing an empty track.
+- If the filter hides every scene, the Timeline says "No scenes match the current filter." (single column and **Swimlane**), also when empty-act placeholders follow or no scene has a numeric act.
 
 ### Empty acts sit in their place, inside their volume band
 
-- In **Reading order**, a defined act without scenes is shown between its neighbouring acts, inside the band of its volume, instead of after the last volume. Text and **+** button are unchanged.
-- In **Chronological order** empty acts stay at the end, as before.
+- In **Reading order** in a project with volumes, a defined act without scenes is shown between its neighbouring acts, inside the band of its volume, instead of after the last volume. Text and **+** button are unchanged.
+- Without volumes, and in **Chronological order**, empty acts stay at the end, as before.
 
 ### Volumes without scenes are visible
 
@@ -24,11 +24,17 @@ Changes of this fork compared to the original StoryLine plugin by Jan Sandström
 
 <!-- screenshot: Timeline, Reading order, All volumes, band "Volume 3" with the card "No scenes in Volume 3" -->
 <!-- screenshot: Timeline, Arc Points filter, an empty act inside the Volume 2 band -->
+<!-- screenshot: Timeline, Reading order, band end line before the Epilogue -->
 
 ### Volume bands only in Reading order
 
 - Volume bands only make sense when the acts follow each other. In **Chronological order** scenes of different acts and volumes interleave, so the Timeline (single column and **Swimlane**) no longer shows volume bands there; before, a band was repeated every time the volume changed. In **Reading order** both modes show the bands as before.
 - In Swimlane mode empty acts are not shown (as without the fork), so a volume without scenes only appears when it is selected.
+
+### Volume bands end before acts outside every volume
+
+- The Prologue (act 0), the Epilogue (act 99), "No Act", non-numeric acts and acts that belong to no volume were drawn inside the band of the last volume. In the Timeline (single column and **Swimlane**, Reading order) such an act after a volume now ends the band with a plain separator line without label. A later act of a volume starts that volume's band again. An empty Epilogue placeholder also comes after the band end.
+- The other views keep their bands as before.
 
 **How and where to use:**
 
@@ -37,13 +43,15 @@ Changes of this fork compared to the original StoryLine plugin by Jan Sandström
 3. Define an act without scenes (structure button, e.g. act 4): its "No scenes in Act 4" placeholder appears after act 3, inside the **Volume 2** band. Click **+** or the card to add a scene to act 4.
 4. With **All volumes** selected and no scenes in acts 5–6, the **Volume 3** band appears after Volume 2 with the card "No scenes in Volume 3". Click the card to add a scene to act 5.
 5. Select **Volume 3** in the volume dropdown: the band and the card are shown instead of an empty view. Switch on **Swimlane**: the same card is shown.
-6. Switch to **Chronological order**: no volume bands are shown, empty acts are listed at the end.
+6. Add a scene with act 7 (outside every volume) or an Epilogue scene: after the last volume's scenes a separator line ends the band, and act 7 / the Epilogue follow below it.
+7. Switch to **Chronological order**: no volume bands are shown, empty acts are listed at the end.
 
 **Files:**
 
-- `views/TimelineView.ts` (`renderTimeline`: empty acts from the unfiltered, volume-scoped list, empty volumes, placement in act order, empty state for a fully filtered list, bands only in Reading order, drop indicators skip placeholders; `renderSwimlaneTimeline`: bands only in Reading order, empty selected volume; `kmBaseSceneActs`, `kmRenderEmptyScopedVolume` (new))
+- `views/TimelineView.ts` (`renderTimeline`: empty acts from the unfiltered, volume-scoped list, empty volumes, placement in act order, empty state for a fully filtered list, bands only in Reading order with band end, filter hint, drop indicators skip placeholders; `renderSwimlaneTimeline`: bands only in Reading order with band end, empty selected volume, filter hint; `kmBaseSceneActs`, `kmRenderEmptyScopedVolume`, `kmRenderFilterHint` (new))
 - `utils/timelineVolumes.ts` (new: `emptyTimelineActs`, `emptyTimelineVolumes`, `firstVolumeAct`, `mergeByAct`, `renderEmptyVolumeEntry`)
-- `utils/volumes.ts` (`VolumeDividerTracker.renderVolume`, new)
+- `utils/volumes.ts` (`VolumeDividerTracker`: opt-in band end in `renderBefore`, `renderVolume` (new))
+- `styles.css` (fork section: `.sl-km-volume-divider.sl-km-volume-end`)
 - `CHANGELOG-km.md`
 
 ## 1.11.8-km.18

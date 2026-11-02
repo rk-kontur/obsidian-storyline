@@ -14299,3 +14299,9 @@ body.sl-focus-active-global.sl-focus-dim-text .markdown-source-view.mod-cm6 .cm-
     color: var(--text-muted);
     font-size: var(--font-ui-smaller);
 }
+
+/* Timeline: end of a volume band before Prologue / Epilogue / "No Act" / acts outside every volume */
+.sl-km-volume-divider.sl-km-volume-end {
+    padding: 0;
+    background: none;
+}
