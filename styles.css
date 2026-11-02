@@ -13874,28 +13874,10 @@ body.sl-focus-active-global.sl-focus-dim-text .markdown-source-view.mod-cm6 .cm-
     color: var(--text-error);
 }
 
-/* ─── Manage story structure: sections and volumes editor ───── */
-.story-line-structure-sections .modal {
-    width: min(960px, 92vw);
-    max-width: 92vw;
-    overflow-x: hidden;
-}
-
-.story-line-structure-sections .modal-content {
-    overflow-x: hidden;
-}
-
-.story-line-structure-sections .story-line-settings-section-body {
-    min-width: 0;
-}
-
-.story-line-structure-sub {
-    margin-bottom: 8px;
-}
-
+/* ─── Manage story structure: volumes editor ────────────────── */
 .story-line-volume-row {
     display: grid;
-    grid-template-columns: minmax(120px, 2fr) 70px 70px 100px 140px 56px 32px;
+    grid-template-columns: minmax(80px, 2fr) minmax(48px, 0.6fr) minmax(48px, 0.6fr) minmax(64px, 1fr) minmax(110px, 1.4fr) auto auto;
     gap: 6px;
     align-items: center;
     margin-bottom: 6px;
@@ -13923,6 +13905,17 @@ body.sl-focus-active-global.sl-focus-dim-text .markdown-source-view.mod-cm6 .cm-
 
 .story-line-volume-row.has-overlap input[type="number"] {
     border-color: var(--text-error);
+}
+
+/* Phones: two fields per line (title | from, to | goal, deadline | move, remove) */
+.is-phone .story-line-volume-row {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    padding-bottom: 6px;
+    border-bottom: 1px solid var(--background-modifier-border);
+}
+
+.is-phone .story-line-volume-row > button {
+    justify-self: end;
 }
 
 .story-line-volumes-warning {

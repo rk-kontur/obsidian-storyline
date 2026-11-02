@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-floating-promises, @typescript-eslint/no-misused-promises, @typescript-eslint/no-unnecessary-type-assertion, @typescript-eslint/no-unused-vars -- Obsidian's API surface and several untyped third-party libraries force dynamic dispatch; floating promises are intentional in DOM/event handlers; matching enable at end of file */
 import { openConfirmModal } from '../components/ConfirmModal';
-import { enhanceStructureModal } from '../components/StructureModalSections';
+import { addVolumesSection } from '../components/VolumesEditor';
 import { SceneManager } from '../services/SceneManager';
 import { SceneCardComponent } from '../components/SceneCard';
 import { InspectorComponent } from '../components/Inspector';
@@ -1662,6 +1662,9 @@ export class TimelineView extends ItemView {
                 toggle.onChange(v => { createScenesForChapters = v; });
             });
 
+        // ── Volumes section ──
+        addVolumesSection(modal, { app: this.app, projectFilePath: this.sceneManager.activeProject?.filePath, getDefinedActs: () => this.sceneManager.getDefinedActs() });
+
         // Close button
         const closeRow = contentEl.createDiv('structure-close-row');
         const closeBtn = closeRow.createEl('button', { text: 'Done', cls: 'mod-cta' });
@@ -1670,8 +1673,6 @@ export class TimelineView extends ItemView {
             this.refresh();
         });
 
-        // Regroup into collapsible sections (Volumes, Acts, Chapters, Templates)
-        enhanceStructureModal(modal, { app: this.app, projectFilePath: this.sceneManager.activeProject?.filePath, getDefinedActs: () => this.sceneManager.getDefinedActs() });
         modal.open();
     }
 

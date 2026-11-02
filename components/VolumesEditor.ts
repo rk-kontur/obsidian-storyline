@@ -1,9 +1,8 @@
-// Edits the optional `volumes:` block of the project file. Used as the
-// "Volumes" section of the "Manage story structure" dialog
-// (StructureModalSections).
+// Edits the optional `volumes:` block of the project file. Shown as the
+// "Volumes" section of the "Manage story structure" dialog (addVolumesSection).
 
 import { Notice, TFile } from 'obsidian';
-import type { App } from 'obsidian';
+import type { App, Modal } from 'obsidian';
 import { EPILOGUE_ACT } from '../utils/actChapter';
 import { isValidActRange, isVolumeAct, MAX_VOLUME_ACT, MAX_VOLUME_RANGE, nextVolumeId, normalizeVolumeIds, parseVolumes, readVolumeIdSeq, resolveVolumeIds, volumeIdNumber, type VolumeIdFix } from '../utils/volumes';
 
@@ -81,7 +80,7 @@ function rawVolumeIds(raw: unknown): string[] {
     return raw.map((e, i) => explicitId(e) || resolved[i]).filter(id => id);
 }
 
-/** State of one open Volumes tab. */
+/** State of one open Volumes section. */
 interface EditorSession {
     /**
      * Field values of every volume this dialog knows to be in the file (at
@@ -278,7 +277,7 @@ async function persistIdFix(app: App, projectFilePath: string): Promise<void> {
     });
 }
 
-/** Handle of a rendered Volumes tab. */
+/** Handle of a rendered Volumes section. */
 export interface VolumesEditorHandle {
     /** Write a pending (debounced) change now. Resolves when every save so far is done. */
     flush(): Promise<void>;
@@ -289,7 +288,7 @@ export interface VolumesEditorHandle {
 /** Editors whose dialog is still open: flushed on plugin unload. */
 const openEditors = new Set<VolumesEditorHandle>();
 
-/** Flush every open Volumes tab (plugin unload). */
+/** Flush every open Volumes section (plugin unload). */
 export function flushOpenVolumeEditors(): Promise<void> {
     return Promise.all([...openEditors].map(h => h.flush())).then(() => undefined);
 }
@@ -372,33 +371,51 @@ export function renderVolumesEditor(
         dispose: () => { openEditors.delete(handle); return flush(); },
     };
     openEditors.add(handle);
-    // Leaving a field of this tab writes its change at once, before a click
+    // Leaving a field of this section writes its change at once, before a click
     // elsewhere in the dialog (e.g. "Add act") starts its own save.
     container.addEventListener('focusout', () => { void flush(); });
 
+    /** Rows of the current render, in the order of `volumes`. */
+    let rows: HTMLElement[] = [];
+    /** Overlap marks and the warnings below the list (no re-render, so focus stays). */
+    const renderHints = () => {
+        warn.empty();
+        const overlaps = findOverlaps(volumes);
+        rows.forEach((row, i) => row.toggleClass('has-overlap', overlaps.has(i)));
+        if (overlaps.size > 0) {
+            const parts = [...overlaps.entries()].map(([i, acts]) => `${volumes[i].title}: act ${acts.join(', ')}`);
+            warn.setText(`Acts assigned to more than one volume (the first volume wins): ${parts.join('; ')}`);
+        }
+
+        // Defined acts not covered by any volume
+        const covered = new Set(volumes.flatMap(v => v.acts));
+        const free = getDefinedActs().filter(a => !covered.has(a) && isVolumeAct(a));
+        if (volumes.length > 0 && free.length > 0) {
+            warn.createDiv({ cls: 'story-line-volumes-note', text: `Acts without volume: ${free.join(', ')}` });
+        }
+    };
+
     const render = () => {
         list.empty();
+        rows = [];
         rangeHint.setText(''); // a hint belongs to the last range edit only
-        warn.empty();
         if (volumes.length === 0) {
             list.createEl('p', { cls: 'structure-empty', text: 'No volumes defined yet.' });
         } else {
             const head = list.createDiv('story-line-volume-row story-line-volume-head');
             ['Title', 'From act', 'To act', 'Word goal', 'Deadline', '', ''].forEach(t => head.createSpan({ text: t }));
         }
-        const overlaps = findOverlaps(volumes);
-
         volumes.forEach((v, i) => {
             const row = list.createDiv('story-line-volume-row');
-            if (overlaps.has(i)) row.addClass('has-overlap');
+            rows.push(row);
 
-            const title = row.createEl('input', { type: 'text', value: v.title });
+            const title = row.createEl('input', { type: 'text', value: v.title, attr: { 'aria-label': 'Title' } });
             title.addEventListener('change', () => { v.title = title.value.trim() || `Volume ${i + 1}`; scheduleSave(); });
 
             const contiguous = v.acts.every((a, k) => k === 0 || a === v.acts[k - 1] + 1);
             const actAttr = { min: '0', max: String(MAX_VOLUME_ACT) };
-            const from = row.createEl('input', { type: 'number', value: String(v.acts[0] ?? ''), attr: actAttr });
-            const to = row.createEl('input', { type: 'number', value: String(v.acts[v.acts.length - 1] ?? ''), attr: actAttr });
+            const from = row.createEl('input', { type: 'number', value: String(v.acts[0] ?? ''), attr: { ...actAttr, 'aria-label': 'From act' } });
+            const to = row.createEl('input', { type: 'number', value: String(v.acts[v.acts.length - 1] ?? ''), attr: { ...actAttr, 'aria-label': 'To act' } });
             if (!contiguous) {
                 from.title = to.title = `Acts ${rangeText(v.acts)} (editing turns this into a range)`;
             }
@@ -425,13 +442,17 @@ export function renderVolumesEditor(
                 const leftOut = acts.length < toRange(f, t).length;
                 v.acts = acts;
                 scheduleSave();
-                render();
-                if (leftOut) rangeHint.setText(`${v.title}: Prologue (act 0) and Epilogue (act 99) are not part of volumes and were left out.`);
+                // Update in place (a re-render would drop the focus, e.g. Tab from "From act" to "To act")
+                from.value = String(acts[0]);
+                to.value = String(acts[acts.length - 1]);
+                from.title = to.title = '';
+                rangeHint.setText(leftOut ? `${v.title}: Prologue (act 0) and Epilogue (act 99) are not part of volumes and were left out.` : '');
+                renderHints();
             };
             from.addEventListener('change', onRange);
             to.addEventListener('change', onRange);
 
-            const goal = row.createEl('input', { type: 'number', value: v.wordGoal ? String(v.wordGoal) : '' });
+            const goal = row.createEl('input', { type: 'number', value: v.wordGoal ? String(v.wordGoal) : '', attr: { 'aria-label': 'Word goal' } });
             goal.placeholder = '–';
             goal.addEventListener('change', () => {
                 const n = parseInt(goal.value, 10);
@@ -439,7 +460,7 @@ export function renderVolumesEditor(
                 scheduleSave();
             });
 
-            const deadline = row.createEl('input', { type: 'date', value: v.deadline ?? '' });
+            const deadline = row.createEl('input', { type: 'date', value: v.deadline ?? '', attr: { 'aria-label': 'Deadline' } });
             deadline.addEventListener('change', () => { v.deadline = deadline.value || undefined; scheduleSave(); });
 
             const move = row.createSpan({ cls: 'story-line-volume-move' });
@@ -469,18 +490,7 @@ export function renderVolumesEditor(
 
             row.querySelectorAll('input').forEach(inp => inp.addEventListener('keydown', (e: KeyboardEvent) => e.stopPropagation()));
         });
-
-        if (overlaps.size > 0) {
-            const parts = [...overlaps.entries()].map(([i, acts]) => `${volumes[i].title}: act ${acts.join(', ')}`);
-            warn.setText(`Acts assigned to more than one volume (the first volume wins): ${parts.join('; ')}`);
-        }
-
-        // Defined acts not covered by any volume
-        const covered = new Set(volumes.flatMap(v => v.acts));
-        const free = getDefinedActs().filter(a => !covered.has(a) && isVolumeAct(a));
-        if (volumes.length > 0 && free.length > 0) {
-            warn.createDiv({ cls: 'story-line-volumes-note', text: `Acts without volume: ${free.join(', ')}` });
-        }
+        renderHints();
     };
 
     const addRow = container.createDiv('structure-add-row story-line-volumes-add');
@@ -502,4 +512,48 @@ export function renderVolumesEditor(
 
     render();
     return handle;
+}
+
+/** Set by the "Manage volumes" command: the next Volumes section scrolls into view. */
+let revealNextSection = false;
+
+/** Scroll the Volumes section into view the next time the structure dialog opens. */
+export function revealNextVolumesSection(reveal = true): void {
+    revealNextSection = reveal;
+}
+
+export interface VolumesSectionContext {
+    app: App;
+    projectFilePath: string | undefined;
+    /** Getter, so acts added in the same dialog (Add act, beat sheets) are seen. */
+    getDefinedActs: () => number[];
+}
+
+/**
+ * Append the "Volumes" section (heading and editor) to the structure dialog.
+ * A pending volumes change is written before any other action in the dialog
+ * starts (those rewrite the project frontmatter from a fresh read) and when
+ * the dialog closes.
+ */
+export function addVolumesSection(modal: Modal, ctx: VolumesSectionContext): void {
+    const { contentEl } = modal;
+    const heading = contentEl.createEl('h3', { text: 'Volumes' });
+    const section = contentEl.createDiv();
+    const editor = renderVolumesEditor(section, ctx.app, ctx.projectFilePath, ctx.getDefinedActs);
+    // pointerdown / keydown come before the click or change that starts the other save
+    const flushIfOutside = (e: Event) => {
+        if (!(e.target instanceof Node) || !section.contains(e.target)) void editor.flush();
+    };
+    contentEl.addEventListener('pointerdown', flushIfOutside, true);
+    contentEl.addEventListener('keydown', flushIfOutside, true);
+    const previousOnClose = modal.onClose.bind(modal) as () => void;
+    modal.onClose = () => {
+        void editor.dispose();
+        previousOnClose();
+    };
+    if (revealNextSection) {
+        revealNextSection = false;
+        // After the dialog's own scroll reset on open (a few frames)
+        window.setTimeout(() => heading.scrollIntoView({ block: 'start' }), 100);
+    }
 }

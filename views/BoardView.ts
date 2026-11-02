@@ -3,7 +3,7 @@ import { ItemView, WorkspaceLeaf, Menu, Notice, TFile, Modal, Setting, MarkdownR
 import * as obsidian from 'obsidian';
 import { Scene, SceneFilter, SortConfig, BoardGroupBy, SceneStatus, SceneTemplate, BeatSheetTemplate, BUILTIN_BEAT_SHEETS, getStatusOrder, getStatusConfig, resolveStatusCfg } from '../models/Scene';
 import { openConfirmModal } from '../components/ConfirmModal';
-import { enhanceStructureModal } from '../components/StructureModalSections';
+import { addVolumesSection } from '../components/VolumesEditor';
 import { openStructureLabelModal } from '../components/StructureLabelModal';
 import { SceneManager } from '../services/SceneManager';
 import { SceneCardComponent } from '../components/SceneCard';
@@ -3540,6 +3540,9 @@ export class BoardView extends ItemView {
                 toggle.onChange(v => { createScenesForChapters = v; });
             });
 
+        // ── Volumes section ──
+        addVolumesSection(modal, { app: this.app, projectFilePath: this.sceneManager.activeProject?.filePath, getDefinedActs: () => this.sceneManager.getDefinedActs() });
+
         // ── Saved custom beat sheets ──
         contentEl.createEl('h3', { text: 'Saved custom beat sheets' });
         contentEl.createEl('p', {
@@ -3832,8 +3835,6 @@ export class BoardView extends ItemView {
             this.refreshBoard();
         });
 
-        // Regroup into collapsible sections (Volumes, Acts, Chapters, Templates)
-        enhanceStructureModal(modal, { app: this.app, projectFilePath: this.sceneManager.activeProject?.filePath, getDefinedActs: () => this.sceneManager.getDefinedActs() });
         modal.open();
 
         // Issue #214 — on iOS/iPadOS the modal opens scrolled past the top,
