@@ -409,13 +409,13 @@ export function renderVolumesEditor(
             const row = list.createDiv('story-line-volume-row');
             rows.push(row);
 
-            const title = row.createEl('input', { type: 'text', value: v.title, attr: { 'aria-label': 'Title' } });
+            const title = row.createEl('input', { type: 'text', value: v.title, attr: { 'aria-label': 'Title', placeholder: 'Title' } });
             title.addEventListener('change', () => { v.title = title.value.trim() || `Volume ${i + 1}`; scheduleSave(); });
 
             const contiguous = v.acts.every((a, k) => k === 0 || a === v.acts[k - 1] + 1);
             const actAttr = { min: '0', max: String(MAX_VOLUME_ACT) };
-            const from = row.createEl('input', { type: 'number', value: String(v.acts[0] ?? ''), attr: { ...actAttr, 'aria-label': 'From act' } });
-            const to = row.createEl('input', { type: 'number', value: String(v.acts[v.acts.length - 1] ?? ''), attr: { ...actAttr, 'aria-label': 'To act' } });
+            const from = row.createEl('input', { type: 'number', value: String(v.acts[0] ?? ''), attr: { ...actAttr, 'aria-label': 'From act', placeholder: 'From' } });
+            const to = row.createEl('input', { type: 'number', value: String(v.acts[v.acts.length - 1] ?? ''), attr: { ...actAttr, 'aria-label': 'To act', placeholder: 'To' } });
             if (!contiguous) {
                 from.title = to.title = `Acts ${rangeText(v.acts)} (editing turns this into a range)`;
             }
@@ -453,7 +453,7 @@ export function renderVolumesEditor(
             to.addEventListener('change', onRange);
 
             const goal = row.createEl('input', { type: 'number', value: v.wordGoal ? String(v.wordGoal) : '', attr: { 'aria-label': 'Word goal' } });
-            goal.placeholder = '–';
+            goal.placeholder = 'Word goal';
             goal.addEventListener('change', () => {
                 const n = parseInt(goal.value, 10);
                 v.wordGoal = !isNaN(n) && n > 0 ? n : undefined;
@@ -553,7 +553,17 @@ export function addVolumesSection(modal: Modal, ctx: VolumesSectionContext): voi
     };
     if (revealNextSection) {
         revealNextSection = false;
-        // After the dialog's own scroll reset on open (a few frames)
-        window.setTimeout(() => heading.scrollIntoView({ block: 'start' }), 100);
+        const previousOnOpen = modal.onOpen.bind(modal) as () => void;
+        modal.onOpen = () => {
+            previousOnOpen();
+            // Third frame after opening: BoardView resets the scroll right after
+            // open() and again in the next two frames (Issue #214). Its frame
+            // callbacks are queued after ours, so the third one comes after its last.
+            const frames = (n: number) => window.requestAnimationFrame(() => {
+                if (n > 1) frames(n - 1);
+                else heading.scrollIntoView({ block: 'start' });
+            });
+            frames(3);
+        };
     }
 }

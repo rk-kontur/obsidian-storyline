@@ -13877,7 +13877,7 @@ body.sl-focus-active-global.sl-focus-dim-text .markdown-source-view.mod-cm6 .cm-
 /* ─── Manage story structure: volumes editor ────────────────── */
 .story-line-volume-row {
     display: grid;
-    grid-template-columns: minmax(80px, 2fr) minmax(48px, 0.6fr) minmax(48px, 0.6fr) minmax(64px, 1fr) minmax(110px, 1.4fr) auto auto;
+    grid-template-columns: minmax(80px, 2fr) minmax(48px, 0.6fr) minmax(48px, 0.6fr) minmax(64px, 1fr) minmax(125px, 1.4fr) auto auto;
     gap: 6px;
     align-items: center;
     margin-bottom: 6px;
@@ -13907,7 +13907,12 @@ body.sl-focus-active-global.sl-focus-dim-text .markdown-source-view.mod-cm6 .cm-
     border-color: var(--text-error);
 }
 
-/* Phones: two fields per line (title | from, to | goal, deadline | move, remove) */
+/* Phones: two fields per line (title | from, to | goal, deadline | move, remove);
+   the inputs show placeholders instead of the header row */
+.is-phone .story-line-volume-head {
+    display: none;
+}
+
 .is-phone .story-line-volume-row {
     grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
     padding-bottom: 6px;
