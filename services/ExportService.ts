@@ -3,7 +3,7 @@ import { StoryLineProject } from '../models/StoryLineProject';
 import { SceneManager } from './SceneManager';
 import { compareActChapter, getActDisplayLabel, getChapterDisplayLabel } from '../utils/actChapter';
 import { actNumber } from '../utils/volumes'; // fork: volume act rule
-import { filterArcPointsForExport, volumeExportLabel } from '../utils/exportFork'; // fork
+import { filterArcPointsForExport, volumeExportLabel } from '../utils/exportFork'; // fork: Arc Point filter, volume file name
 import { CharacterManager } from './CharacterManager';
 import { LocationManager } from './LocationManager';
 import { SLMarkdownToDocxConverter, SLDocxSettings, SLObsidianFontSettings } from './DocxConverter';
@@ -55,7 +55,7 @@ export class ExportService {
         numberScenesOnExport: false,
         includeCorkboardNotes: false,
         includeInactiveScenes: false,
-        includeArcPoints: true, // fork
+        includeArcPoints: true, // fork: default keeps Arc Points, as before
     };
     private separatorType: 'blank' | 'asterisks' | 'custom' = 'blank';
     private separatorCustom = '';
@@ -154,7 +154,7 @@ export class ExportService {
         if (!this.exportOptions.includeCorkboardNotes) {
             scenes = scenes.filter(s => !this.isCorkboardNoteScene(s));
         }
-        scenes = filterArcPointsForExport(scenes, this.exportOptions.includeArcPoints !== false); // fork
+        scenes = filterArcPointsForExport(scenes, this.exportOptions.includeArcPoints !== false); // fork: Include arc points
         if (this.exportRange) {
             const selectedRanges = this.exportRange.sequenceRanges;
             scenes = scenes.filter(scene => {

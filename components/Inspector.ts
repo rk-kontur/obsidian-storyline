@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-floating-promises, @typescript-eslint/no-misused-promises, @typescript-eslint/no-unused-vars -- Obsidian's API surface and several untyped third-party libraries force dynamic dispatch; floating promises are intentional in DOM/event handlers; matching enable at end of file */
 import { Modal, App, Notice } from 'obsidian';
-import { clearRealizedBy, renderRealizedByControl } from './RealizedByControl';
+import { clearRealizedBy, renderRealizedByControl } from './RealizedByControl'; // fork: clearRealizedBy
 import * as obsidian from 'obsidian';
 import { openConfirmModal } from './ConfirmModal';
 import { SplitSceneModal } from './SplitMergeModals';
@@ -493,7 +493,8 @@ export class InspectorComponent {
             const val = arcCheckbox.checked;
             await this.sceneManager.updateScene(scene.filePath, { arcAnchor: val });
             scene.arcAnchor = val || undefined;
-            if (!val) await clearRealizedBy(this.plugin.app, scene); // fork: no orphaned realizedBy
+            const parsed = this.sceneManager.getScene(scene.filePath); // fork: no orphaned realizedBy, only if no longer an Arc Point (e.g. arc_anchor spelling stays)
+            if (!val && parsed && !parsed.arcAnchor) await clearRealizedBy(this.plugin.app, scene);
         });
         // Arc Point → realizing scene, in the same row as the checkbox (fork)
         renderRealizedByControl(arcRow, this.plugin.app, scene, () => this.sceneManager.getAllScenes());

@@ -4,11 +4,12 @@ Changes of this fork compared to the original StoryLine plugin by Jan Sandström
 
 ## 1.11.8-km.22
 
-**Arc Points and export: orphaned `realizedBy` removed, export preselects the current volume and names the file after it, new "Include arc points" option, `realizedBy` follows renamed scenes**
+**Arc Points and export: orphaned `realizedBy` removed, export preselects the current volume and names the file after it, new "Include arc points" option**
 
 ### Unchecking "Arc point" also removes `realizedBy`
 
 - When **Arc point** is unchecked in the Inspector, the scene's `realizedBy` (also the `realized_by` spelling) is now removed from its frontmatter as well. Before, the link stayed behind as an orphan on a regular scene. No other frontmatter key is touched.
+- The link is only removed when the scene is really no longer an Arc Point after the write. A scene that uses the old spelling `arc_anchor: true` stays an Arc Point when unchecked (upstream only removes `arcAnchor`), so its `realizedBy` is kept as well.
 - Undo of the Arc point change restores `arcAnchor` only, not the removed `realizedBy` (upstream undo does not know this key).
 
 ### Export dialog preselects the current volume
@@ -18,6 +19,7 @@ Changes of this fork compared to the original StoryLine plugin by Jan Sandström
 ### Volume exports are named after the volume
 
 - A volume export was named "My Book - Manuscript - Acts 5,6,7,8,... (date)". It is now named after the volume: "My Book - Manuscript - Volume 2 (date)". The title is made safe for file names with upstream's rule for act folders (characters `\ / : * ? " < > |` become "-", no trailing dots or spaces). Exports without a volume, and **Scenes** / **Chapters** range exports, keep upstream's names.
+- If two volumes have the same title after this cleanup (e.g. "Part: 1" and "Part- 1", or titles that differ only in case), the volume id is added, e.g. "My Book - Manuscript - Part- 1 (v2) (date)", so the second export of the day does not overwrite the first.
 
 ### New export option "Include arc points"
 
@@ -27,11 +29,10 @@ Changes of this fork compared to the original StoryLine plugin by Jan Sandström
 
 <!-- screenshot: Export dialog with Volume preselected (e.g. "Volume 2") and the new "Include arc points" toggle below "Include inactive scenes" -->
 
-### `realizedBy` follows renamed scenes
+### `realizedBy` and renamed scenes (behaviour, no change)
 
-- With Obsidian's **Settings → Files and links → Automatically update internal links** switched off, renaming a scene broke the `realizedBy` link of the Arc Points that point to it. The fork now updates such links itself after a rename.
-- Only exact matches are rewritten: the link (without alias and heading) must name the old file name or old vault path (with or without ".md"), and must no longer lead to any file. Alias and heading are kept (`[[Funeral#End|the funeral]]` becomes `[[Burial#End|the funeral]]`).
-- Not rewritten (limitation): links with different case, relative paths, list values, and links whose old name still leads to another file with the same name (ambiguous). With **Automatically update internal links** switched on, Obsidian updates `realizedBy` itself and the fork does nothing. If Obsidian cannot report that setting, the fork also does nothing.
+- `realizedBy` is a normal frontmatter link. It follows a renamed scene whenever Obsidian updates links: automatically with **Settings → Files and links → Automatically update internal links** on, or after **Update** in Obsidian's "Update links?" prompt when the setting is off.
+- If the links are not updated ("Don't update"), the fork does not override that choice. The Arc Point still finds its scene through the existing fallback by equal title or file name (e.g. when only the file was renamed and the scene's title still matches the link); otherwise the **Realized** dropdown shows the old link as "(not found)".
 
 **How and where to use:**
 
@@ -39,18 +40,14 @@ Changes of this fork compared to the original StoryLine plugin by Jan Sandström
 2. Select a volume, e.g. **Volume 2**, in the **Filter by** dropdown of the Board, Timeline or Manuscript. Open **Export project** (**Export** button in the view switcher, or command "Export project"): the **Volume** dropdown already shows **Volume 2**.
 3. Click **Export**: the file in the project's `Exports` folder is named "<project> - Manuscript - Volume 2 (<date>).<ext>". Choose **All volumes** to get the upstream name again.
 4. In the same dialog, switch **Include arc points** off and click **Export**: the export contains no Arc Point scenes. Switch it on (default) to include them.
-5. With **Settings → Files and links → Automatically update internal links** off, rename a scene that an Arc Point realizes (file explorer, or the scene title in StoryLine): the Arc Point's **Realized** dropdown in the Inspector still shows the scene, now with its new name.
 
 **Files:**
 
-- `components/Inspector.ts` (Arc point toggle: calls `clearRealizedBy` when unchecked)
+- `components/Inspector.ts` (Arc point toggle: calls `clearRealizedBy` when the re-parsed scene is no longer an Arc Point)
 - `components/RealizedByControl.ts` (`clearRealizedBy` (new); lint fixes in `renderRealizedByControl`, no behaviour change)
-- `components/ExportModal.ts` (`onOpen`: volume preselected from `getScopedVolume`, toggle **Include arc points**, `includeArcPoints` and `volumeTitle` passed to the export)
+- `components/ExportModal.ts` (`onOpen`: volume preselected from `getScopedVolume`, toggle **Include arc points**, `includeArcPoints` and `volumeTitle` (from `volumeExportTitle`) passed to the export)
 - `services/ExportService.ts` (`ExportOptions.includeArcPoints` / `volumeTitle`, `getSortedScenes`: Arc Point filter, `getExportLabel`: volume title)
-- `utils/exportFork.ts` (new: `volumeExportLabel`, `filterArcPointsForExport`)
-- `utils/realizedByRename.ts` (new: `renamedRealizedBy`, the exact-match rewrite rule)
-- `services/RealizedByRenameSync.ts` (new: vault `rename` listener, `registerRealizedByRenameSync`)
-- `services/ForkCommands.ts` (`registerForkCommands`: registers the rename listener)
+- `utils/exportFork.ts` (new: `volumeExportTitle`, `volumeExportLabel`, `filterArcPointsForExport`)
 - `CHANGELOG-km.md`
 
 ## 1.11.8-km.21

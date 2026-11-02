@@ -2,7 +2,8 @@
 import { Modal, Setting, Notice, DropdownComponent, ToggleComponent } from 'obsidian';
 import { ExportService, ExportFormat, ExportRange, ExportScope } from '../services/ExportService';
 import { getProjectVolumes, volumeExportRange } from '../utils/volumes';
-import { getScopedVolume } from '../utils/volumeScope'; // fork
+import { getScopedVolume } from '../utils/volumeScope'; // fork: volume preselect
+import { volumeExportTitle } from '../utils/exportFork'; // fork: volume file name
 import type SceneCardsPlugin from '../main';
 
 type ExportContent = ExportScope | 'scenes' | 'chapters';
@@ -251,10 +252,10 @@ export class ExportModal extends Modal {
         const exportBtn = actions.createEl('button', { text: 'Export', cls: 'mod-cta' });
         exportBtn.setAttr('type', 'button');
         exportBtn.addEventListener('click', async () => {
-            const volumes = getProjectVolumes(this.app, this.plugin.sceneManager.activeProject?.filePath); // fork
+            const volumes = getProjectVolumes(this.app, this.plugin.sceneManager.activeProject?.filePath); // fork: volumes for range and file name
             const exportRange = this.exportContent === 'scenes' || this.exportContent === 'chapters'
                 ? this.parseExportRange(this.exportRangeText)
-                : volumeExportRange(volumes, this.exportVolumeId);
+                : volumeExportRange(volumes, this.exportVolumeId); // fork: volume act range
             if ((this.exportContent === 'scenes' || this.exportContent === 'chapters') && !exportRange) {
                 const valueLabel = this.exportContent === 'scenes' ? 'scene' : 'chapter';
                 new Notice(`Enter ${valueLabel} numbers like 1-4, 6, 8.`);
@@ -268,9 +269,9 @@ export class ExportModal extends Modal {
                     numberScenesOnExport: this.numberScenesOnExport,
                     includeCorkboardNotes: this.includeCorkboardNotes,
                     includeInactiveScenes: this.includeInactiveScenes,
-                    includeArcPoints: this.includeArcPoints, // fork
+                    includeArcPoints: this.includeArcPoints, // fork: Include arc points
                     // fork: volume title in the file name (only when the volume's act range is used)
-                    volumeTitle: exportRange?.field === 'act' ? volumes.find(v => v.id === this.exportVolumeId)?.title : undefined,
+                    volumeTitle: exportRange?.field === 'act' ? volumeExportTitle(volumes, this.exportVolumeId) : undefined,
                 });
                 this.exportService.setSeparatorSettings(
                     this.sceneSeparatorType,

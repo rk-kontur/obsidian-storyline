@@ -19,6 +19,21 @@ export function volumeExportLabel(base: string, volumeTitle: string | undefined)
     return safe ? `${base} - ${safe}` : undefined;
 }
 
+/**
+ * Title of a volume for the export file name. If another volume of the
+ * project has the same title after sanitizing (compared without case, as on
+ * case-insensitive file systems), the volume id is appended ("Part (v2)"),
+ * so two volume exports of the same day do not overwrite each other.
+ * Undefined for an unknown id.
+ */
+export function volumeExportTitle(volumes: { id: string; title: string }[], id: string): string | undefined {
+    const vol = volumes.find(v => v.id === id);
+    if (!vol) return undefined;
+    const key = (t: string) => sanitizeActChapterForPath(t).toLowerCase();
+    const clash = volumes.some(v => v.id !== id && key(v.title) === key(vol.title));
+    return clash ? `${vol.title} (${vol.id})` : vol.title;
+}
+
 /** Drops Arc Points (`arcAnchor`) unless `include` is true. */
 export function filterArcPointsForExport<T extends { arcAnchor?: boolean }>(scenes: T[], include: boolean): T[] {
     return include ? scenes : scenes.filter(s => !s.arcAnchor);
