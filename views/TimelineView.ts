@@ -756,9 +756,11 @@ export class TimelineView extends ItemView {
         switch (this.swimlaneGroupBy) {
             case 'pov':
                 return [scene.pov || '(no POV)'];
-            case 'character':
-                if (sceneCharacterNames(scene).length > 0) return this.cleanLaneKeys(sceneCharacterNames(scene));
+            case 'character': {
+                const names = sceneCharacterNames(scene);
+                if (names.length > 0) return this.cleanLaneKeys(names);
                 return ['(no character)'];
+            }
             case 'location':
                 return parseSceneLocations(scene.location).length > 0
                     ? parseSceneLocations(scene.location)

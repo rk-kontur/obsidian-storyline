@@ -1,11 +1,12 @@
-import type { Scene } from '../models/Scene';
-
 /**
  * Characters of a scene, including its POV character.
  *
- * Like getAllCharacters(), names are compared case-insensitively. `pov` and
- * `characters` are already cleaned by MetadataParser (no [[ ]], alias or path).
+ * Like SceneQueryService.getAllCharacters(), names are compared
+ * case-insensitively. `pov` and `characters` are already cleaned by
+ * MetadataParser (no [[ ]], alias or path).
  */
+
+import type { Scene } from '../models/Scene';
 
 function characterKey(name: string): string {
     return String(name || '').trim().toLowerCase();

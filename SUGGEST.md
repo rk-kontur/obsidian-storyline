@@ -11,9 +11,9 @@ New helper `utils/sceneCharacters.ts` returns `characters` plus `pov` without du
 
 - Compare: https://github.com/PixeroJan/obsidian-storyline/compare/main...rk-kontur:obsidian-storyline:suggest-feature/pov-as-character
 - Code:
-  - https://github.com/rk-kontur/obsidian-storyline/blob/suggest-feature/pov-as-character/utils/sceneCharacters.ts#L15-L31
+  - https://github.com/rk-kontur/obsidian-storyline/blob/suggest-feature/pov-as-character/utils/sceneCharacters.ts#L15-L32
   - https://github.com/rk-kontur/obsidian-storyline/blob/suggest-feature/pov-as-character/services/SceneQueryService.ts#L374-L378
-  - https://github.com/rk-kontur/obsidian-storyline/blob/suggest-feature/pov-as-character/views/TimelineView.ts#L759-L761
+  - https://github.com/rk-kontur/obsidian-storyline/blob/suggest-feature/pov-as-character/views/TimelineView.ts#L759-L763
 
 ## Needed addons
 Screenshot of the Timeline in swimlane mode, Group by Character, with a scene that has POV "Anna" but does not list Anna under Characters: the scene appears in Anna's lane.
