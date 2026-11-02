@@ -3,7 +3,8 @@
 // ═══════════════════════════════════════════════════════
 //
 // Edits the optional `volumes:` block of the project file. Used as the
-// "Volumes" tab of the "Manage story structure" dialog.
+// "Volumes" section of the "Manage story structure" dialog
+// (StructureModalSections).
 
 import { Notice, TFile } from 'obsidian';
 import type { App } from 'obsidian';

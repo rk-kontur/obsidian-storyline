@@ -5,7 +5,8 @@
 import { TFile } from 'obsidian';
 import type { App } from 'obsidian';
 import type { Scene } from '../models/Scene';
-import { linkpathOf, readRealizedBy, REALIZED_BY_KEY, resolveRealizingScene } from '../utils/arcRealization';
+import { readRealizedBy, REALIZED_BY_KEY, resolveRealizingScene } from '../utils/arcRealization';
+import { linkpathOf } from '../utils/linkKey';
 
 async function writeRealizedBy(app: App, arc: Scene, target: Scene | undefined): Promise<void> {
     const file = app.vault.getAbstractFileByPath(arc.filePath);

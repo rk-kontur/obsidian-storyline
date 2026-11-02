@@ -5,7 +5,8 @@ import { SceneManager } from '../services/SceneManager';
 import { SceneCardComponent } from '../components/SceneCard';
 import { getProjectVolumes, VolumeDividerTracker } from '../utils/volumes';
 import { getOffPageLines, isOffPage, orderByZone } from '../utils/pageZones';
-import { characterKey, sceneCharacterNames } from '../utils/sceneCharacters';
+import { sceneCharacterNames } from '../utils/sceneCharacters';
+import { linkKey } from '../utils/linkKey'; // fork: shared link/name key
 import { defaultActForScope, getScopedVolume, placeInFullList, renderVolumeScopeSelect, scopeActs, scopeFilter } from '../utils/volumeScope';
 import { emptyTimelineActs, emptyTimelineVolumes, firstVolumeAct, mergeByAct, renderEmptyVolumeEntry } from '../utils/timelineVolumes';
 import type { VolumeDef } from '../utils/volumes';
@@ -1138,7 +1139,7 @@ export class TimelineView extends ItemView {
         }
 
         // Characters (fork: without the POV character, it is already shown as "POV: …")
-        const timelineChars = (scene.characters ?? []).filter(c => !scene.pov || characterKey(c) !== characterKey(scene.pov));
+        const timelineChars = (scene.characters ?? []).filter(c => !scene.pov || linkKey(c) !== linkKey(scene.pov));
         if (timelineChars.length) {
             const chars = card.createDiv('timeline-card-chars');
             timelineChars.forEach(c => {

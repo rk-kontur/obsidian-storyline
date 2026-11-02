@@ -2,6 +2,54 @@
 
 Changes of this fork compared to the original StoryLine plugin by Jan Sandström. Each `## <version>` section is used as the initial text of the matching GitHub release; texts edited on GitHub (e.g. with screenshots) are never overwritten. Every release also carries `storyline-km-source.zip` (all source files that are new or changed compared to the original, without `main.js`) and `storyline-km.patch` (the full diff against the original).
 
+## 1.11.8-km.24
+
+**Subway map and Plot Grid: volume bands end before Prologue / Epilogue / "No Act", readable act labels in narrow acts; one shared link rule, code cleanup**
+
+### Subway map: the volume line also ends a volume
+
+- In the Subway map, the solid volume line was only drawn where a volume starts. The Epilogue and acts outside every volume after the last volume act looked like part of that volume. A solid line (the same line as at the start of a volume, without a label) now also separates them from the preceding volume; a later act of a volume starts its volume again (same rule as the Timeline, Board, Manuscript and Navigator). The Prologue and scenes without an act are always drawn first, so they never follow a volume.
+
+### Subway map: act labels no longer run into each other
+
+- Act labels with the volume title ("VOLUME 1 ACT 1") could be wider than an act with only one scene column and overlap the labels of the neighbouring acts. If a label does not fit the width of its act, the volume title now moves onto its own line above the act label. A line that still does not fit (a very long volume title) is shortened with "…"; hovering the label shows the full text. Labels that fit are unchanged (one line, as before).
+
+### Plot Grid: volume bands end before Prologue / Epilogue / "No Act"
+
+- In the Plot Grid, the Epilogue, acts outside every volume and scene rows without an act were shown inside the band of the preceding volume. A thin unlabelled separator row now ends the volume band before them; a later act of a volume starts its labelled band again. Without volumes, nothing changes.
+
+### Internal
+
+- Links and names are compared with one shared rule (`utils/linkKey.ts`: `linkpathOf`, `linkName`, `linkKey`) instead of four slightly different copies (open setups per volume, cross-volume setup/payoff partners in Statistics, characters including POV, Arc Point `realizedBy`). A wikilink names its target (the alias is display text), `#heading` inside a link, folders and `.md` are dropped; in a plain value "|" and "#" are part of the name. Characters compare case-insensitively (as before); setup/payoff titles compare case-sensitively, like upstream's Validator. For the values the scene parser delivers, the result is the same as before, except two fixes: a plain setup/payoff or character value containing "|" was cut at the "|" (a scene "A|B" matched "A"); and for raw links (character filter values, `realizedBy` fallback) "#heading" and Windows "\\" folders are now stripped.
+- `drawSubwayVolumeMarker`: unused title parameters and text branch removed.
+- Removed unused `inVolumeScope` and `volumeScopeSelectCount` (`utils/volumeScope.ts`).
+- Lint: "Arc Point" tooltip keeps its name (targeted `eslint-disable` with reason). All fork files and the fork lines of upstream files pass `eslint`.
+- File headers updated: `components/VolumesEditor.ts` (a section, no longer a tab), `utils/volumeScope.ts` (complete list of views that follow the volume selection), `utils/sceneCharacters.ts`, `utils/volumeSetups.ts`.
+
+**How and where to use:**
+
+1. Use a project with volumes, e.g. Volume 1 = acts 1–2, Volume 2 = act 4, plus act 3, an Epilogue and some scenes without an act. Select **All volumes** in the **Filter by** dropdown.
+2. Open the **Subway map** (plotline view, Subway mode): a solid line separates Volume 1 from act 3, Volume 2 from the Epilogue. Between acts of the same volume the dashed act line is shown as before.
+3. Give a volume a long title (e.g. "Volume One: Arrival") and an act with a single scene: the act label shows the volume title on its own line above "ACT 1". If it is still too wide it ends with "…"; hover it to read the full label.
+4. Open the **Plot Grid** and sort by reading order: a thin line ends the volume band before act 3, the Epilogue and the rows of scenes without an act; Volume 2 starts with its labelled band again.
+
+**Files:**
+
+- `views/StorylineView.ts` (`renderSubway`: `VolumeDividerTracker` with `{ bandEnd: true }`, volume line also at the band end, act label via `setSubwayActLabel`)
+- `views/PlotgridView.ts` (`renderGrid`: volume steps computed once in the row-track loop (`kmVolumeSteps`, incl. band end before rows without act), drawn from the same map)
+- `utils/volumes.ts` (`drawSubwayVolumeMarker` simplified; `setSubwayActLabel` (new); `renderVolumeStep` (new, used by `VolumeDividerTracker`))
+- `utils/linkKey.ts` (new: `linkpathOf`, `linkName`, `linkKey`)
+- `utils/arcRealization.ts` (`linkpathOf` moved to `utils/linkKey.ts`; `resolveRealizingScene` fallback uses `linkName`)
+- `utils/sceneCharacters.ts` (`characterKey` replaced by `linkKey`; header)
+- `utils/volumeSetups.ts` (`linkTitle` replaced by `linkName`; header)
+- `utils/volumeStatsScope.ts` (`withLinkPartners`: `linkName` in both directions)
+- `utils/volumeScope.ts` (unused `inVolumeScope`, `volumeScopeSelectCount` removed; header)
+- `components/VolumeScopeNotes.ts`, `views/TimelineView.ts` (`linkKey` instead of `characterKey`)
+- `components/RealizedByControl.ts` (`linkpathOf` from `utils/linkKey.ts`)
+- `components/ArcPointUI.ts` (`renderArcPointIcon`: lint comment)
+- `components/VolumesEditor.ts` (header)
+- `CHANGELOG-km.md`
+
 ## 1.11.8-km.23
 
 **Navigator with volumes: progress, plotline and chapter lists of the selected volume, volume band ends before Prologue / Epilogue / "No Act"**

@@ -18,6 +18,7 @@
 import type { App } from 'obsidian';
 import { TFile } from 'obsidian';
 import type { Scene } from '../models/Scene';
+import { linkName, linkpathOf } from './linkKey';
 
 export const REALIZED_BY_KEY = 'realizedBy';
 
@@ -31,14 +32,6 @@ export function readRealizedBy(app: App, scene: Scene): string | undefined {
     return typeof raw === 'string' && raw.trim() ? raw.trim() : undefined;
 }
 
-/** "[[Path/Title|Alias]]" → "Path/Title" */
-export function linkpathOf(raw: string): string {
-    let t = raw.trim();
-    const m = t.match(/^\[\[(.*)\]\]$/);
-    if (m) t = m[1];
-    return t.split('|')[0].split('#')[0].trim();
-}
-
 /** Resolve the realizing scene of an Arc Point among `candidates`. */
 export function resolveRealizingScene(app: App, arc: Scene, candidates: Scene[]): Scene | undefined {
     const raw = readRealizedBy(app, arc);
@@ -50,8 +43,8 @@ export function resolveRealizingScene(app: App, arc: Scene, candidates: Scene[])
         const byPath = candidates.find(s => s.filePath === dest.path);
         if (byPath) return byPath;
     }
-    const title = linkpath.split('/').pop()?.replace(/\.md$/i, '');
-    return candidates.find(s => s !== arc && (s.title === title || s.filePath.split('/').pop()?.replace(/\.md$/i, '') === title));
+    const title = linkName(linkpath);
+    return candidates.find(s => s !== arc && (s.title === title || linkName(s.filePath) === title));
 }
 
 export interface Realization {

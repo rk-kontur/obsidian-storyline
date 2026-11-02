@@ -4,7 +4,7 @@ import { aliasRealizedColumns, drawRealizedLinks, removeRealizedStations, resolv
 import { renderVolumeScopeSelect, scopeFilter } from '../utils/volumeScope';
 import { renderTagDeleteImpact, renderTagRenameImpact } from '../components/PlotlineDeleteImpact';
 import { addZoneMenuItem, attachZoneMenu, drawOffPageBand, getOffPageLines, isOffPage, orderByZone, renderOffPageLabelBand, renderZoneHeader, renderZoneListHeading, transferOffPage, ZONE_GAP } from '../utils/pageZones';
-import { drawSubwayVolumeMarker, getProjectVolumes, getVolumeForAct, VolumeDividerTracker } from '../utils/volumes';
+import { drawSubwayVolumeMarker, getProjectVolumes, getVolumeForAct, setSubwayActLabel, VolumeDividerTracker } from '../utils/volumes';
 import * as obsidian from 'obsidian';
 import { Scene } from '../models/Scene';
 import { SceneManager } from '../services/SceneManager';
@@ -550,25 +550,17 @@ export class StorylineView extends ItemView {
         });
 
         const subwayVolumes = getProjectVolumes(this.app, this.sceneManager.activeProject?.filePath);
-        const volumeTracker = new VolumeDividerTracker(subwayVolumes);
+        const volumeTracker = new VolumeDividerTracker(subwayVolumes, { bandEnd: true }); // fork: band end
         const actEntries = [...acts.entries()].sort((a, b) => a[0] - b[0]);
         for (let ai = 0; ai < actEntries.length; ai++) {
             const [actNum, cols] = actEntries[ai];
             const minCol = Math.min(...cols);
             const maxCol = Math.max(...cols);
 
-            // Volume marker (fork): solid line + title when a new volume starts
-            const startedVolume = volumeTracker.next(actNum);
-            if (startedVolume) {
-                drawSubwayVolumeMarker(svg, activeDocument, {
-                    x: colX(minCol) - SCENE_SPACING / 2,
-                    labelX: colX(minCol) - SCENE_SPACING / 2 + 8,
-                    labelY: TOP_MARGIN - 40,
-                    y1: TOP_MARGIN - 50,
-                    y2: trackBottom,
-                    title: '', // volume name goes into the act label (below)
-                    drawLine: ai > 0,
-                });
+            // Volume marker (fork): solid line where a volume starts or its band ends
+            const volumeStep = volumeTracker.advance(actNum);
+            if (volumeStep && ai > 0) {
+                drawSubwayVolumeMarker(svg, activeDocument, { x: colX(minCol) - SCENE_SPACING / 2, y1: TOP_MARGIN - 50, y2: trackBottom });
             }
 
             // Act label
@@ -580,13 +572,12 @@ export class StorylineView extends ItemView {
             actLabel.setAttribute('font-size', '16');
             actLabel.setAttribute('font-weight', '700');
             actLabel.setAttribute('fill', 'var(--text-muted)');
-            // fork: "VOLUME 1 ACT 1" when the act belongs to a volume
-            const actVolume = getVolumeForAct(subwayVolumes, actNum);
-            actLabel.textContent = `${actVolume ? actVolume.title + ' ' : ''}${getActDisplayLabel(actNum)}`.toUpperCase();
+            // fork: "VOLUME 1 ACT 1" when the act belongs to a volume; wrapped / shortened if wider than the act
             svg.appendChild(actLabel);
+            setSubwayActLabel(actLabel, activeDocument, { volumeTitle: getVolumeForAct(subwayVolumes, actNum)?.title, actLabel: getActDisplayLabel(actNum), maxWidth: (maxCol - minCol + 1) * SCENE_SPACING - 16, fontSize: 16, lineHeight: 18 });
 
             // Vertical divider line before this act group (clear, visible)
-            if (ai > 0 && !startedVolume) {
+            if (ai > 0 && !volumeStep) { // fork: no dashed line where a volume line is drawn
                 const divX = colX(minCol) - SCENE_SPACING / 2;
                 const line = activeDocument.createElementNS(svgNS, 'line');
                 line.setAttribute('x1', String(divX));

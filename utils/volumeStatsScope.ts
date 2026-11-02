@@ -12,6 +12,7 @@
 // Without `volumes:` nothing changes.
 
 import type { App } from 'obsidian';
+import { linkName } from './linkKey';
 import { getProjectVolumes, type VolumeDef } from './volumes';
 import { getScopedVolume } from './volumeScope';
 import type { Scene } from '../models/Scene';
@@ -79,10 +80,10 @@ export function scopedDeadline<T extends { deadline: string | null | undefined }
 export function withLinkPartners(scoped: Scene[], project: Scene[]): Scene[] {
     if (scoped.length === project.length) return scoped;
     const inScope = new Set(scoped.map(s => s.filePath));
-    const byTitle = new Map(project.map(s => [s.title, s]));
+    const byTitle = new Map(project.map(s => [linkName(s.title), s])); // same title rule as volumeSetups
     const extra = new Map<string, Scene>();
     const add = (title: string) => {
-        const t = byTitle.get(String(title).replace(/^\[\[|\]\]$/g, '').split('|')[0]);
+        const t = byTitle.get(linkName(title));
         if (t && !inScope.has(t.filePath)) extra.set(t.filePath, t);
     };
     for (const s of scoped) {
@@ -92,8 +93,8 @@ export function withLinkPartners(scoped: Scene[], project: Scene[]): Scene[] {
     // Scenes of other volumes that point INTO the scope
     for (const s of project) {
         if (inScope.has(s.filePath)) continue;
-        const links = [...(s.setup_scenes ?? []), ...(s.payoff_scenes ?? [])].map(String);
-        if (scoped.some(sc => links.includes(sc.title))) extra.set(s.filePath, s);
+        const links = [...(s.setup_scenes ?? []), ...(s.payoff_scenes ?? [])].map(linkName);
+        if (scoped.some(sc => links.includes(linkName(sc.title)))) extra.set(s.filePath, s);
     }
     return [...scoped, ...extra.values()];
 }

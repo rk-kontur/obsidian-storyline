@@ -9,7 +9,8 @@
 import type SceneCardsPlugin from '../main';
 import type { Scene } from '../models/Scene';
 import { getScopedVolume } from '../utils/volumeScope';
-import { characterKey, sceneCharacterNames } from '../utils/sceneCharacters';
+import { sceneCharacterNames } from '../utils/sceneCharacters';
+import { linkKey } from '../utils/linkKey';
 
 function scopedTitle(plugin: SceneCardsPlugin): string | undefined {
     return getScopedVolume(plugin.app, plugin.sceneManager?.activeProject?.filePath)?.title;
@@ -61,6 +62,6 @@ export function renderScopedReferencesEmpty(container: HTMLElement, plugin: Scen
 export function scopeSceneCharacterNames(plugin: SceneCardsPlugin, names: string[], scopedScenes: Scene[]): string[] {
     if (!scopedTitle(plugin)) return names;
     const inScope = new Set<string>();
-    for (const scene of scopedScenes) for (const n of sceneCharacterNames(scene)) inScope.add(characterKey(n));
-    return names.filter(n => inScope.has(characterKey(n)));
+    for (const scene of scopedScenes) for (const n of sceneCharacterNames(scene)) inScope.add(linkKey(n));
+    return names.filter(n => inScope.has(linkKey(n)));
 }

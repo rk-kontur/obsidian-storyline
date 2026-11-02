@@ -59,6 +59,7 @@ export function renderArcPointIcon(parent: HTMLElement, scene: Scene | undefined
     if (!scene?.arcAnchor) return;
     const icon = parent.createSpan({ cls: 'sl-km-arc-point-icon' });
     obsidian.setIcon(icon, 'diamond');
+    // eslint-disable-next-line obsidianmd/ui/sentence-case -- "Arc Point" is the feature's name, spelled as upstream does
     icon.title = 'Arc Point';
     icon.setCssStyles({ display: 'inline-flex', marginLeft: '4px', opacity: '0.8' });
     const svg = icon.querySelector('svg');

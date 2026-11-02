@@ -3,7 +3,7 @@ import { App, ItemView, WorkspaceLeaf, Menu, Modal, TFile, Notice, MarkdownRende
 import * as obsidian from 'obsidian';
 import { CellData, ColumnMeta, RowMeta, PlotGridData } from '../models/PlotGridData';
 import { renderArcPointIcon } from '../components/ArcPointUI';
-import { getProjectVolumes, VolumeDividerTracker } from '../utils/volumes';
+import { getProjectVolumes, renderVolumeStep, VolumeDividerTracker, type VolumeDef } from '../utils/volumes';
 import { scopeFilter, volumeScopeKey } from '../utils/volumeScope'; // fork: shared volume scope
 import { getOffPageLines, isOffPage } from '../utils/pageZones';
 import { columnTemplate, findEmptyAutoColumns, firstVisibleColumn, hiddenColumnsWidth, renderHiddenColumnsHint, stepRenderedRow, stepVisibleColumn, tabTarget, updateHiddenColumnsHint } from '../utils/plotgridVolume';
@@ -1172,17 +1172,24 @@ export class PlotgridView extends ItemView {
         const rowHeightParts: string[] = [];
         this.renderedRowTrackIndices.clear();
         let gridTrackIndex = 1;
-        const volumeTrackTracker = new VolumeDividerTracker(getProjectVolumes(this.app, this.plugin?.sceneManager?.activeProject?.filePath));
+        // fork: volume band (or band end) before an act divider, or band end before a scene row without act; drawn below from the same map
+        const kmVolumeSteps = new Map<number, VolumeDef | 'end'>();
+        const volumeTrackTracker = new VolumeDividerTracker(getProjectVolumes(this.app, this.plugin?.sceneManager?.activeProject?.filePath), { bandEnd: true });
         for (const ri of rowIndices) {
             if (!visibleRows.has(ri)) continue;
             const divs = dividersBefore.get(ri);
+            const kmActDiv = divs?.find(d => d.type === 'act');
+            const kmRow = this.data.rows[ri];
+            const kmScene = kmRow.sourceType === 'auto' && kmRow.sourceId ? sceneManager?.getScene(kmRow.sourceId) : undefined;
+            const kmNoAct = !kmActDiv && !!kmScene && kmScene.act === undefined;
+            const kmStep = kmActDiv ? volumeTrackTracker.advance(kmActDiv.key.slice(4)) : (kmNoAct ? volumeTrackTracker.advance(undefined) : undefined);
+            if (kmStep) {
+                kmVolumeSteps.set(ri, kmStep);
+                rowHeightParts.push(kmStep === 'end' ? '6px' : '34px');
+                gridTrackIndex++;
+            }
             if (divs) {
                 for (const d of divs) {
-                    // fork: the volume band rendered before this act divider needs its own track
-                    if (d.type === 'act' && volumeTrackTracker.next(d.key.slice(4))) {
-                        rowHeightParts.push('34px');
-                        gridTrackIndex++;
-                    }
                     rowHeightParts.push(d.type === 'act' ? '32px' : '26px');
                     gridTrackIndex++;
                 }
@@ -1411,18 +1418,18 @@ export class PlotgridView extends ItemView {
             });
         }
 
-        const volumeTracker = new VolumeDividerTracker(getProjectVolumes(this.app, this.plugin?.sceneManager?.activeProject?.filePath));
         for (const ri of rowIndices) {
             if (!visibleRows.has(ri)) continue; // skip filtered-out rows
+            const kmStep = kmVolumeSteps.get(ri); // fork: volume band or band end (track reserved above)
+            if (kmStep) {
+                renderVolumeStep(this.canvasEl, kmStep, `1 / ${this.data.columns.length + 2}`)
+                    .setCssStyles({ position: (this.data.stickyHeaders === false) ? 'relative' : 'sticky' }); // sticky like the headers
+            }
             // ── Act/chapter dividers ──
             const divs = dividersBefore.get(ri);
             if (divs) {
                 const colCount = this.data.columns.length + 1;
                 for (const d of divs) {
-                    if (d.type === 'act') {
-                        volumeTracker.renderBefore(this.canvasEl, d.key.slice(4), `1 / ${colCount + 1}`)
-                            ?.setCssStyles({ position: (this.data.stickyHeaders === false) ? 'relative' : 'sticky' }); // fork: sticky like the headers
-                    }
                     const divEl = this.canvasEl.createDiv(`plot-grid-divider plot-grid-divider-${d.type}`);
                     const isCollapsed = this.data.collapsedSections?.[d.key] === true;
                     divEl.setCssStyles({

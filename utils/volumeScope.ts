@@ -4,11 +4,14 @@
 //
 // One "current volume" for all views: pick "Volume 2" in any toolbar and
 // Board, Corkboard, Plot Grid, Timeline, Subway, Manuscript and Navigator
-// all show only the acts of that volume. Stored per project (local storage,
-// keyed by the project file), '' means "All volumes". Scenes without an act
-// (e.g. corkboard notes) stay visible in every volume. Implemented as an act restriction merged into the
-// SceneFilter each view already passes to getFilteredScenes, so the query
-// service itself is unchanged.
+// show only the acts of that volume; Statistics counts only that volume;
+// Characters, Locations and Codex list only its scenes; the Export dialog
+// opens with it preselected. Stored per project (local storage, keyed by
+// the project file), '' means "All volumes". Scenes without an act (e.g.
+// corkboard notes) stay visible in every volume (Statistics leaves them
+// out). Implemented as an act restriction merged into the SceneFilter each
+// view already passes to getFilteredScenes, so the query service itself is
+// unchanged.
 
 import type { App } from 'obsidian';
 import type SceneCardsPlugin from '../main';
@@ -165,19 +168,13 @@ export function actInVolumeScope(vol: VolumeDef, act: unknown): boolean {
 }
 
 /**
- * True if the scene is inside the scoped volume (or no volume is scoped).
- * Same set as scopeFilter: scenes and corkboard notes without an act
- * (undefined or '') count as inside unless `keepUnassigned` is false
- * (Statistics: count only the volume's own scenes); everything else follows
- * its act (actNumber), Prologue/Epilogue and non-numeric acts are outside.
- */
-export function inVolumeScope(app: App, projectFilePath: string | undefined | null, scene: Scene, keepUnassigned = true): boolean {
-    return volumeScopePredicate(app, projectFilePath, keepUnassigned)(scene);
-}
-
-/**
- * Same rule as inVolumeScope, but the scope (local storage + `volumes:`) is
- * resolved once. Use it outside loops: `scenes.filter(volumeScopePredicate(...))`.
+ * True for scenes inside the scoped volume (all scenes without a scope),
+ * resolved once (local storage + `volumes:`): use it outside loops,
+ * `scenes.filter(volumeScopePredicate(...))`. Same set as scopeFilter:
+ * scenes and corkboard notes without an act (undefined or '') count as
+ * inside unless `keepUnassigned` is false (Statistics: count only the
+ * volume's own scenes); everything else follows its act (actNumber),
+ * Prologue/Epilogue and non-numeric acts are outside.
  */
 export function volumeScopePredicate(
     app: App,
@@ -288,11 +285,6 @@ function pruneRegistry(now = Date.now()): void {
         if (entry.select.isConnected) entry.wasConnected = true;
         else if (entry.wasConnected || now - entry.created > ATTACH_GRACE_MS) registry.delete(entry);
     }
-}
-
-/** Number of registered dropdowns (simulation / debugging). */
-export function volumeScopeSelectCount(): number {
-    return registry.size;
 }
 
 function syncOne(entry: ScopeSelect, volumes: VolumeDef[], current: string): void {

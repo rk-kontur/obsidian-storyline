@@ -320,13 +320,7 @@ export class VolumeDividerTracker {
     /** Render an HTML volume band before the act divider if a new volume starts; returns the band. */
     renderBefore(parent: HTMLElement, act: number | string | undefined, gridColumn?: string): HTMLElement | undefined {
         const step = this.advance(act);
-        if (step === 'end') {
-            const end = parent.createDiv('sl-km-volume-divider sl-km-volume-end');
-            if (gridColumn) end.setCssStyles({ gridColumn });
-            return end;
-        }
-        if (!step) return undefined;
-        return this.renderBand(parent, step, gridColumn);
+        return step ? renderVolumeStep(parent, step, gridColumn) : undefined;
     }
 
     /**
@@ -347,44 +341,107 @@ export class VolumeDividerTracker {
     renderVolume(parent: HTMLElement, vol: VolumeDef, gridColumn?: string): HTMLElement | undefined {
         if (!this.active || vol.id === this.lastId) return undefined;
         this.lastId = vol.id;
-        return this.renderBand(parent, vol, gridColumn);
-    }
-
-    private renderBand(parent: HTMLElement, vol: VolumeDef, gridColumn?: string): HTMLElement {
-        const band = parent.createDiv('sl-km-volume-divider');
-        if (gridColumn) band.setCssStyles({ gridColumn });
-        band.createSpan({ cls: 'sl-km-volume-divider-label', text: vol.title });
-        return band;
+        return renderVolumeStep(parent, vol, gridColumn);
     }
 }
 
-/** SVG volume marker for the Subway map: solid line plus title above the act labels. */
+/**
+ * Subway map: solid vertical line between act columns where a volume starts
+ * or (band end) where an act outside every volume follows a volume. The
+ * volume title itself is part of the act label (setSubwayActLabel).
+ */
 export function drawSubwayVolumeMarker(
     svg: SVGSVGElement,
     doc: Document,
-    opts: { x: number; labelX: number; labelY: number; y1: number; y2: number; title: string; drawLine: boolean },
+    opts: { x: number; y1: number; y2: number },
+): void {
+    const line = doc.createElementNS('http://www.w3.org/2000/svg', 'line');
+    line.setAttribute('x1', String(opts.x));
+    line.setAttribute('y1', String(opts.y1));
+    line.setAttribute('x2', String(opts.x));
+    line.setAttribute('y2', String(opts.y2));
+    line.setAttribute('stroke', 'var(--text-muted)');
+    line.setAttribute('stroke-width', '4');
+    svg.appendChild(line);
+}
+
+/** Rough width of bold upper-case text (when the SVG cannot measure, e.g. not rendered yet). */
+function estimateTextWidth(text: string, fontSize: number): number {
+    return text.length * fontSize * 0.68;
+}
+
+/** Width of the text element's current content: measured if possible, else estimated. */
+function textWidth(el: SVGTextContentElement, text: string, fontSize: number): number {
+    let measured = 0;
+    try { measured = el.getComputedTextLength(); } catch { measured = 0; }
+    return measured > 0 ? measured : estimateTextWidth(text, fontSize);
+}
+
+/** Set `el`'s text, shortened with "…" until it fits `maxWidth`. Returns true if shortened. */
+function setFittedText(el: SVGTextContentElement, text: string, maxWidth: number, fontSize: number): boolean {
+    el.textContent = text;
+    if (textWidth(el, text, fontSize) <= maxWidth) return false;
+    let n = text.length - 1;
+    while (n > 1) {
+        const shortened = text.slice(0, n).trimEnd() + '…';
+        el.textContent = shortened;
+        if (textWidth(el, shortened, fontSize) <= maxWidth) return true;
+        n--;
+    }
+    el.textContent = text.slice(0, 1) + '…';
+    return true;
+}
+
+/**
+ * Subway act label with the volume title, e.g. "VOLUME 1 ACT 1". If the
+ * label is wider than the act's columns (`maxWidth`), the volume title moves
+ * onto its own line above the act label; a line that still does not fit is
+ * shortened with "…" and the full label is shown as the tooltip.
+ */
+export function setSubwayActLabel(
+    label: SVGTextElement,
+    doc: Document,
+    opts: { volumeTitle?: string; actLabel: string; maxWidth: number; fontSize: number; lineHeight: number },
 ): void {
     const svgNS = 'http://www.w3.org/2000/svg';
-    if (opts.drawLine) {
-        const line = doc.createElementNS(svgNS, 'line');
-        line.setAttribute('x1', String(opts.x));
-        line.setAttribute('y1', String(opts.y1));
-        line.setAttribute('x2', String(opts.x));
-        line.setAttribute('y2', String(opts.y2));
-        line.setAttribute('stroke', 'var(--text-muted)');
-        line.setAttribute('stroke-width', '4');
-        svg.appendChild(line);
+    const act = opts.actLabel.toUpperCase();
+    const vol = (opts.volumeTitle ?? '').toUpperCase();
+    const full = vol ? `${vol} ${act}` : act;
+    let shortened = false;
+    if (!vol || setFittedText(label, full, opts.maxWidth, opts.fontSize)) {
+        if (vol) {
+            label.textContent = '';
+            const x = label.getAttribute('x') ?? '0';
+            const volLine = doc.createElementNS(svgNS, 'tspan');
+            volLine.setAttribute('x', x);
+            volLine.setAttribute('dy', String(-opts.lineHeight));
+            label.appendChild(volLine);
+            const actLine = doc.createElementNS(svgNS, 'tspan');
+            actLine.setAttribute('x', x);
+            actLine.setAttribute('dy', String(opts.lineHeight));
+            label.appendChild(actLine);
+            shortened = setFittedText(volLine, vol, opts.maxWidth, opts.fontSize);
+            shortened = setFittedText(actLine, act, opts.maxWidth, opts.fontSize) || shortened;
+        } else {
+            shortened = setFittedText(label, act, opts.maxWidth, opts.fontSize);
+        }
     }
-    if (!opts.title) return; // no separate title (e.g. shown in the act labels instead)
-    const label = doc.createElementNS(svgNS, 'text');
-    label.setAttribute('x', String(opts.labelX));
-    label.setAttribute('y', String(opts.labelY));
-    label.setAttribute('text-anchor', 'start');
-    label.setAttribute('font-size', '13');
-    label.setAttribute('font-weight', '700');
-    label.setAttribute('fill', 'var(--text-accent)');
-    label.textContent = opts.title.toUpperCase();
-    svg.appendChild(label);
+    if (shortened) {
+        const title = doc.createElementNS(svgNS, 'title');
+        title.textContent = full;
+        label.appendChild(title);
+    }
+}
+
+/**
+ * Render one step of a VolumeDividerTracker: the labelled band of a volume,
+ * or (for 'end') the unlabelled band end. Returns the element.
+ */
+export function renderVolumeStep(parent: HTMLElement, step: VolumeDef | 'end', gridColumn?: string): HTMLElement {
+    const band = parent.createDiv(step === 'end' ? 'sl-km-volume-divider sl-km-volume-end' : 'sl-km-volume-divider');
+    if (gridColumn) band.setCssStyles({ gridColumn });
+    if (step !== 'end') band.createSpan({ cls: 'sl-km-volume-divider-label', text: step.title });
+    return band;
 }
 
 /**
