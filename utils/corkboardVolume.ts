@@ -23,7 +23,9 @@
 // that IS saved. Upstream uses its index in the filtered list, so with a
 // volume selected new scenes landed near the origin, on top of Volume 1 in
 // "All volumes". With a volume selected they now continue a grid below the
-// volume's lowest card (in the visible viewport area if the volume has none yet).
+// volume's lowest card. If the volume has none yet, they go below all cards,
+// except while the board shows this volume via the fallback pan (its notes):
+// then into the visible area, where the user looks.
 //
 // Projects without volumes are not touched at all.
 
@@ -130,6 +132,15 @@ export class CorkboardVolumeCameras {
         return pan ? { x: pan.x, y: pan.y, zoom: current.zoom } : null;
     }
 
+    /**
+     * True if the board currently shows this volume and got there by a
+     * fallback pan (the volume has no own cards yet): the camera belongs to
+     * this volume, so new cards may go into the visible area.
+     */
+    showsFallbackPan(project: string, volumeId: string): boolean {
+        return this.project === project && this.lastVolume === volumeId && this.fallbackPanned.has(volumeId);
+    }
+
     /** Forget everything (project without volumes). */
     reset(): void {
         this.cameras.clear();
@@ -176,10 +187,12 @@ export function applyCorkboardVolumeCamera(
  * Initial grid position for scenes without a stored position while a volume
  * is selected: a 4-column grid that continues one row below the volume's
  * lowest card, starting at its leftmost card. Without positioned volume
- * cards: at the top-left of the visible viewport area (`camera`, the same
- * padding as the volume pan), so the first card of an empty volume appears
- * where the user looks; without a camera one row below the lowest card of
- * the whole board, at x = 0 (the origin if the board is empty). Cells that overlap a stored card (of any
+ * cards: one row below the lowest card of the whole board, at x = 0 (the
+ * origin if the board is empty); but while the board shows this volume via
+ * a fallback pan (`cameras`, see CorkboardVolumeCameras.showsFallbackPan),
+ * at the top-left of the visible area of `camera` (same padding as the
+ * volume pan). A camera that still belongs to another volume (e.g. the
+ * volume was never shown, or "No scenes found") is not used. Cells that overlap a stored card (of any
  * volume, note or scene without an act) or a cell handed out before are
  * skipped. Returns null without a selected volume, then upstream's index
  * grid applies. Each call returns the next free cell.
@@ -191,12 +204,14 @@ export function corkboardVolumePlacer(
     allPositions: Iterable<WorldPos>,
     getPos: GetPos,
     isNote: IsNote,
+    cameras?: CorkboardVolumeCameras,
     camera?: CorkboardCamera,
 ): (() => { x: number; y: number }) | null {
     const vol = getScopedVolume(app, projectFilePath);
     if (!vol) return null;
     const taken = Array.from(allPositions);
-    const view = camera && camera.zoom > 0
+    const shown = !!cameras && cameras.showsFallbackPan(projectFilePath ?? '', vol.id);
+    const view = shown && camera && camera.zoom > 0
         ? { x: (VOLUME_PAN_PADDING - camera.x) / camera.zoom, y: (VOLUME_PAN_PADDING - camera.y) / camera.zoom }
         : undefined;
     return gridPlacer(volumeBox(vol, allScenes, getPos, isNote), positionsBox(taken), taken, view);

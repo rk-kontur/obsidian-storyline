@@ -77,6 +77,9 @@ export function scopedDeadline<T extends { deadline: string | null | undefined }
  * so links that cross volume borders are not reported as missing. Partners from
  * other volumes are copies that keep only their links into the scope, so their
  * own links elsewhere are neither drawn nor reported as broken.
+ * The Setup/Payoff warnings computed from this agree exactly with the
+ * Validator over the whole project (filtered to the scope) as long as scene
+ * titles are unique; duplicate titles are ambiguous for links anyway.
  */
 export function withLinkPartners(scoped: Scene[], project: Scene[]): Scene[] {
     if (scoped.length === project.length) return scoped;

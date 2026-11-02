@@ -178,6 +178,8 @@ async function saveVolumes(
         return;
     }
     let notAList = false;
+    /** Volumes of the dialog whose file entry lost its explicit id (only an id-less entry resolves to it). */
+    const lostIds: string[] = [];
     await app.fileManager.processFrontMatter(file, (fm: Record<string, unknown>) => {
         if (isForeignVolumesValue(fm.volumes)) { notAList = true; return; }
         const raw: unknown[] = Array.isArray(fm.volumes) ? (fm.volumes as unknown[]) : [];
@@ -188,6 +190,13 @@ async function saveVolumes(
         const byId = new Map(volumes.map(v => [v.id, v]));
         const resolved = resolveVolumeIds(raw);
         const remove = pickDeletions(raw, resolved, pendingDeletes);
+        // An entry without `id` is never written for a dialog volume (see below). If that is the
+        // only entry left for one of its volumes (id line removed, sync reverted the id fix, …),
+        // its edits cannot be saved: tell the user instead of dropping them silently.
+        for (const v of volumes) {
+            if (!original.has(v.id) || raw.some(e => explicitId(e) === v.id)) continue;
+            if (resolved.some((r, i) => r === v.id && !explicitId(raw[i]))) lostIds.push(v.title);
+        }
         const written = new Set<string>();
         const out: unknown[] = [];
         /** Positions in `out` of the entries written for the dialog's volumes, with their ids. */
@@ -251,6 +260,7 @@ async function saveVolumes(
         for (const v of volumes) if (written.has(v.id)) original.set(v.id, fieldsOf(v));
     });
     if (notAList) new Notice(NOT_A_LIST);
+    for (const title of lostIds) new Notice(`Volume "${title}" changed in the file meanwhile; reopen the dialog.`);
 }
 
 /**

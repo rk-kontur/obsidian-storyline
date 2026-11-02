@@ -18,7 +18,9 @@ on:
 permissions:
   contents: write
 
-# One release run at a time (never cancel a running one)
+# One release run at a time (never cancel a running one). Note: GitHub keeps
+# only ONE pending run per group; if a third run is queued while one runs and
+# one waits, the waiting (middle) one is cancelled. Release one version at a time.
 concurrency:
   group: release-km
   cancel-in-progress: false
