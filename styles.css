@@ -11040,7 +11040,7 @@ body.sl-hide-manuscript-frontmatter .sl-manuscript-embedded-split .cm-line.Hyper
    were hidden, and when one became active the Manuscript itself was hidden
    (blank page, scroll jump). Keep the Manuscript and its editors visible.
    The :has() follows a fixed child chain (onOpen/renderView/mountEditor)
-   instead of a descendant search, so it stays cheap while typing (#105). */
+   instead of a descendant search, so it stays cheap while typing (see the #105 note in renderView). */
 .workspace.should-maximize .workspace-split.mod-root .workspace-leaf:has(> .workspace-leaf-content[data-type="story-line-manuscript"] > .view-content > .sl-manuscript-scroll > .sl-manuscript-scene-block > .sl-manuscript-editor-wrap > .sl-manuscript-embedded-split > .workspace-leaf.is-maximized) {
     display: flex;
     flex-basis: calc(100% - 4px);
