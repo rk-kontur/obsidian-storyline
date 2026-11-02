@@ -1,0 +1,1147 @@
+diff --git a/.github/workflows/release-km.yml b/.github/workflows/release-km.yml
+index 4b86298..8345862 100644
+--- a/.github/workflows/release-km.yml
++++ b/.github/workflows/release-km.yml
+@@ -60,6 +60,7 @@ jobs:
+           gh release upload "$V" main.js manifest.json styles.css --clobber
+ 
+       - name: Source bundle (changes compared to upstream)
++        id: bundle
+         run: |
+           # All source files the fork adds or changes compared to main (= upstream),
+           # without build output, plus a patch with the full diff.
+@@ -70,6 +71,12 @@ jobs:
+           zip -q storyline-km-source.zip -@ < changed-files.txt
+           zip -q storyline-km-source.zip changed-files.txt
+           git diff origin/main...HEAD -- . "${EXCL[@]}" > storyline-km.patch
++          # Delta against the previous fork release (newest *-km.* tag other than this version)
++          PREV=$(git for-each-ref --sort=-creatordate --format='%(refname:short)' 'refs/tags/*-km.*' | grep -v -x "${{ steps.v.outputs.version }}" | head -n 1 || true)
++          echo "prev=$PREV" >> "$GITHUB_OUTPUT"
++          if [ -n "$PREV" ]; then
++            git diff "$PREV" HEAD -- . "${EXCL[@]}" > "changes-since-$PREV.patch"
++          fi
+ 
+       - name: Release notes and attachments
+         env:
+@@ -78,11 +85,25 @@ jobs:
+         run: |
+           node .github/scripts/km-release-notes.js notes
+           gh release upload "$V" storyline-km-source.zip storyline-km.patch --clobber
++          PREV="${{ steps.bundle.outputs.prev }}"
++          if [ -n "$PREV" ] && [ -e "changes-since-$PREV.patch" ]; then
++            gh release upload "$V" "changes-since-$PREV.patch" --clobber
++          fi
+           # Release text comes from the matching CHANGELOG-km.md section, but ONLY for the
+           # current version, and never when the text was edited by hand on GitHub
+           # (screenshots, images, extra notes). Older releases are never touched.
+           f="notes/$V.md"
+           [ -e "$f" ] || { echo "No changelog section for $V"; exit 0; }
++          # Append compare links (all fork changes vs. the original, and this release only)
++          {
++            echo ""
++            echo "**Compare:**"
++            echo ""
++            echo "- [All changes compared with the original StoryLine (Jan)](https://github.com/PixeroJan/obsidian-storyline/compare/main...${GITHUB_REPOSITORY_OWNER}:obsidian-storyline:$V) · attached: \`storyline-km.patch\`, \`storyline-km-source.zip\`"
++            if [ -n "$PREV" ]; then
++              echo "- [Changes in this release only (since $PREV)](https://github.com/${GITHUB_REPOSITORY}/compare/$PREV...$V) · attached: \`changes-since-$PREV.patch\`"
++            fi
++          } >> "$f"
+           current=$(gh release view "$V" --json body -q .body)
+           placeholder="Fork build of StoryLine (id storyline-km) for BRAT testing."
+           if [ -z "$current" ] || [ "$current" = "$placeholder" ] || [ "$current" = "$(cat "$f")" ]; then
+diff --git a/CHANGELOG-km.md b/CHANGELOG-km.md
+index d7e0aed..cdfd2db 100644
+--- a/CHANGELOG-km.md
++++ b/CHANGELOG-km.md
+@@ -2,6 +2,97 @@
+ 
+ Changes of this fork compared to the original StoryLine plugin by Jan Sandström. Each `## <version>` section is used as the initial text of the matching GitHub release; texts edited on GitHub (e.g. with screenshots) are never overwritten. Every release also carries `storyline-km-source.zip` (all source files that are new or changed compared to the original, without `main.js`) and `storyline-km.patch` (the full diff against the original).
+ 
++## 1.12.0-km.3
++
++**Statistics per volume and across all volumes, volume filter in the filter bar, Plot Grid hides empty plotlines, fixes**
++
++The Statistics view now follows the shared volume selector (same dropdown as in the other views). Every section counts either one volume or the whole series.
++
++### One volume selected
++
++- Heading: "<Volume> statistics".
++- **All sections count only the acts of that volume:** overview (scenes, words, read time), Progress Breakdown (status, acts), **Characters & World (POV share, characters, locations)**, Pacing & Tension incl. tension curve and Pacing Coach, Prose Analysis, Dialogue vs Narrative, Setup & Payoff Map, Echo Finder, Folder Word Counts, Warnings.
++- **Word goal:** the volume's word goal; if none is set, the sum of the scene targets in that volume; otherwise the project goal from the settings.
++- **Deadline:** the volume's deadline; otherwise the project deadline. Remaining words and words per day are calculated against it.
++
++### All volumes
++
++- Heading: "Project statistics (all volumes)".
++- All sections count the whole project (collected word counts of all volumes), exactly as before.
++- **Word goal:** the sum of all volume word goals that are set; if no volume has a goal, the project goal from the settings.
++- **Deadline:** the project deadline from the settings; if none is set, the latest volume deadline.
++
++### Volumes table
++
++- New last row **All volumes** with the totals: scenes, Arc Points, words, summed word goal, progress, latest deadline, words per day needed.
++- The selected volume (or "All volumes") is highlighted.
++- The table and the "Open setups at end of volume" report always show all volumes, independent of the selection.
++
++### Stays project-wide on purpose
++
++- **Writing Sprint, Writing History, Writing Trail and the pace projection** are based on the words you write per day. StoryLine records them per project, not per scene or volume, so they cannot be split by volume.
++
++### Volume selector in the filter bar
++
++- In **Board**, **Manuscript** and **Plot Grid** the volume dropdown now sits at the very left of the filter bar: **Filter by [Volume ▾]**, then **Search scenes…** and the other filter controls. (Before, it was in the toolbar; in Manuscript it did not appear at all.)
++- Timeline, Plotlines (Subway), Navigator and Statistics have no filter bar; there the dropdown stays in the toolbar.
++- The selection is now stored **per project**. Switching to another book of a series no longer carries the selected volume over.
++
++### Plot Grid: empty plotlines are hidden automatically
++
++- While a volume is selected, plotline columns (and other columns created by **Sync from scenes**) that have no content and no linked scene in that volume are hidden, just like the Subway map only shows lines that are active in the volume.
++- Columns you created by hand always stay visible.
++- On the right of the filter bar: **"3 empty plotlines hidden · show"**. Click to show them for this session, click **Hide empty plotlines** to hide them again.
++- With **All volumes** every column is shown. Nothing is deleted; hidden columns keep their cells.
++
++### Fixes
++
++- **Corkboard / Kanban:** sticky notes, image notes and scenes without an act no longer disappear while a volume is selected.
++- **Plot Grid:** rows were shifted by one track as soon as `volumes:` was defined (wrong row heights, row resize on the wrong row). Fixed.
++- **Timeline, chronological order:** dragging a scene while a volume (or the Arc Point filter) was active renumbered only the visible scenes and could mix up the chronological order of the whole project. The order is now always renumbered across all scenes.
++- **Timeline:** empty act placeholders of other volumes are no longer shown while a volume is selected.
++- **New scenes** created while a volume is selected start in the first act of that volume (Board and Timeline "+ new scene"), so they do not vanish right after creation.
++- **Statistics, one volume selected:** setups/payoffs that cross a volume border were reported as "doesn't exist" in Warnings and as broken in the Setup & Payoff Map. Linked scenes of other volumes are now taken into account.
++- **Statistics:** Writing Sprint always uses the project word total, so session words are correct while a volume is selected.
++- **Subway:** a realized Arc Point that shares a plotline with its scene no longer hides that scene's station on the shared line.
++- **Export:** a volume export is named "… Acts 5,6,7,8" instead of "… Chapters 5,6,7,8".
++- **Manage volumes command:** works even if the Board tab has not been loaded yet.
++- **Volumes editor:** sees acts added in the same dialog (beat sheet, Add acts).
++
++<!-- screenshot: filter bar with "Filter by" volume dropdown -->
++<!-- screenshot: Plot Grid with hidden empty plotlines hint -->
++<!-- screenshot: Statistics with "Volume 2 statistics" heading and the volumes table with the All volumes row -->
++
++**How and where to use:**
++
++1. Open the **Statistics** view.
++2. Choose a volume in the volume dropdown in the toolbar (or in any other view; the selection is shared).
++3. All sections update to that volume. Choose **All volumes** for the whole series.
++5. **Filter bar:** in Board, Manuscript or Plot Grid, use **Filter by [Volume ▾]** at the left of the filter bar.
++6. **Plot Grid:** select a volume; empty plotline columns disappear. Use the hint on the right of the filter bar to show them.
++4. Set word goals and deadlines per volume in **Manage story structure → Volumes** (or **Edit volumes** in the Volumes table).
++
++**Files:**
++
++- `utils/volumeStatsScope.ts` (new: goal and deadline per volume / all volumes, heading, link partners, validation)
++- `utils/plotgridVolume.ts` (new: hide empty auto columns)
++- `utils/volumeScope.ts` (per-project selection, act-less scenes kept, default act, filter bar control, reorder helper)
++- `utils/arcRealization.ts` (shared lane fix)
++- `components/Filters.ts` (+5: volume control at the left, extra controls at the right)
++- `components/StructureModalSections.ts`, `components/VolumesEditor.ts` (live act list)
++- `views/PlotgridView.ts` (hidden columns, hint, volume band track)
++- `views/TimelineView.ts` (chronological renumber, empty acts, default act)
++- `views/BoardView.ts` (dropdown moved to filter bar, default act)
++- `views/ManuscriptView.ts` (dropdown moved to filter bar)
++- `views/StorylineView.ts` (+1: deduplicate columns)
++- `services/ExportService.ts` (+1: "Acts" label)
++- `services/ForkCommands.ts` (load deferred tab)
++- `components/VolumeStatsSection.ts` (All volumes row, highlight)
++- `views/StatsView.ts` (volume dropdown, scoped scenes and statistics, goal, deadline, tension curve, Pacing Coach, read time)
++- `services/SceneQueryService.ts` (+2: `getStatistics` accepts an optional scene subset)
++- `styles.css` (fork section)
++- `.github/workflows/release-km.yml` (compare links, delta patch)
++
+ ## 1.12.0-km.2
+ 
+ **"Manage story structure": collapsible sections like the plugin settings, wider dialog**
+diff --git a/CLAUDE.md b/CLAUDE.md
+index 0ab81e7..e96890f 100644
+--- a/CLAUDE.md
++++ b/CLAUDE.md
+@@ -24,6 +24,8 @@ Fork of PixeroJan/obsidian-storyline (MIT). Obsidian plugin in TypeScript, built
+ - `.github/workflows/release-km.yml` builds on every `*-km.*` tag, checks the tag against `manifest.json` and uploads `main.js`, `manifest.json`, `styles.css` to the release (also to an existing one).
+ - Without pushing a tag: start `release-km.yml` manually (workflow_dispatch) on the branch with the desired version. The workflow creates tag and release itself. This is how Claude releases from cloud sessions, which cannot push tags.
+ - **Every release needs a `## <version>` section in `CHANGELOG-km.md`, in English** (write it before releasing): what is new, a **How and where to use:** part with step-by-step instructions (which view or dialog, which control), and a **Files:** list of all new and changed source files. The workflow uses the section as release text for the current version only, and never overwrites a release text that was edited on GitHub (the owner adds screenshots there). It attaches `storyline-km-source.zip` and `storyline-km.patch` (diff against `main`). `CHANGELOG.md` belongs to upstream and is not touched.
++- Each release also gets compare links (all changes vs. the original, and changes since the previous fork release) and `changes-since-<previous>.patch`.
++- **Release only when the owner asks for it.** Collect fixes on `km/base` in between; BRAT only updates when the version number increases.
+ - Test via BRAT with `rk-kontur/obsidian-storyline`.
+ 
+ ## Development
+diff --git a/components/Filters.ts b/components/Filters.ts
+index ccc61ac..bd90b3d 100644
+--- a/components/Filters.ts
++++ b/components/Filters.ts
+@@ -8,6 +8,7 @@ import { getStatusOrder } from '../models/Scene';
+ import { getActDisplayLabel } from '../utils/actChapter';
+ import { renderVolumeFilterChips } from './VolumeFilterChips';
+ import { getProjectVolumes } from '../utils/volumes';
++import { renderVolumeFilterBarStart } from '../utils/volumeScope';
+ 
+ type FocusModeCallback = (active: boolean) => void;
+ 
+@@ -30,6 +31,8 @@ export class FiltersComponent {
+     private container: HTMLElement;
+     private sceneManager: SceneManager;
+     private plugin: SceneCardsPlugin | null;
++    /** fork: lets a view add controls at the right end of the filter bar */
++    extraBarRight?: (bar: HTMLElement) => void;
+     private currentFilter: SceneFilter = {};
+     private currentSort: SortConfig = { field: 'sequence', direction: 'asc' };
+     private onChange: (filter: SceneFilter, sort: SortConfig) => void;
+@@ -159,6 +162,10 @@ export class FiltersComponent {
+             });
+         }
+ 
++        // fork: "Filter by [Volume]" at the far left; optional extra controls at the far right
++        if (this.plugin) renderVolumeFilterBarStart(topBar, this.plugin);
++        this.extraBarRight?.(topBar);
++
+         // Filter toggle button (Lucide icon)
+         const toggleBtn = topBar.createEl('button', {
+             cls: 'story-line-filter-toggle clickable-icon',
+diff --git a/components/StructureModalSections.ts b/components/StructureModalSections.ts
+index 9ff78b8..06a8532 100644
+--- a/components/StructureModalSections.ts
++++ b/components/StructureModalSections.ts
+@@ -49,7 +49,8 @@ export function setNextStructureSection(app: App, section: StructureSection): vo
+ export interface StructureModalContext {
+     app: App;
+     projectFilePath: string | undefined;
+-    definedActs: number[];
++    /** Getter, so acts added in the same dialog (beat sheet, Add acts) are seen. */
++    getDefinedActs: () => number[];
+ }
+ 
+ export function enhanceStructureModal(modal: Modal, ctx: StructureModalContext): void {
+@@ -114,7 +115,7 @@ export function enhanceStructureModal(modal: Modal, ctx: StructureModalContext):
+         }
+         g.heading.remove();
+     }
+-    renderVolumesEditor(bodies.get('volumes')!, ctx.app, ctx.projectFilePath, ctx.definedActs);
++    renderVolumesEditor(bodies.get('volumes')!, ctx.app, ctx.projectFilePath, ctx.getDefinedActs);
+ 
+     content.empty();
+     preamble.forEach(n => content.appendChild(n));
+diff --git a/components/VolumeStatsSection.ts b/components/VolumeStatsSection.ts
+index c0706d2..9656620 100644
+--- a/components/VolumeStatsSection.ts
++++ b/components/VolumeStatsSection.ts
+@@ -59,6 +59,43 @@ export function computeVolumeStats(
+     return volumes.map(v => rows.get(v.id)!);
+ }
+ 
++/**
++ * "All volumes" row: sums of all volume rows. Goal = sum of the volume goals
++ * that are set, deadline = latest volume deadline.
++ */
++export function computeTotalRow(rows: VolumeStatsRow[], today: Date = new Date()): VolumeStatsRow {
++    const goals = rows.map(r => r.volume.wordGoal).filter((g): g is number => !!g);
++    const deadlines = rows.map(r => r.volume.deadline).filter((d): d is string => !!d).sort();
++    const total: VolumeStatsRow = {
++        volume: {
++            id: '__all__',
++            title: 'All volumes',
++            acts: rows.flatMap(r => r.volume.acts).sort((a, b) => a - b),
++            wordGoal: goals.length ? goals.reduce((a, b) => a + b, 0) : undefined,
++            deadline: deadlines.length ? deadlines[deadlines.length - 1] : undefined,
++        },
++        scenes: rows.reduce((a, r) => a + r.scenes, 0),
++        words: rows.reduce((a, r) => a + r.words, 0),
++        arcPoints: rows.reduce((a, r) => a + r.arcPoints, 0),
++    };
++    // Reuse the per-volume maths for progress, days left and words per day
++    return computeVolumeStatsRowMetrics(total, today);
++}
++
++function computeVolumeStatsRowMetrics(row: VolumeStatsRow, today: Date): VolumeStatsRow {
++    const startOfToday = new Date(today.getFullYear(), today.getMonth(), today.getDate()).getTime();
++    const goal = row.volume.wordGoal;
++    if (goal) row.progress = Math.min(1, row.words / goal);
++    if (row.volume.deadline) {
++        const d = new Date(row.volume.deadline);
++        if (!isNaN(d.getTime())) {
++            row.daysLeft = Math.ceil((d.getTime() - startOfToday) / 86400000);
++            if (goal && row.daysLeft > 0) row.wordsPerDay = Math.max(0, Math.ceil((goal - row.words) / row.daysLeft));
++        }
++    }
++    return row;
++}
++
+ export function renderVolumeStatsSection(
+     parent: HTMLElement,
+     volumes: VolumeDef[],
+@@ -66,6 +103,7 @@ export function renderVolumeStatsSection(
+     excludeArcPoints: boolean,
+     openScene?: (scene: Scene) => void,
+     onEditVolumes?: () => void,
++    selectedVolumeId?: string,
+ ): void {
+     if (volumes.length === 0) return;
+     const rows = computeVolumeStats(volumes, scenes, excludeArcPoints);
+@@ -84,11 +122,14 @@ export function renderVolumeStatsSection(
+ 
+     const body = table.createEl('tbody');
+     const fmt = (n: number) => n.toLocaleString();
+-    for (const r of rows) {
++    const totalRow = computeTotalRow(rows);
++    for (const r of [...rows, totalRow]) {
+         const tr = body.createEl('tr');
++        if (r === totalRow) tr.addClass('sl-km-volume-total');
++        if (r.volume.id === (selectedVolumeId || '__all__')) tr.addClass('is-selected');
+         tr.createEl('td', { text: r.volume.title });
+         const acts = r.volume.acts;
+-        tr.createEl('td', { text: acts.length > 1 ? `${acts[0]}–${acts[acts.length - 1]}` : String(acts[0]) });
++        tr.createEl('td', { text: acts.length === 0 ? '–' : acts.length > 1 ? `${acts[0]}–${acts[acts.length - 1]}` : String(acts[0]) });
+         tr.createEl('td', { text: fmt(r.scenes) });
+         tr.createEl('td', { text: fmt(r.arcPoints) });
+         tr.createEl('td', { text: fmt(r.words) });
+diff --git a/components/VolumesEditor.ts b/components/VolumesEditor.ts
+index 499df22..4d4c4f5 100644
+--- a/components/VolumesEditor.ts
++++ b/components/VolumesEditor.ts
+@@ -69,7 +69,7 @@ export function renderVolumesEditor(
+     container: HTMLElement,
+     app: App,
+     projectFilePath: string | undefined,
+-    definedActs: number[],
++    getDefinedActs: () => number[],
+ ): void {
+     container.empty();
+     container.addClass('sl-km-volumes-editor');
+@@ -152,7 +152,7 @@ export function renderVolumesEditor(
+ 
+         // Defined acts not covered by any volume
+         const covered = new Set(volumes.flatMap(v => v.acts));
+-        const free = definedActs.filter(a => !covered.has(a) && a !== 0 && a !== 99);
++        const free = getDefinedActs().filter(a => !covered.has(a) && a !== 0 && a !== 99);
+         if (volumes.length > 0 && free.length > 0) {
+             warn.createDiv({ cls: 'sl-km-muted', text: `Acts without volume: ${free.join(', ')}` });
+         }
+@@ -163,7 +163,7 @@ export function renderVolumesEditor(
+     addBtn.addEventListener('click', () => {
+         const used = volumes.flatMap(v => v.acts);
+         const lastSize = volumes.length ? volumes[volumes.length - 1].acts.length : 4;
+-        const start = used.length ? Math.max(...used) + 1 : (definedActs.filter(a => a > 0 && a !== 99)[0] ?? 1);
++        const start = used.length ? Math.max(...used) + 1 : (getDefinedActs().filter(a => a > 0 && a !== 99)[0] ?? 1);
+         const ids = new Set(volumes.map(v => v.id));
+         let n = volumes.length + 1;
+         while (ids.has(`v${n}`)) n++;
+diff --git a/manifest.json b/manifest.json
+index 0a92fd5..d606eaa 100644
+--- a/manifest.json
++++ b/manifest.json
+@@ -1,7 +1,7 @@
+ {
+   "id": "storyline-km",
+   "name": "StoryLine",
+-  "version": "1.12.0-km.2",
++  "version": "1.12.0-km.3",
+   "minAppVersion": "1.12.7",
+   "description": "Transform your vault into a powerful book planning and writing tool. Corkboard,KanbanBoard view, timeline, plotlines,character tracking, and more.",
+   "author": "Jan SandstrÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¶m",
+diff --git a/services/ExportService.ts b/services/ExportService.ts
+index d62ce7c..7751bf1 100644
+--- a/services/ExportService.ts
++++ b/services/ExportService.ts
+@@ -179,7 +179,7 @@ export class ExportService {
+         const rangeText = this.exportRange.sequenceRanges
+             .map(range => range.start === range.end ? String(range.start) : `${range.start}-${range.end}`)
+             .join(',');
+-        const rangeLabel = this.exportRange.field === 'sequence' ? 'Scenes' : 'Chapters';
++        const rangeLabel = this.exportRange.field === 'sequence' ? 'Scenes' : this.exportRange.field === 'act' ? 'Acts' : 'Chapters';
+         return `${base} - ${rangeLabel} ${rangeText}`;
+     }
+ 
+diff --git a/services/ForkCommands.ts b/services/ForkCommands.ts
+index 026875d..5add3d9 100644
+--- a/services/ForkCommands.ts
++++ b/services/ForkCommands.ts
+@@ -24,6 +24,7 @@ export async function openStructureDialog(plugin: SceneCardsPlugin, section?: St
+         await plugin.activateView(BOARD_VIEW_TYPE);
+         leaf = find();
+     }
++    if (leaf) await leaf.loadIfDeferred(); // deferred tabs have no real view yet
+     const view = leaf?.view as unknown as Partial<HasStructureModal> | undefined;
+     if (view && typeof view.openStructureModal === 'function') view.openStructureModal();
+ }
+diff --git a/services/SceneQueryService.ts b/services/SceneQueryService.ts
+index 4e37d76..f6a49ea 100644
+--- a/services/SceneQueryService.ts
++++ b/services/SceneQueryService.ts
+@@ -272,8 +272,9 @@ export class SceneQueryService {
+     /**
+      * Get project statistics
+      */
+-    getStatistics(excludeArcAnchor = false) {
+-        const scenes = this.sceneStore.getAllScenes();
++    getStatistics(excludeArcAnchor = false, scenesOverride?: Scene[]) {
++        // scenesOverride: compute the same statistics for a subset (fork: one volume)
++        const scenes = scenesOverride ?? this.sceneStore.getAllScenes();
+         const activeScenes = scenes.filter(scene => !scene.inactive && !scene.corkboardNote);
+         const totalScenes = activeScenes.length;
+         const statusCounts: Record<string, number> = {};
+diff --git a/styles.css b/styles.css
+index 472e1d4..656b335 100644
+--- a/styles.css
++++ b/styles.css
+@@ -14080,3 +14080,44 @@ body.sl-focus-active-global.sl-focus-dim-text .markdown-source-view.mod-cm6 .cm-
+     padding: 3px 8px;
+     font-size: var(--font-ui-small);
+ }
++
++/* Fork: Statistics per volume / all volumes */
++.sl-km-volume-stats-table tr.sl-km-volume-total td {
++    border-top: 2px solid var(--background-modifier-border-hover);
++    font-weight: 700;
++}
++
++.sl-km-volume-stats-table tr.is-selected td {
++    background: var(--background-modifier-hover);
++}
++
++/* Fork: "Filter by [Volume]" in the filter bar, Plot Grid hidden empty columns */
++.sl-km-filter-by {
++    display: flex;
++    align-items: center;
++    gap: 6px;
++    flex: 0 0 auto;
++    margin-right: 8px;
++}
++
++.sl-km-filter-by-label {
++    color: var(--text-muted);
++    font-size: var(--font-ui-small);
++    white-space: nowrap;
++}
++
++.sl-km-hidden-cols-hint {
++    margin-left: auto;
++    padding: 2px 8px;
++    font-size: var(--font-ui-smaller);
++    color: var(--text-muted);
++    white-space: nowrap;
++}
++
++.plot-grid-canvas > .sl-km-col-hidden {
++    visibility: hidden;
++    overflow: hidden;
++    padding: 0 !important;
++    border: none !important;
++    min-width: 0 !important;
++}
+diff --git a/utils/arcRealization.ts b/utils/arcRealization.ts
+index 1af4c1f..90b5a02 100644
+--- a/utils/arcRealization.ts
++++ b/utils/arcRealization.ts
+@@ -100,7 +100,11 @@ export function aliasRealizedColumns(
+         const col = colOf.get(target.filePath);
+         if (col === undefined) continue;
+         colOf.set(arcPath, col);
+-        for (const tag of arc.tags ?? []) laneScene.set(`${tag}|${col}`, arc);
++        // On a lane the target scene also sits on, the scene's node wins (no diamond over it)
++        for (const tag of arc.tags ?? []) {
++            if (target.tags?.includes(tag)) continue;
++            laneScene.set(`${tag}|${col}`, arc);
++        }
+     }
+     return laneScene;
+ }
+diff --git a/utils/plotgridVolume.ts b/utils/plotgridVolume.ts
+new file mode 100644
+index 0000000..6adc17a
+--- /dev/null
++++ b/utils/plotgridVolume.ts
+@@ -0,0 +1,56 @@
++// ═══════════════════════════════════════════════════════
++//  Plot Grid helpers for volumes (fork: storyline-km)
++// ═══════════════════════════════════════════════════════
++//
++// While a volume is selected, auto columns (created by "Sync from scenes",
++// e.g. plotlines) without any content in the visible rows are hidden, just
++// like the Subway map only draws lines that are active in the volume.
++// Manually created columns always stay visible. Hidden columns keep their
++// cells; the grid track just gets width 0.
++
++import type { PlotGridData } from '../models/PlotGridData';
++
++/** Indices of auto columns that have no content and no linked scene in the visible rows. */
++export function findEmptyAutoColumns(data: PlotGridData, visibleRows: Set<number>): Set<number> {
++    const hidden = new Set<number>();
++    data.columns.forEach((col, ci) => {
++        if (col.sourceType !== 'auto') return;
++        for (const ri of visibleRows) {
++            const row = data.rows[ri];
++            if (!row) continue;
++            const cell = data.cells[`${row.id}-${col.id}`];
++            if (cell && ((cell.content && String(cell.content).trim()) || cell.linkedSceneId)) return;
++        }
++        hidden.add(ci);
++    });
++    return hidden;
++}
++
++/** Grid column template with hidden columns collapsed to 0 px. */
++export function columnTemplate(labelWidth: number, data: PlotGridData, hidden: Set<number>): string {
++    return [labelWidth + 'px', ...data.columns.map((c, ci) => (hidden.has(ci) ? 0 : c.width) + 'px')].join(' ');
++}
++
++/** Width of the hidden columns (to subtract from the canvas width). */
++export function hiddenColumnsWidth(data: PlotGridData, hidden: Set<number>): number {
++    let w = 0;
++    hidden.forEach(ci => { w += data.columns[ci]?.width ?? 0; });
++    return w;
++}
++
++/** "N empty plotlines hidden · show" hint at the right of the filter bar. */
++export function renderHiddenColumnsHint(bar: HTMLElement, onToggle: () => void): HTMLElement {
++    const hint = bar.createEl('button', { cls: 'sl-km-hidden-cols-hint clickable-icon' });
++    hint.hide();
++    hint.addEventListener('click', onToggle);
++    return hint;
++}
++
++export function updateHiddenColumnsHint(hint: HTMLElement | null, hiddenCount: number, showingAll: boolean, scoped: boolean): void {
++    if (!hint) return;
++    if (!scoped || (hiddenCount === 0 && !showingAll)) { hint.hide(); return; }
++    hint.show();
++    hint.setText(showingAll
++        ? 'Hide empty plotlines'
++        : `${hiddenCount} empty plotline${hiddenCount === 1 ? '' : 's'} hidden · show`);
++}
+diff --git a/utils/volumeScope.ts b/utils/volumeScope.ts
+index b2a2cfe..70416b4 100644
+--- a/utils/volumeScope.ts
++++ b/utils/volumeScope.ts
+@@ -4,8 +4,9 @@
+ //
+ // One "current volume" for all views: pick "Volume 2" in any toolbar and
+ // Board, Corkboard, Plot Grid, Timeline, Subway, Manuscript and Navigator
+-// all show only the acts of that volume. Stored per vault (local storage),
+-// '' means "All volumes". Implemented as an act restriction merged into the
++// all show only the acts of that volume. Stored per project (local storage,
++// keyed by the project file), '' means "All volumes". Scenes without an act
++// (e.g. corkboard notes) stay visible in every volume. Implemented as an act restriction merged into the
+ // SceneFilter each view already passes to getFilteredScenes, so the query
+ // service itself is unchanged.
+ 
+@@ -16,19 +17,24 @@ import { getProjectVolumes, getVolumeForAct, type VolumeDef } from './volumes';
+ 
+ const STORAGE_KEY = 'storyline-km:volumeScope';
+ 
+-export function getVolumeScope(app: App): string {
+-    const v: unknown = app.loadLocalStorage(STORAGE_KEY);
++/** Per project, so switching books in a series does not carry the selection over. */
++function storageKey(projectFilePath: string | undefined | null): string {
++    return `${STORAGE_KEY}:${projectFilePath ?? ''}`;
++}
++
++export function getVolumeScope(app: App, projectFilePath: string | undefined | null): string {
++    const v: unknown = app.loadLocalStorage(storageKey(projectFilePath));
+     return typeof v === 'string' ? v : '';
+ }
+ 
+ export function setVolumeScope(plugin: SceneCardsPlugin, id: string): void {
+-    plugin.app.saveLocalStorage(STORAGE_KEY, id);
++    plugin.app.saveLocalStorage(storageKey(plugin.sceneManager?.activeProject?.filePath), id);
+     plugin.refreshOpenViews();
+ }
+ 
+ /** The scoped volume, or undefined for "All volumes" / unknown id. */
+ export function getScopedVolume(app: App, projectFilePath: string | undefined | null): VolumeDef | undefined {
+-    const id = getVolumeScope(app);
++    const id = getVolumeScope(app, projectFilePath);
+     if (!id) return undefined;
+     return getProjectVolumes(app, projectFilePath).find(v => v.id === id);
+ }
+@@ -45,18 +51,49 @@ export function scopeFilter<T extends SceneFilter | undefined>(
+     const vol = getScopedVolume(app, projectFilePath);
+     if (!vol) return filter;
+     const volActs = vol.acts.map(String);
+-    const base = filter?.act?.length ? filter.act.map(String).filter(a => volActs.includes(a)) : volActs;
++    // An explicit act filter is intersected with the volume. Without one, '' keeps
++    // scenes that have no act (corkboard notes, unassigned scenes) visible.
++    const base = filter?.act?.length ? filter.act.map(String).filter(a => volActs.includes(a)) : [...volActs, ''];
+     // Empty intersection must match nothing, not everything
+     return { ...(filter ?? {}), act: base.length ? base : ['__none__'] };
+ }
+ 
+-/** True if the scene is inside the scoped volume (or no volume is scoped). */
+-export function inVolumeScope(app: App, projectFilePath: string | undefined | null, scene: Scene): boolean {
++/**
++ * True if the scene is inside the scoped volume (or no volume is scoped).
++ * Scenes without an act and corkboard notes count as inside unless
++ * `keepUnassigned` is false (Statistics: count only the volume's own scenes).
++ */
++export function inVolumeScope(app: App, projectFilePath: string | undefined | null, scene: Scene, keepUnassigned = true): boolean {
+     const vol = getScopedVolume(app, projectFilePath);
+     if (!vol) return true;
++    if (scene.act === undefined || scene.act === null || String(scene.act) === '' || scene.corkboardNote) return keepUnassigned;
+     return getVolumeForAct([vol], scene.act) !== undefined;
+ }
+ 
++/** First act of the scoped volume: default act for scenes created while a volume is selected. */
++export function defaultActForScope(app: App, projectFilePath: string | undefined | null): number | undefined {
++    return getScopedVolume(app, projectFilePath)?.acts[0];
++}
++
++/**
++ * Reorder helper for views that renumber a global counter from a scoped list
++ * (Timeline chronological order): moves `moved` inside the FULL list to the
++ * position it got in the scoped list (before `next`, else after `prev`).
++ */
++export function placeInFullList<T extends { filePath: string }>(full: T[], moved: T, prev: T | undefined, next: T | undefined): T[] {
++    const list = full.filter(s => s.filePath !== moved.filePath);
++    let idx = list.length;
++    if (next) {
++        const i = list.findIndex(s => s.filePath === next.filePath);
++        if (i >= 0) idx = i;
++    } else if (prev) {
++        const i = list.findIndex(s => s.filePath === prev.filePath);
++        if (i >= 0) idx = i + 1;
++    }
++    list.splice(idx, 0, moved);
++    return list;
++}
++
+ /** Restrict a list of act numbers to the scoped volume. */
+ export function scopeActs(app: App, projectFilePath: string | undefined | null, acts: number[]): number[] {
+     const vol = getScopedVolume(app, projectFilePath);
+@@ -64,8 +101,8 @@ export function scopeActs(app: App, projectFilePath: string | undefined | null,
+ }
+ 
+ /** Key fragment for view-level caches that must invalidate on scope change. */
+-export function volumeScopeKey(app: App): string {
+-    return `vol:${getVolumeScope(app)}`;
++export function volumeScopeKey(app: App, projectFilePath: string | undefined | null): string {
++    return `vol:${getVolumeScope(app, projectFilePath)}`;
+ }
+ 
+ /**
+@@ -81,12 +118,25 @@ export function renderVolumeScopeSelect(parent: HTMLElement, plugin: SceneCardsP
+     });
+     select.createEl('option', { text: 'All volumes', value: '' });
+     for (const v of volumes) select.createEl('option', { text: v.title, value: v.id });
+-    const current = getVolumeScope(plugin.app);
++    const current = getVolumeScope(plugin.app, plugin.sceneManager?.activeProject?.filePath);
+     select.value = volumes.some(v => v.id === current) ? current : '';
+     select.addEventListener('keydown', (e: KeyboardEvent) => e.stopPropagation());
+     select.addEventListener('change', () => setVolumeScope(plugin, select.value));
+ }
+ 
++/**
++ * Filter-bar version: "Filter by [Volume ▾]" at the very left of the filter
++ * bar (Board, Manuscript, Plot Grid). Rendered only when volumes exist.
++ */
++export function renderVolumeFilterBarStart(bar: HTMLElement, plugin: SceneCardsPlugin): void {
++    const volumes = getProjectVolumes(plugin.app, plugin.sceneManager?.activeProject?.filePath);
++    if (volumes.length === 0) return;
++    const wrap = createDiv('sl-km-filter-by');
++    wrap.createSpan({ cls: 'sl-km-filter-by-label', text: 'Filter by' });
++    renderVolumeScopeSelect(wrap, plugin);
++    bar.prepend(wrap);
++}
++
+ /** Short volume badge text, e.g. "V2" for the 2nd volume, from the title's number if present. */
+ export function volumeBadgeText(volumes: VolumeDef[], vol: VolumeDef): string {
+     const num = vol.title.match(/(\d+)\s*$/)?.[1];
+diff --git a/utils/volumeStatsScope.ts b/utils/volumeStatsScope.ts
+new file mode 100644
+index 0000000..2a4fbf8
+--- /dev/null
++++ b/utils/volumeStatsScope.ts
+@@ -0,0 +1,107 @@
++// ═══════════════════════════════════════════════════════
++//  Statistics scope: one volume or all volumes (fork: storyline-km)
++// ═══════════════════════════════════════════════════════
++//
++// The Statistics view follows the shared volume selector:
++//   - a volume is selected  → every section counts only that volume's acts;
++//                             word goal and deadline come from the volume.
++//   - "All volumes"         → every section counts the whole project; the
++//                             word goal is the sum of the volume goals and
++//                             the deadline is the latest volume deadline,
++//                             unless a project deadline is set.
++// Without `volumes:` nothing changes.
++
++import type { App } from 'obsidian';
++import { getProjectVolumes, type VolumeDef } from './volumes';
++import { getScopedVolume } from './volumeScope';
++import type { Scene } from '../models/Scene';
++import { Validator } from '../services/Validator';
++import type { PlotWarning } from '../services/Validator';
++
++export interface StatsScope {
++    volumes: VolumeDef[];
++    /** Selected volume, undefined = all volumes / no volumes. */
++    volume?: VolumeDef;
++}
++
++export function getStatsScope(app: App, projectFilePath: string | undefined | null): StatsScope {
++    const volumes = getProjectVolumes(app, projectFilePath);
++    return { volumes, volume: volumes.length ? getScopedVolume(app, projectFilePath) : undefined };
++}
++
++/** Heading of the Statistics view. */
++export function statsHeading(scope: StatsScope): string {
++    if (scope.volume) return `${scope.volume.title} statistics`;
++    return scope.volumes.length ? 'Project statistics (all volumes)' : 'Project statistics';
++}
++
++/** Sum of all volume word goals, or undefined if no volume has a goal. */
++export function totalVolumeGoal(volumes: VolumeDef[]): number | undefined {
++    const goals = volumes.map(v => v.wordGoal).filter((g): g is number => !!g);
++    return goals.length ? goals.reduce((a, b) => a + b, 0) : undefined;
++}
++
++/** Latest volume deadline (YYYY-MM-DD), or undefined. */
++export function latestVolumeDeadline(volumes: VolumeDef[]): string | undefined {
++    const ds = volumes.map(v => v.deadline).filter((d): d is string => !!d).sort();
++    return ds.length ? ds[ds.length - 1] : undefined;
++}
++
++/**
++ * Word goal for the overview.
++ * Volume: its wordGoal, else the scene targets of the volume, else the project goal.
++ * All volumes: sum of volume goals, else the project goal.
++ */
++export function scopedWordGoal(scope: StatsScope, projectGoal: number | undefined, sceneTargets: number): number | undefined {
++    if (scope.volume) return scope.volume.wordGoal || sceneTargets || projectGoal;
++    return totalVolumeGoal(scope.volumes) ?? projectGoal;
++}
++
++/**
++ * Deadline for the overview.
++ * Volume: its deadline, else the project deadline.
++ * All volumes: the project deadline, else the latest volume deadline.
++ */
++export function scopedDeadline<T extends { deadline: string | null | undefined }>(scope: StatsScope, project: T): T {
++    if (scope.volume) return scope.volume.deadline ? { ...project, deadline: scope.volume.deadline } : project;
++    if (!project.deadline) {
++        const latest = latestVolumeDeadline(scope.volumes);
++        if (latest) return { ...project, deadline: latest };
++    }
++    return project;
++}
++
++/**
++ * Scoped scenes plus the scenes they are linked to by setup/payoff (from any
++ * volume). Used for the Setup & Payoff map and the Validator so links that
++ * cross volume borders are not reported as missing.
++ */
++export function withLinkPartners(scoped: Scene[], project: Scene[]): Scene[] {
++    if (scoped.length === project.length) return scoped;
++    const inScope = new Set(scoped.map(s => s.filePath));
++    const byTitle = new Map(project.map(s => [s.title, s]));
++    const extra = new Map<string, Scene>();
++    const add = (title: string) => {
++        const t = byTitle.get(String(title).replace(/^\[\[|\]\]$/g, '').split('|')[0]);
++        if (t && !inScope.has(t.filePath)) extra.set(t.filePath, t);
++    };
++    for (const s of scoped) {
++        (s.setup_scenes ?? []).forEach(add);
++        (s.payoff_scenes ?? []).forEach(add);
++    }
++    // Scenes of other volumes that point INTO the scope
++    for (const s of project) {
++        if (inScope.has(s.filePath)) continue;
++        const links = [...(s.setup_scenes ?? []), ...(s.payoff_scenes ?? [])].map(String);
++        if (scoped.some(sc => links.includes(sc.title))) extra.set(s.filePath, s);
++    }
++    return [...scoped, ...extra.values()];
++}
++
++/** Validator warnings for the scope, computed with cross-volume link partners. */
++export function validateForScope(scoped: Scene[], project: Scene[]): PlotWarning[] {
++    if (scoped.length === project.length) return Validator.validate(scoped);
++    const inScope = new Set(scoped.map(s => s.filePath));
++    return Validator.validate(withLinkPartners(scoped, project))
++        .filter(w => (w.scenePaths ?? []).some(p => inScope.has(p)));
++}
+diff --git a/views/BoardView.ts b/views/BoardView.ts
+index 1606334..03eb7f1 100644
+--- a/views/BoardView.ts
++++ b/views/BoardView.ts
+@@ -1,7 +1,7 @@
+ /* eslint-disable @typescript-eslint/no-floating-promises, @typescript-eslint/no-misused-promises, @typescript-eslint/no-unnecessary-type-assertion -- Obsidian's API surface and several untyped third-party libraries force dynamic dispatch; floating promises are intentional in DOM/event handlers; matching enable at end of file */
+ import { ItemView, WorkspaceLeaf, Menu, Notice, TFile, Modal, Setting, MarkdownRenderer, normalizePath } from 'obsidian';
+ import { enhanceStructureModal } from '../components/StructureModalSections';
+-import { renderVolumeScopeSelect, scopeActs, scopeFilter } from '../utils/volumeScope';
++import { defaultActForScope, scopeActs, scopeFilter } from '../utils/volumeScope';
+ import { actFromColumnKey, getProjectVolumes, renderVolumeColumnDivider, VolumeDividerTracker } from '../utils/volumes';
+ import * as obsidian from 'obsidian';
+ import { Scene, SceneFilter, SortConfig, BoardGroupBy, SceneStatus, SceneTemplate, BeatSheetTemplate, BUILTIN_BEAT_SHEETS, getStatusOrder, getStatusConfig, resolveStatusCfg } from '../models/Scene';
+@@ -252,7 +252,6 @@ export class BoardView extends ItemView {
+         renderViewSwitcher(toolbar, BOARD_VIEW_TYPE, this.plugin, this.leaf);
+ 
+         const controls = toolbar.createDiv('story-line-toolbar-controls');
+-        renderVolumeScopeSelect(controls, this.plugin); // fork: shared volume scope
+ 
+         const modeToggle = controls.createDiv('story-line-board-mode-toggle');
+         const corkboardBtn = modeToggle.createEl('button', {
+@@ -3840,7 +3839,7 @@ export class BoardView extends ItemView {
+         });
+ 
+         // Fork: regroup into collapsible sections (Volumes, Acts, Chapters, Templates)
+-        enhanceStructureModal(modal, { app: this.app, projectFilePath: this.sceneManager.activeProject?.filePath, definedActs: this.sceneManager.getDefinedActs() });
++        enhanceStructureModal(modal, { app: this.app, projectFilePath: this.sceneManager.activeProject?.filePath, getDefinedActs: () => this.sceneManager.getDefinedActs() });
+         modal.open();
+ 
+         // Issue #214 — on iOS/iPadOS the modal opens scrolled past the top,
+@@ -3879,6 +3878,9 @@ export class BoardView extends ItemView {
+     private openQuickAdd(presetColumn?: string): void {
+         // Build defaults based on groupBy and column title
+         const defaults: Partial<Scene> = {};
++        // fork: while a volume is selected, new scenes start in its first act (else they would be hidden)
++        const scopedAct = defaultActForScope(this.app, this.sceneManager.activeProject?.filePath);
++        if (scopedAct !== undefined) defaults.act = scopedAct;
+         if (presetColumn) {
+             if (this.groupBy === 'act') {
+                 // Accept any value after "Act " (numeric, decimal, or string)
+diff --git a/views/ManuscriptView.ts b/views/ManuscriptView.ts
+index f37256a..f482c66 100644
+--- a/views/ManuscriptView.ts
++++ b/views/ManuscriptView.ts
+@@ -1,6 +1,6 @@
+ /* eslint-disable @typescript-eslint/no-floating-promises, @typescript-eslint/no-misused-promises, @typescript-eslint/no-unnecessary-type-assertion, @typescript-eslint/no-unused-vars -- Obsidian's API surface and several untyped third-party libraries force dynamic dispatch; floating promises are intentional in DOM/event handlers; matching enable at end of file */
+ import { ItemView, WorkspaceLeaf, WorkspaceSplit, MarkdownRenderer, TFile, setIcon, Notice, Menu } from 'obsidian';
+-import { renderVolumeScopeSelect, scopeFilter, volumeScopeKey } from '../utils/volumeScope';
++import { scopeFilter, volumeScopeKey } from '../utils/volumeScope';
+ import { getProjectVolumes, VolumeDividerTracker } from '../utils/volumes';
+ import { EditorView, Decoration } from '@codemirror/view';
+ import { RangeSetBuilder, StateEffect, Compartment, EditorSelection } from '@codemirror/state';
+@@ -236,7 +236,6 @@ export class ManuscriptView extends ItemView {
+             this.currentFilter,
+             this.currentSort,
+         );
+-        renderVolumeScopeSelect(filterContainer, this.plugin); // fork: shared volume scope
+         this.filtersComponent.render();
+ 
+         // Plain-text toggle (same style as Board view's Scenes on/off)
+@@ -361,7 +360,7 @@ export class ManuscriptView extends ItemView {
+ 
+     /** Build a cache key from the current filter + sort configuration */
+     private computeFilterKey(): string {
+-        return JSON.stringify(this.currentFilter) + '|' + JSON.stringify(this.currentSort) + '|' + volumeScopeKey(this.app);
++        return JSON.stringify(this.currentFilter) + '|' + JSON.stringify(this.currentSort) + '|' + volumeScopeKey(this.app, this.sceneManager.activeProject?.filePath);
+     }
+ 
+     private scheduleManuscriptViewStateSave(): void {
+diff --git a/views/PlotgridView.ts b/views/PlotgridView.ts
+index daa3208..2ccff3a 100644
+--- a/views/PlotgridView.ts
++++ b/views/PlotgridView.ts
+@@ -4,7 +4,8 @@ import * as obsidian from 'obsidian';
+ import { CellData, ColumnMeta, RowMeta, PlotGridData } from '../models/PlotGridData';
+ import { renderArcPointIcon } from '../components/ArcPointUI';
+ import { getProjectVolumes, VolumeDividerTracker } from '../utils/volumes';
+-import { renderVolumeScopeSelect, scopeFilter } from '../utils/volumeScope';
++import { scopeFilter } from '../utils/volumeScope';
++import { columnTemplate, findEmptyAutoColumns, hiddenColumnsWidth, renderHiddenColumnsHint, updateHiddenColumnsHint } from '../utils/plotgridVolume';
+ import { LocationManager } from '../services/LocationManager';
+ import type { SceneFilter, SortConfig } from '../models/Scene';
+ import { SceneManager } from '../services/SceneManager';
+@@ -51,6 +52,10 @@ export class PlotgridView extends ItemView {
+     private wrapperEl: HTMLDivElement | null = null;
+     private scrollAreaEl: HTMLDivElement | null = null;
+     private canvasEl: HTMLDivElement | null = null;
++    /** fork: hidden empty auto columns while a volume is selected */
++    private kmHiddenCols: Set<number> = new Set();
++    private kmShowEmptyCols = false;
++    private kmHiddenColsHint: HTMLElement | null = null;
+     private selectedRow: number | null = null;
+     private selectedCol: number | null = null;
+     private inspectorComponent: InspectorComponent | null = null;
+@@ -520,6 +525,10 @@ export class PlotgridView extends ItemView {
+                 },
+                 this.plugin
+             );
++            // fork: hint "N empty plotlines hidden · show" at the right of the filter bar
++            this.filtersComponent.extraBarRight = (bar) => {
++                this.kmHiddenColsHint = renderHiddenColumnsHint(bar, () => { this.kmShowEmptyCols = !this.kmShowEmptyCols; this.renderGrid(); });
++            };
+             this.filtersComponent.render();
+         }
+ 
+@@ -583,7 +592,6 @@ export class PlotgridView extends ItemView {
+         // add a small left margin so there's a bit more space between the view switcher and action buttons
+         controls.setCssStyles({ marginLeft: '24px' });
+ 
+-        if (this.plugin) renderVolumeScopeSelect(controls, this.plugin); // fork: shared volume scope
+         const left = controls.createDiv('plot-grid-toolbar-left');
+         left.setCssStyles({
+             display: 'flex',
+@@ -1083,6 +1091,12 @@ export class PlotgridView extends ItemView {
+             if (filteredPaths.has(row.sourceId)) visibleRows.add(ri);
+         }
+ 
++        // fork: with a volume selected, hide auto columns that are empty in the visible rows
++        const kmScoped = scopedFilter !== this.currentFilter;
++        this.kmHiddenCols = kmScoped && !this.kmShowEmptyCols ? findEmptyAutoColumns(this.data, visibleRows) : new Set();
++        updateHiddenColumnsHint(this.kmHiddenColsHint, this.kmHiddenCols.size, this.kmShowEmptyCols, kmScoped);
++        if (this.kmHiddenCols.size > 0) colTemplate = columnTemplate(this.getLabelColumnWidth(), this.data, this.kmHiddenCols);
++
+         // ── Build act/chapter divider positions (visible rows only) ──
+         const dividersBefore = new Map<number, Array<{type: 'act'|'chapter', label: string, key: string}>>();
+         {
+@@ -1147,11 +1161,17 @@ export class PlotgridView extends ItemView {
+         const rowHeightParts: string[] = [];
+         this.renderedRowTrackIndices.clear();
+         let gridTrackIndex = 1;
++        const volumeTrackTracker = new VolumeDividerTracker(getProjectVolumes(this.app, this.plugin?.sceneManager?.activeProject?.filePath));
+         for (const ri of rowIndices) {
+             if (!visibleRows.has(ri)) continue;
+             const divs = dividersBefore.get(ri);
+             if (divs) {
+                 for (const d of divs) {
++                    // fork: the volume band rendered before this act divider needs its own track
++                    if (d.type === 'act' && volumeTrackTracker.next(d.key.slice(4))) {
++                        rowHeightParts.push('34px');
++                        gridTrackIndex++;
++                    }
+                     rowHeightParts.push(d.type === 'act' ? '32px' : '26px');
+                     gridTrackIndex++;
+                 }
+@@ -1175,7 +1195,7 @@ export class PlotgridView extends ItemView {
+         });
+         // If there are no columns, allow the canvas to stretch to the container width.
+         if (this.data.columns.length === 0) this.canvasEl.setCssStyles({ width: '100%' });
+-        else this.canvasEl.setCssStyles({ width: this.computeTotalWidth() + 'px' });
++        else this.canvasEl.setCssStyles({ width: (this.computeTotalWidth() - hiddenColumnsWidth(this.data, this.kmHiddenCols)) + 'px' });
+ 
+         const corner = this.canvasEl.createDiv('plot-grid-corner');
+         corner.setAttr('data-type', 'corner');
+@@ -1245,6 +1265,7 @@ export class PlotgridView extends ItemView {
+         for (let ci = 0; ci < this.data.columns.length; ci++) {
+             const col = this.data.columns[ci];
+             const el = this.canvasEl.createDiv('plot-grid-col-header');
++            if (this.kmHiddenCols.has(ci)) el.addClass('sl-km-col-hidden');
+             el.setCssStyles({
+                 position: (this.data.stickyHeaders === false) ? 'relative' : 'sticky',
+                 top: '0',
+@@ -1596,6 +1617,7 @@ export class PlotgridView extends ItemView {
+                 if (!cell.align) cell.align = 'center';
+ 
+                 const cellEl = this.canvasEl.createDiv('plot-grid-cell');
++                if (this.kmHiddenCols.has(ci)) cellEl.addClass('sl-km-col-hidden');
+                 // expose coordinates
+                 cellEl.setAttr('data-row', String(ri));
+                 cellEl.setAttr('data-col', String(ci));
+diff --git a/views/StatsView.ts b/views/StatsView.ts
+index e4dd573..034a524 100644
+--- a/views/StatsView.ts
++++ b/views/StatsView.ts
+@@ -3,6 +3,8 @@ import { SceneManager } from '../services/SceneManager';
+ import { renderVolumeStatsSection } from '../components/VolumeStatsSection';
+ import { getProjectVolumes } from '../utils/volumes';
+ import { openStructureDialog } from '../services/ForkCommands';
++import { getVolumeScope, inVolumeScope, renderVolumeScopeSelect, scopeFilter } from '../utils/volumeScope';
++import { getStatsScope, scopedDeadline, scopedWordGoal, statsHeading, validateForScope, withLinkPartners } from '../utils/volumeStatsScope';
+ import { renderViewSwitcher } from '../components/ViewSwitcher';
+ import * as obsidian from 'obsidian';
+ import type SceneCardsPlugin from '../main';
+@@ -92,6 +94,7 @@ export class StatsView extends ItemView {
+         titleRow.createEl('h3', { cls: 'story-line-view-title', text: 'StoryLine' });
+ 
+         renderViewSwitcher(toolbar, STATS_VIEW_TYPE, this.plugin, this.leaf);
++        renderVolumeScopeSelect(toolbar.createDiv('story-line-toolbar-controls'), this.plugin); // fork: shared volume scope
+ 
+         const content = container.createDiv('story-line-stats-content');
+         const redesigned = this.plugin.settings.statsViewMode !== 'original';
+@@ -100,24 +103,36 @@ export class StatsView extends ItemView {
+         if (redesigned) {
+             content.createEl('h2', {
+                 cls: 'sl-stats__heading sl-stats-redesigned__heading',
+-                text: 'Project statistics',
++                text: statsHeading(getStatsScope(this.app, this.sceneManager.activeProject?.filePath)), // fork: volume scope
+             });
+         }
+-        const stats = this.sceneManager.queryService.getStatistics(this.plugin.settings.excludeArcAnchorFromWordcount ?? true);
+-        const allScenes = this.sceneManager.getAllScenes()
++        // fork: with a volume selected, all sections count only that volume (scoped scenes + stats)
++        const projectPath = this.sceneManager.activeProject?.filePath;
++        const projectScenes = this.sceneManager.getAllScenes()
+             .filter(scene => !scene.inactive && !scene.corkboardNote);
++        const allScenes = projectScenes.filter(scene => inVolumeScope(this.app, projectPath, scene, false));
++        const isScoped = allScenes.length !== projectScenes.length;
++        const stats = this.sceneManager.queryService.getStatistics(this.plugin.settings.excludeArcAnchorFromWordcount ?? true,
++            isScoped ? allScenes : undefined);
++        // Writing sessions are tracked per project: always feed them the project total
++        const projectTotalWords = isScoped
++            ? this.sceneManager.queryService.getStatistics(this.plugin.settings.excludeArcAnchorFromWordcount ?? true).totalWords
++            : stats.totalWords;
++        // Setup/payoff across volume borders: include linked scenes of other volumes
++        const linkScenes = withLinkPartners(allScenes, projectScenes);
+ 
+         // Per-volume statistics and goals (fork) — only when `volumes:` is defined
+-        renderVolumeStatsSection(content, getProjectVolumes(this.app, this.sceneManager.activeProject?.filePath),
+-            allScenes, this.plugin.settings.excludeArcAnchorFromWordcount ?? true,
++        renderVolumeStatsSection(content, getProjectVolumes(this.app, projectPath),
++            projectScenes, this.plugin.settings.excludeArcAnchorFromWordcount ?? true,
+             (scene) => { const f = this.app.vault.getFileByPath(scene.filePath); if (f) void this.app.workspace.getLeaf('tab').openFile(f); },
+-            () => { void openStructureDialog(this.plugin, 'volumes'); });
++            () => { void openStructureDialog(this.plugin, 'volumes'); },
++            getVolumeScope(this.app, projectPath));
+ 
+         if (redesigned) {
+             // Section order, icons, and default open states follow Scribe's
+             // redesigned Statistics view so both apps stay interchangeable.
+             this.renderOverview(content, stats);
+-            this.renderWritingSprint(content, stats.totalWords);
++            this.renderWritingSprint(content, projectTotalWords);
+ 
+             this.renderCollapsible(content, 'target', 'Progress Breakdown', true, body =>
+                 this.renderProgressBreakdown(body, stats, allScenes));
+@@ -144,7 +159,7 @@ export class StatsView extends ItemView {
+                 this.renderDialogueRatio(body, allScenes));
+ 
+             this.renderCollapsible(content, 'link-2', 'Setup & Payoff Map', false, body =>
+-                this.renderSetupPayoffMap(body, allScenes));
++                this.renderSetupPayoffMap(body, linkScenes));
+ 
+             this.renderCollapsible(content, 'search', 'Echo Finder', false, body =>
+                 this.renderEchoFinderPlaceholder(body, allScenes));
+@@ -164,7 +179,7 @@ export class StatsView extends ItemView {
+         this.renderOverview(content, stats);
+ 
+         // 2. Writing Sprint (always open)
+-        this.renderWritingSprint(content, stats.totalWords);
++        this.renderWritingSprint(content, projectTotalWords);
+ 
+         // 3. Writing History (collapsible, default open)
+         this.renderCollapsible(content, 'calendar', 'Writing History', true, body =>
+@@ -183,7 +198,7 @@ export class StatsView extends ItemView {
+ 
+         // 5b. Setup & Payoff Map (collapsible, default collapsed)
+         this.renderCollapsible(content, 'link', 'Setup & Payoff Map', false, body =>
+-            this.renderSetupPayoffMap(body, allScenes));
++            this.renderSetupPayoffMap(body, linkScenes));
+ 
+         // 6. Pacing & Tension (collapsible, default collapsed)
+         this.renderCollapsible(content, 'activity', 'Pacing & Tension', false, body =>
+@@ -366,7 +381,8 @@ export class StatsView extends ItemView {
+         let readMinutes: number;
+         if (cpm > 0 && isScriptioContinuaLocale(locale)) {
+             // Sum CJK chars across all scenes (cheaper than re-tokenising).
+-            const scenes = this.plugin.sceneManager?.getAllScenes?.() ?? [];
++            const scenes = (this.plugin.sceneManager?.getAllScenes?.() ?? [])
++                .filter(sc => inVolumeScope(this.app, this.sceneManager.activeProject?.filePath, sc)); // fork: volume scope
+             let chars = 0;
+             for (const s of scenes) if (s.body) chars += countReadingCharacters(s.body);
+             readMinutes = chars > 0 ? Math.round(chars / cpm) : Math.round(stats.totalWords / wpm);
+@@ -379,7 +395,11 @@ export class StatsView extends ItemView {
+             readH > 0 ? `${readH}h ${readM}m` : `${readMinutes}m`);
+ 
+         const renderProjectOverview = (section: HTMLElement): void => {
+-            const totalTarget = this.plugin.settings.projectWordGoal || stats.totalTargetWords || 80000;
++            // fork: volume goal / sum of volume goals when volumes are defined
++            const statsScope = getStatsScope(this.app, this.sceneManager.activeProject?.filePath);
++            const totalTarget = (statsScope.volumes.length
++                ? scopedWordGoal(statsScope, this.plugin.settings.projectWordGoal, stats.totalTargetWords)
++                : undefined) || this.plugin.settings.projectWordGoal || stats.totalTargetWords || 80000;
+             const wordPct = Math.round((stats.totalWords / totalTarget) * 100);
+             const goalRow = section.createDiv('stats-sprint-goal sl-stats-redesigned__goal');
+             goalRow.createSpan({
+@@ -395,7 +415,7 @@ export class StatsView extends ItemView {
+             });
+ 
+             const tracker = this.plugin.writingTracker;
+-            const deadline = tracker.getProjectDeadline();
++            const deadline = scopedDeadline(statsScope, tracker.getProjectDeadline()); // fork: volume deadline
+             const deadlinePlan = buildDeadlinePlan(
+                 deadline.deadline,
+                 totalTarget,
+@@ -1610,7 +1630,7 @@ export class StatsView extends ItemView {
+     }
+ 
+     private renderTensionSection(parent: HTMLElement): void {
+-        const ordered = this.sceneManager.queryService.getFilteredScenes(undefined, { field: 'sequence', direction: 'asc' });
++        const ordered = this.sceneManager.queryService.getFilteredScenes(scopeFilter(this.app, this.sceneManager.activeProject?.filePath, undefined), { field: 'sequence', direction: 'asc' }); // fork: volume scope
+         const intensityScenes = ordered.filter(scene => scene.intensity !== undefined);
+         if (intensityScenes.length > 2) {
+             this.renderTensionCurve(parent, intensityScenes);
+@@ -2141,7 +2161,7 @@ export class StatsView extends ItemView {
+     // ════════════════════════════════════════════════════
+ 
+     private renderPacingCoach(parent: HTMLElement, _allScenes: Scene[]): void {
+-        const ordered = this.sceneManager.queryService.getFilteredScenes(undefined, { field: 'sequence', direction: 'asc' });
++        const ordered = this.sceneManager.queryService.getFilteredScenes(scopeFilter(this.app, this.sceneManager.activeProject?.filePath, undefined), { field: 'sequence', direction: 'asc' }); // fork: volume scope
+         if (ordered.length < 3) return;
+ 
+         const sec = parent.createDiv('stats-subsection');
+@@ -2226,7 +2246,8 @@ export class StatsView extends ItemView {
+ 
+     private renderWarnings(parent: HTMLElement, allScenes: Scene[]): void {
+         if (this.plugin.settings.enablePlotHoleDetection && allScenes.length > 0) {
+-            const warnings = Validator.validate(allScenes);
++            // fork: with a volume selected, validate with cross-volume link partners
++            const warnings = validateForScope(allScenes, this.sceneManager.getAllScenes().filter(sc => !sc.inactive && !sc.corkboardNote));
+             if (warnings.length === 0) {
+                 const ok = parent.createDiv('stats-ok');
+                 const ic = ok.createSpan();
+diff --git a/views/StorylineView.ts b/views/StorylineView.ts
+index 2507f3a..79d7935 100644
+--- a/views/StorylineView.ts
++++ b/views/StorylineView.ts
+@@ -503,6 +503,7 @@ export class StorylineView extends ItemView {
+             const cols = pScenes
+                 .map(s => colOf.get(s.filePath))
+                 .filter((c): c is number => c !== undefined)
++                .filter((c, i, arr) => arr.indexOf(c) === i) // fork: realized Arc Points share a column
+                 .sort((a, b) => a - b);
+             plotlineCols.set(pk, cols);
+         }
+diff --git a/views/TimelineView.ts b/views/TimelineView.ts
+index 7db8907..7ec3c03 100644
+--- a/views/TimelineView.ts
++++ b/views/TimelineView.ts
+@@ -4,7 +4,7 @@ import { enhanceStructureModal } from '../components/StructureModalSections';
+ import { SceneManager } from '../services/SceneManager';
+ import { SceneCardComponent } from '../components/SceneCard';
+ import { getProjectVolumes, VolumeDividerTracker } from '../utils/volumes';
+-import { renderVolumeScopeSelect, scopeFilter } from '../utils/volumeScope';
++import { defaultActForScope, placeInFullList, renderVolumeScopeSelect, scopeActs, scopeFilter } from '../utils/volumeScope';
+ import { ArcFilterMode, arcFilterQuery, loadArcFilter, renderArcFilterToggle, renderArcPointBadge, saveArcFilter } from '../components/ArcPointUI';
+ import { InspectorComponent } from '../components/Inspector';
+ import { QuickAddModal } from '../components/QuickAddModal';
+@@ -335,7 +335,7 @@ export class TimelineView extends ItemView {
+         });
+ 
+         // Also get defined acts so we can show empty act dividers
+-        const definedActs = this.sceneManager.getDefinedActs();
++        const definedActs = scopeActs(this.app, this.sceneManager.activeProject?.filePath, this.sceneManager.getDefinedActs()); // fork: volume scope
+         const actsWithScenes = new Set<number>();
+         for (const s of scenes) {
+             if (s.act !== undefined) actsWithScenes.add(Number(s.act));
+@@ -415,9 +415,15 @@ export class TimelineView extends ItemView {
+ 
+             if (this.timelineOrder === 'chronological') {
+                 // Chronological order is a single global counter — flat 1..N is correct.
+-                for (let i = 0; i < scenes.length; i++) {
++                // fork: `scenes` may be scoped (volume / Arc Point filter); renumber the FULL list.
++                const full = placeInFullList(
++                    this.sceneManager.queryService.getFilteredScenes(undefined, { field: 'chronologicalOrder', direction: 'asc' })
++                        .filter(sc => !this.isNoteScene(sc)),
++                    moved, scenes[insertAt - 1], scenes[insertAt + 1],
++                );
++                for (let i = 0; i < full.length; i++) {
+                     await this.sceneManager.updateScene(
+-                        scenes[i].filePath,
++                        full[i].filePath,
+                         { chronologicalOrder: i + 1 } as Partial<Scene>,
+                     );
+                 }
+@@ -1297,6 +1303,8 @@ export class TimelineView extends ItemView {
+      * Open the Quick Add modal, optionally pre-setting the act
+      */
+     private openQuickAdd(presetAct?: number): void {
++        // fork: while a volume is selected, new scenes start in its first act
++        presetAct = presetAct ?? defaultActForScope(this.app, this.sceneManager.activeProject?.filePath);
+         const modal = new QuickAddModal(
+             this.app,
+             this.plugin,
+@@ -1692,7 +1700,7 @@ export class TimelineView extends ItemView {
+         });
+ 
+         // Fork: regroup into collapsible sections (Volumes, Acts, Chapters, Templates)
+-        enhanceStructureModal(modal, { app: this.app, projectFilePath: this.sceneManager.activeProject?.filePath, definedActs: this.sceneManager.getDefinedActs() });
++        enhanceStructureModal(modal, { app: this.app, projectFilePath: this.sceneManager.activeProject?.filePath, getDefinedActs: () => this.sceneManager.getDefinedActs() });
+         modal.open();
+     }
+ 

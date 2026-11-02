@@ -1,0 +1,204 @@
+diff --git a/CHANGELOG-km.md b/CHANGELOG-km.md
+index bd35450..90f14f7 100644
+--- a/CHANGELOG-km.md
++++ b/CHANGELOG-km.md
+@@ -2,6 +2,32 @@
+ 
+ Changes of this fork compared to the original StoryLine plugin by Jan Sandström. Each `## <version>` section is used as the initial text of the matching GitHub release; texts edited on GitHub (e.g. with screenshots) are never overwritten. Every release also carries `storyline-km-source.zip` (all source files that are new or changed compared to the original, without `main.js`) and `storyline-km.patch` (the full diff against the original).
+ 
++## 1.12.0-km.9
++
++**Off page plotlines in the Plotlines list, Timeline swimlanes and Plot Grid**
++
++- **Plotlines list view:** plotlines are grouped under **ON PAGE** and **OFF PAGE** headings, off page sections lightly tinted, same order as in the Subway map.
++- **Timeline, swimlanes "By Plotline" / "By Tag":** off page lanes come last and are lightly tinted.
++- **Plot Grid:** plotline columns (created by Sync from scenes) of off page lines are lightly tinted. Their position is not changed, so your column layout stays as you arranged it.
++
++<!-- screenshot: Plotlines list with ON PAGE / OFF PAGE headings -->
++<!-- screenshot: Timeline swimlanes with tinted off page lanes -->
++
++**How and where to use:**
++
++1. Mark a plotline as off page: **Plotlines → Subway** → right-click the line name → **Move to off page**.
++2. **Plotlines → list view** (list icon): the line appears under OFF PAGE.
++3. **Timeline → swimlanes → Group by Plotline**: the line's lane is the last one, tinted.
++4. **Plot Grid**: the plotline's column is tinted.
++
++**Files:**
++
++- `utils/pageZones.ts` (list heading)
++- `views/StorylineView.ts` (list view grouping)
++- `views/TimelineView.ts` (swimlane order and tint)
++- `views/PlotgridView.ts` (column tint)
++- `styles.css` (fork section)
++
+ ## 1.12.0-km.8
+ 
+ **Subway map: off page band also behind the line names**
+diff --git a/manifest.json b/manifest.json
+index 2951b03..295a1e6 100644
+--- a/manifest.json
++++ b/manifest.json
+@@ -1,7 +1,7 @@
+ {
+   "id": "storyline-km",
+   "name": "StoryLine",
+-  "version": "1.12.0-km.8",
++  "version": "1.12.0-km.9",
+   "minAppVersion": "1.12.7",
+   "description": "Transform your vault into a powerful book planning and writing tool. Corkboard,KanbanBoard view, timeline, plotlines,character tracking, and more.",
+   "author": "Jan SandstrÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¶m",
+diff --git a/styles.css b/styles.css
+index b81cd0e..f46c899 100644
+--- a/styles.css
++++ b/styles.css
+@@ -14196,3 +14196,24 @@ body.sl-focus-active-global.sl-focus-dim-text .markdown-source-view.mod-cm6 .cm-
+     color: var(--text-faint);
+     white-space: nowrap;
+ }
++
++/* Fork: off page plotlines in the Plotlines list, Timeline swimlanes and Plot Grid */
++.sl-km-zone-list-heading {
++    margin: 16px 0 6px;
++    font-size: var(--font-ui-smaller);
++    font-weight: 700;
++    letter-spacing: 0.08em;
++    color: var(--text-faint);
++}
++
++.sl-km-zone-list-heading.is-off-page ~ .storyline-section {
++    background: color-mix(in srgb, var(--background-modifier-hover) 60%, transparent);
++}
++
++/* Overlay tint: works on top of inline cell colours */
++.swimlane-lane-header.sl-km-off-page,
++.swimlane-lane-cell.sl-km-off-page,
++.plot-grid-col-header.sl-km-off-page,
++.plot-grid-cell.sl-km-off-page {
++    box-shadow: inset 0 0 0 9999px color-mix(in srgb, var(--background-modifier-hover) 60%, transparent);
++}
+diff --git a/utils/pageZones.ts b/utils/pageZones.ts
+index 6f9d28d..3928168 100644
+--- a/utils/pageZones.ts
++++ b/utils/pageZones.ts
+@@ -101,3 +101,8 @@ export function attachZoneMenu(
+         menu.showAtMouseEvent(evt);
+     });
+ }
++
++/** "ON PAGE" / "OFF PAGE" heading between plotline sections (Plotlines list view). */
++export function renderZoneListHeading(parent: HTMLElement, off: boolean): void {
++    parent.createDiv({ cls: `sl-km-zone-list-heading${off ? ' is-off-page' : ''}`, text: off ? 'OFF PAGE' : 'ON PAGE' });
++}
+diff --git a/views/PlotgridView.ts b/views/PlotgridView.ts
+index 2ccff3a..0bfce05 100644
+--- a/views/PlotgridView.ts
++++ b/views/PlotgridView.ts
+@@ -5,6 +5,7 @@ import { CellData, ColumnMeta, RowMeta, PlotGridData } from '../models/PlotGridD
+ import { renderArcPointIcon } from '../components/ArcPointUI';
+ import { getProjectVolumes, VolumeDividerTracker } from '../utils/volumes';
+ import { scopeFilter } from '../utils/volumeScope';
++import { getOffPageLines } from '../utils/pageZones';
+ import { columnTemplate, findEmptyAutoColumns, hiddenColumnsWidth, renderHiddenColumnsHint, updateHiddenColumnsHint } from '../utils/plotgridVolume';
+ import { LocationManager } from '../services/LocationManager';
+ import type { SceneFilter, SortConfig } from '../models/Scene';
+@@ -1091,6 +1092,11 @@ export class PlotgridView extends ItemView {
+             if (filteredPaths.has(row.sourceId)) visibleRows.add(ri);
+         }
+ 
++        // fork: plotline columns marked off page are tinted
++        const kmOffPage = getOffPageLines(this.app, this.plugin?.sceneManager?.activeProject?.filePath);
++        const kmOffPageCols = new Set<number>();
++        this.data.columns.forEach((c, ci) => { if (c.sourceKind === 'tags' && c.sourceId && kmOffPage.has(c.sourceId)) kmOffPageCols.add(ci); });
++
+         // fork: with a volume selected, hide auto columns that are empty in the visible rows
+         const kmScoped = scopedFilter !== this.currentFilter;
+         this.kmHiddenCols = kmScoped && !this.kmShowEmptyCols ? findEmptyAutoColumns(this.data, visibleRows) : new Set();
+@@ -1266,6 +1272,7 @@ export class PlotgridView extends ItemView {
+             const col = this.data.columns[ci];
+             const el = this.canvasEl.createDiv('plot-grid-col-header');
+             if (this.kmHiddenCols.has(ci)) el.addClass('sl-km-col-hidden');
++            if (kmOffPageCols.has(ci)) el.addClass('sl-km-off-page');
+             el.setCssStyles({
+                 position: (this.data.stickyHeaders === false) ? 'relative' : 'sticky',
+                 top: '0',
+@@ -1618,6 +1625,7 @@ export class PlotgridView extends ItemView {
+ 
+                 const cellEl = this.canvasEl.createDiv('plot-grid-cell');
+                 if (this.kmHiddenCols.has(ci)) cellEl.addClass('sl-km-col-hidden');
++                if (kmOffPageCols.has(ci)) cellEl.addClass('sl-km-off-page');
+                 // expose coordinates
+                 cellEl.setAttr('data-row', String(ri));
+                 cellEl.setAttr('data-col', String(ci));
+diff --git a/views/StorylineView.ts b/views/StorylineView.ts
+index a44d45f..f86d4a9 100644
+--- a/views/StorylineView.ts
++++ b/views/StorylineView.ts
+@@ -2,7 +2,7 @@
+ import { ButtonComponent, ItemView, Menu, MenuItem, Modal, Notice, Setting, TFile, TextComponent, WorkspaceLeaf } from 'obsidian';
+ import { aliasRealizedColumns, drawRealizedLinks, removeRealizedStations, resolveRealizations, splitRealizedLanes } from '../utils/arcRealization';
+ import { renderVolumeScopeSelect, scopeFilter } from '../utils/volumeScope';
+-import { attachZoneMenu, drawOffPageBand, getOffPageLines, orderByZone, renderOffPageLabelBand, renderZoneHeader, ZONE_GAP } from '../utils/pageZones';
++import { attachZoneMenu, drawOffPageBand, getOffPageLines, orderByZone, renderOffPageLabelBand, renderZoneHeader, renderZoneListHeading, ZONE_GAP } from '../utils/pageZones';
+ import { drawSubwayVolumeMarker, getProjectVolumes, getVolumeForAct, VolumeDividerTracker } from '../utils/volumes';
+ import * as obsidian from 'obsidian';
+ import { Scene } from '../models/Scene';
+@@ -338,11 +338,15 @@ export class StorylineView extends ItemView {
+             helpSpan.appendText(' delete. Click any scene to assign/remove it from plotlines.');
+         }
+ 
+-        // Render each plotline
+-        for (const plotline of plotlineKeys) {
++        // Render each plotline (fork: on page first, off page below with headings)
++        const listOffPage = getOffPageLines(this.app, this.sceneManager.activeProject?.filePath);
++        const listZoned = orderByZone(plotlineKeys, listOffPage);
++        listZoned.keys.forEach((plotline, i) => {
++            if (listZoned.split >= 0 && i === 0 && listZoned.split > 0) renderZoneListHeading(content, false);
++            if (i === listZoned.split) renderZoneListHeading(content, true);
+             const plotScenes = plotlines.get(plotline) || [];
+             this.renderPlotline(content, plotline, plotScenes, scenes);
+-        }
++        });
+ 
+         // Unassigned scenes
+         const unassigned = scenes.filter(s => !s.tags || s.tags.length === 0);
+diff --git a/views/TimelineView.ts b/views/TimelineView.ts
+index 7ec3c03..68a48d4 100644
+--- a/views/TimelineView.ts
++++ b/views/TimelineView.ts
+@@ -4,6 +4,7 @@ import { enhanceStructureModal } from '../components/StructureModalSections';
+ import { SceneManager } from '../services/SceneManager';
+ import { SceneCardComponent } from '../components/SceneCard';
+ import { getProjectVolumes, VolumeDividerTracker } from '../utils/volumes';
++import { getOffPageLines, orderByZone } from '../utils/pageZones';
+ import { defaultActForScope, placeInFullList, renderVolumeScopeSelect, scopeActs, scopeFilter } from '../utils/volumeScope';
+ import { ArcFilterMode, arcFilterQuery, loadArcFilter, renderArcFilterToggle, renderArcPointBadge, saveArcFilter } from '../components/ArcPointUI';
+ import { InspectorComponent } from '../components/Inspector';
+@@ -659,7 +660,10 @@ export class TimelineView extends ItemView {
+             const keys = this.getSceneLaneKeys(scene);
+             for (const k of keys) laneKeysSet.add(k);
+         }
+-        const laneKeys = Array.from(laneKeysSet).sort();
++        // fork: when grouped by plotline, off page lanes go last and are tinted
++        const laneOffPage = (this.swimlaneGroupBy === 'plotline' || this.swimlaneGroupBy === 'tag')
++            ? getOffPageLines(this.app, this.sceneManager.activeProject?.filePath) : new Set<string>();
++        const laneKeys = orderByZone(Array.from(laneKeysSet).sort(), laneOffPage).keys;
+         if (laneKeys.length === 0) laneKeys.push('(none)');
+ 
+         // 2. Build row definitions — one row per scene in sequence order,
+@@ -703,6 +707,7 @@ export class TimelineView extends ItemView {
+         // Lane headers
+         for (const lane of laneKeys) {
+             const header = grid.createDiv('swimlane-lane-header');
++            if (laneOffPage.has(lane)) header.addClass('sl-km-off-page');
+             header.textContent = lane;
+             header.setAttribute('title', lane);
+         }
+@@ -764,6 +769,7 @@ export class TimelineView extends ItemView {
+             for (let laneIdx = 0; laneIdx < laneKeys.length; laneIdx++) {
+                 const lane = laneKeys[laneIdx];
+                 const cell = grid.createDiv('swimlane-lane-cell');
++                if (laneOffPage.has(lane)) cell.addClass('sl-km-off-page');
+ 
+                 if (sceneKeySet.has(lane)) {
+                     // Multi-value groups (characters / plotlines) render the scene in every matching lane.

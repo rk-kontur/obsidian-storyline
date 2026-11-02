@@ -1,0 +1,285 @@
+diff --git a/CHANGELOG-km.md b/CHANGELOG-km.md
+index 2a2c767..e2cde15 100644
+--- a/CHANGELOG-km.md
++++ b/CHANGELOG-km.md
+@@ -2,6 +2,33 @@
+ 
+ Changes of this fork compared to the original StoryLine plugin by Jan Sandström. Each `## <version>` section is used as the initial text of the matching GitHub release; texts edited on GitHub (e.g. with screenshots) are never overwritten. Every release also carries `storyline-km-source.zip` (all source files that are new or changed compared to the original, without `main.js`) and `storyline-km.patch` (the full diff against the original).
+ 
++## 1.12.0-km.13
++
++**Statistics for off page plotlines**
++
++When at least one plotline is marked off page (Subway map → right-click a line name → Move to off page), the Statistics view reports how far the background developments already reach the text.
++
++- **Overview card "Off page stages told":** realized stages / all stages of all off page lines, e.g. "12 / 30". A stage (Arc Point) counts as told when it is linked to a scene via **Realized** in the Inspector.
++- **New section "Off page coverage"** (below Progress Breakdown): one row per off page line with a progress bar, "x / y realized" and the number of regular scenes on that line. Expanded, it lists the stages **not yet told** and the ones **told in** which scene; every entry opens the note.
++- **Warnings:** act gap warnings ("Plotline X has no scenes in Act 5", "last seen in Act 3") are no longer shown for off page lines; sparse appearance is normal for them. Instead, one note per line lists the stages that are not yet told.
++- Follows the volume selector: with a volume selected, only that volume's stages are counted (the realizing scene may be in any volume).
++- Word counts are unchanged: scenes on off page lines are written text and count as usual; Arc Points follow your existing word count setting.
++
++<!-- screenshot: Statistics overview with the Off page card -->
++<!-- screenshot: Off page coverage section -->
++
++**How and where to use:**
++
++1. Mark plotlines as off page in the **Subway map** (right-click the line name → **Move to off page**).
++2. Link stages to their scenes: Inspector of the Arc Point → **Realized** → pick the scene.
++3. Open **Statistics**: see the **Off page stages told** card, the **Off page coverage** section and the adjusted **Warnings**.
++
++**Files:**
++
++- `components/OffPageStatsSection.ts` (new: coverage, overview value, warning adjustment, section rendering)
++- `views/StatsView.ts` (overview card, section, warnings)
++- `styles.css` (fork section)
++
+ ## 1.12.0-km.12
+ 
+ **Manuscript no longer turns blank with Pane Relief's "Maximize active tab"**
+diff --git a/components/OffPageStatsSection.ts b/components/OffPageStatsSection.ts
+new file mode 100644
+index 0000000..9936eaf
+--- /dev/null
++++ b/components/OffPageStatsSection.ts
+@@ -0,0 +1,124 @@
++// ═══════════════════════════════════════════════════════
++//  Statistics for off page plotlines (fork: storyline-km)
++// ═══════════════════════════════════════════════════════
++//
++// Off page plotlines (offPageLines in the project file) carry stages that
++// happen in the background: character arcs, technology, politics, genre
++// conventions. Their Arc Points are "realized" when they are linked to the
++// scene that tells them (realizedBy). This module reports, per off page
++// line, how many stages already reach the text, and adjusts the Validator
++// warnings: gaps between acts are normal for such lines and are not
++// reported; unrealized stages are listed instead.
++
++import type { App } from 'obsidian';
++import type { Scene } from '../models/Scene';
++import type { PlotWarning } from '../services/Validator';
++import { resolveRealizingScene } from '../utils/arcRealization';
++
++export interface OffPageLineCoverage {
++    line: string;
++    /** Arc Points on this line (within the current scope) */
++    stages: Scene[];
++    realized: { arc: Scene; scene: Scene }[];
++    open: Scene[];
++    /** Regular scenes on this line (an off page line may also hold scenes) */
++    scenes: number;
++}
++
++export function computeOffPageCoverage(
++    app: App,
++    offPageLines: Set<string>,
++    scopedScenes: Scene[],
++    projectScenes: Scene[],
++): OffPageLineCoverage[] {
++    if (offPageLines.size === 0) return [];
++    const targets = projectScenes.filter(s => !s.arcAnchor);
++    return [...offPageLines].sort((a, b) => a.localeCompare(b)).map(line => {
++        const onLine = scopedScenes.filter(s => s.tags?.includes(line));
++        const stages = onLine.filter(s => s.arcAnchor)
++            .sort((a, b) => (Number(a.act) || 0) - (Number(b.act) || 0) || (a.sequence ?? 0) - (b.sequence ?? 0));
++        const realized: { arc: Scene; scene: Scene }[] = [];
++        const open: Scene[] = [];
++        for (const arc of stages) {
++            const scene = resolveRealizingScene(app, arc, targets);
++            if (scene) realized.push({ arc, scene }); else open.push(arc);
++        }
++        return { line, stages, realized, open, scenes: onLine.length - stages.length };
++    });
++}
++
++/** Text for the overview card, e.g. "12 / 30". */
++export function offPageCardValue(coverage: OffPageLineCoverage[]): string {
++    const total = coverage.reduce((n, c) => n + c.stages.length, 0);
++    const done = coverage.reduce((n, c) => n + c.realized.length, 0);
++    return `${done} / ${total}`;
++}
++
++/**
++ * Validator warnings adjusted for off page lines: act gap warnings for these
++ * lines are dropped, unrealized stages are reported per line instead.
++ */
++export function adjustOffPageWarnings(warnings: PlotWarning[], coverage: OffPageLineCoverage[]): PlotWarning[] {
++    if (coverage.length === 0) return warnings;
++    const lines = coverage.map(c => c.line);
++    const kept = warnings.filter(w => !(w.category === 'Plotlines' && lines.some(l => w.message.startsWith(`Plotline "${l}"`))));
++    for (const c of coverage) {
++        if (c.open.length === 0) continue;
++        kept.push({
++            severity: 'info',
++            category: 'Off page',
++            message: `Off page line "${c.line}": ${c.open.length} stage${c.open.length === 1 ? ' is' : 's are'} not yet told in a scene (${c.open.map(s => s.title).join(', ')})`,
++            scenePaths: c.open.map(s => s.filePath),
++        });
++    }
++    return kept;
++}
++
++/** "Off page coverage" section body. */
++export function renderOffPageCoverage(
++    body: HTMLElement,
++    coverage: OffPageLineCoverage[],
++    openScene: (scene: Scene) => void,
++): void {
++    body.createEl('p', {
++        cls: 'stats-hint',
++        text: 'Stages (Arc Points) on off page lines and whether they are already told in a scene (Realized in the Inspector).',
++    });
++    for (const c of coverage) {
++        const block = body.createEl('details', { cls: 'sl-km-offpage-line' });
++        block.open = c.open.length > 0 && c.open.length <= 8;
++        const summary = block.createEl('summary');
++        summary.createSpan({ cls: 'sl-km-offpage-line-name', text: c.line });
++        const total = c.stages.length;
++        const pct = total ? Math.round((c.realized.length / total) * 100) : 0;
++        const bar = summary.createSpan('sl-km-volume-progress');
++        bar.createDiv('sl-km-volume-progress-fill').setCssStyles({ width: `${pct}%` });
++        summary.createSpan({
++            cls: 'sl-km-muted',
++            text: total
++                ? ` ${c.realized.length} / ${total} realized${c.scenes ? ` · ${c.scenes} scene${c.scenes === 1 ? '' : 's'}` : ''}`
++                : ` no stages${c.scenes ? ` · ${c.scenes} scene${c.scenes === 1 ? '' : 's'}` : ''}`,
++        });
++
++        if (c.open.length) {
++            block.createDiv({ cls: 'sl-km-offpage-subhead', text: 'Not yet told' });
++            const ul = block.createEl('ul');
++            for (const arc of c.open) {
++                const a = ul.createEl('li').createEl('a', { text: arc.title || arc.filePath, href: '#' });
++                a.addEventListener('click', e => { e.preventDefault(); openScene(arc); });
++            }
++        }
++        if (c.realized.length) {
++            block.createDiv({ cls: 'sl-km-offpage-subhead', text: 'Told in' });
++            const ul = block.createEl('ul');
++            for (const r of c.realized) {
++                const li = ul.createEl('li');
++                const a = li.createEl('a', { text: r.arc.title || r.arc.filePath, href: '#' });
++                a.addEventListener('click', e => { e.preventDefault(); openScene(r.arc); });
++                li.createSpan({ cls: 'sl-km-muted', text: ' → ' });
++                const b = li.createEl('a', { text: r.scene.title || r.scene.filePath, href: '#' });
++                b.addEventListener('click', e => { e.preventDefault(); openScene(r.scene); });
++            }
++        }
++    }
++}
+diff --git a/manifest.json b/manifest.json
+index 849462a..5d288ed 100644
+--- a/manifest.json
++++ b/manifest.json
+@@ -1,7 +1,7 @@
+ {
+   "id": "storyline-km",
+   "name": "StoryLine",
+-  "version": "1.12.0-km.12",
++  "version": "1.12.0-km.13",
+   "minAppVersion": "1.12.7",
+   "description": "Transform your vault into a powerful book planning and writing tool. Corkboard,KanbanBoard view, timeline, plotlines,character tracking, and more.",
+   "author": "Jan SandstrÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¶m",
+diff --git a/styles.css b/styles.css
+index f46c899..a97be20 100644
+--- a/styles.css
++++ b/styles.css
+@@ -14217,3 +14217,27 @@ body.sl-focus-active-global.sl-focus-dim-text .markdown-source-view.mod-cm6 .cm-
+ .plot-grid-cell.sl-km-off-page {
+     box-shadow: inset 0 0 0 9999px color-mix(in srgb, var(--background-modifier-hover) 60%, transparent);
+ }
++
++/* Fork: Statistics - off page coverage */
++.sl-km-offpage-line {
++    margin: 4px 0;
++}
++
++.sl-km-offpage-line > summary {
++    display: flex;
++    align-items: center;
++    gap: 8px;
++    cursor: pointer;
++}
++
++.sl-km-offpage-line-name {
++    min-width: 120px;
++    font-weight: 600;
++}
++
++.sl-km-offpage-subhead {
++    margin: 6px 0 2px 16px;
++    font-size: var(--font-ui-smaller);
++    font-weight: 600;
++    color: var(--text-muted);
++}
+diff --git a/views/StatsView.ts b/views/StatsView.ts
+index 034a524..aaebad7 100644
+--- a/views/StatsView.ts
++++ b/views/StatsView.ts
+@@ -4,6 +4,8 @@ import { renderVolumeStatsSection } from '../components/VolumeStatsSection';
+ import { getProjectVolumes } from '../utils/volumes';
+ import { openStructureDialog } from '../services/ForkCommands';
+ import { getVolumeScope, inVolumeScope, renderVolumeScopeSelect, scopeFilter } from '../utils/volumeScope';
++import { adjustOffPageWarnings, computeOffPageCoverage, offPageCardValue, renderOffPageCoverage, type OffPageLineCoverage } from '../components/OffPageStatsSection';
++import { getOffPageLines } from '../utils/pageZones';
+ import { getStatsScope, scopedDeadline, scopedWordGoal, statsHeading, validateForScope, withLinkPartners } from '../utils/volumeStatsScope';
+ import { renderViewSwitcher } from '../components/ViewSwitcher';
+ import * as obsidian from 'obsidian';
+@@ -65,6 +67,9 @@ export class StatsView extends ItemView {
+         return 'bar-chart-2';
+     }
+ 
++    /** fork: coverage of off page lines for the current render */
++    private kmOffPage: OffPageLineCoverage[] = [];
++
+     async onOpen(): Promise<void> {
+         this.plugin.storyLeaf = this.leaf;
+         const container = this.containerEl.children[1] as HTMLElement;
+@@ -120,6 +125,9 @@ export class StatsView extends ItemView {
+             : stats.totalWords;
+         // Setup/payoff across volume borders: include linked scenes of other volumes
+         const linkScenes = withLinkPartners(allScenes, projectScenes);
++        // fork: off page lines - coverage of their stages (respects the volume selection)
++        this.kmOffPage = computeOffPageCoverage(this.app, getOffPageLines(this.app, projectPath), allScenes, projectScenes);
++        const openSceneFile = (scene: Scene) => { const f = this.app.vault.getFileByPath(scene.filePath); if (f) void this.app.workspace.getLeaf('tab').openFile(f); };
+ 
+         // Per-volume statistics and goals (fork) — only when `volumes:` is defined
+         renderVolumeStatsSection(content, getProjectVolumes(this.app, projectPath),
+@@ -137,6 +145,9 @@ export class StatsView extends ItemView {
+             this.renderCollapsible(content, 'target', 'Progress Breakdown', true, body =>
+                 this.renderProgressBreakdown(body, stats, allScenes));
+ 
++            if (this.kmOffPage.length) this.renderCollapsible(content, 'cloud', 'Off page coverage', true, body => // fork
++                renderOffPageCoverage(body, this.kmOffPage, openSceneFile));
++
+             this.renderCollapsible(content, 'calendar', 'Writing History', false, body =>
+                 this.renderWritingHistory(body));
+ 
+@@ -192,6 +203,9 @@ export class StatsView extends ItemView {
+         this.renderCollapsible(content, 'list-checks', 'Progress Breakdown', true, body =>
+             this.renderProgressBreakdown(body, stats, allScenes));
+ 
++        if (this.kmOffPage.length) this.renderCollapsible(content, 'cloud', 'Off page coverage', true, body => // fork
++            renderOffPageCoverage(body, this.kmOffPage, openSceneFile));
++
+         // 5. Characters & World (collapsible, default collapsed)
+         this.renderCollapsible(content, 'users', 'Characters & World', false, body =>
+             this.renderCharactersWorld(body, stats, allScenes));
+@@ -393,6 +407,8 @@ export class StatsView extends ItemView {
+         const readM = readMinutes % 60;
+         this.createStatCard(row, 'book-open', 'Read Time',
+             readH > 0 ? `${readH}h ${readM}m` : `${readMinutes}m`);
++        // fork: realized stages of off page lines
++        if (this.kmOffPage.length) this.createStatCard(row, 'cloud', 'Off page stages told', offPageCardValue(this.kmOffPage));
+ 
+         const renderProjectOverview = (section: HTMLElement): void => {
+             // fork: volume goal / sum of volume goals when volumes are defined
+@@ -2247,7 +2263,8 @@ export class StatsView extends ItemView {
+     private renderWarnings(parent: HTMLElement, allScenes: Scene[]): void {
+         if (this.plugin.settings.enablePlotHoleDetection && allScenes.length > 0) {
+             // fork: with a volume selected, validate with cross-volume link partners
+-            const warnings = validateForScope(allScenes, this.sceneManager.getAllScenes().filter(sc => !sc.inactive && !sc.corkboardNote));
++            const warnings = adjustOffPageWarnings( // fork: off page lines - no act gap warnings, unrealized stages instead
++                validateForScope(allScenes, this.sceneManager.getAllScenes().filter(sc => !sc.inactive && !sc.corkboardNote)), this.kmOffPage);
+             if (warnings.length === 0) {
+                 const ok = parent.createDiv('stats-ok');
+                 const ic = ok.createSpan();

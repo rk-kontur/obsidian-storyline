@@ -1,0 +1,243 @@
+diff --git a/CHANGELOG-km.md b/CHANGELOG-km.md
+index 58b370c..af5881e 100644
+--- a/CHANGELOG-km.md
++++ b/CHANGELOG-km.md
+@@ -2,6 +2,38 @@
+ 
+ Changes of this fork compared to the original StoryLine plugin by Jan Sandström. Each `## <version>` section is used as the initial text of the matching GitHub release; texts edited on GitHub (e.g. with screenshots) are never overwritten. Every release also carries `storyline-km-source.zip` (all source files that are new or changed compared to the original, without `main.js`) and `storyline-km.patch` (the full diff against the original).
+ 
++## 1.12.0-km.7
++
++**Subway map: "on page" and "off page" zones**
++
++Some plotlines are not told in scenes but develop in the background: a character arc, technology, politics, the conventions and obligatory scenes of a genre. Such a plotline can now be marked **off page**. The Subway map then shows two zones:
++
++- **ON PAGE** at the top: the plotlines that are told in the written scenes.
++- **OFF PAGE** below, in a lightly tinted band: the background developments.
++
++Details:
++
++- **Explicit choice per plotline**, independent of its content: an off-page line may contain scenes and Arc Points, an on-page line as well. Arc Points work the same in both zones.
++- **Realized Arc Points** connect across the zones: the dashed link runs from the off-page stage up to the scene that tells it. This shows at a glance which background development already reaches the text.
++- Without off-page lines, nothing changes (no band, no headers).
++- Stored in the project file as `offPageLines: [Mark, Politics]`; it can also be edited by hand.
++- The band colour and the headers can be styled with CSS (`.sl-km-offpage-band`, `.sl-km-zone-header`).
++
++<!-- screenshot: Subway map with ON PAGE and OFF PAGE zones -->
++
++**How and where to use:**
++
++1. Open **Plotlines** in **Subway** mode.
++2. **Right-click a plotline name** in the name column on the left → **Move to off page**. The line moves into the tinted OFF PAGE band at the bottom.
++3. To move it back: right-click → **Move to on page**.
++4. Optional: link Arc Points on an off-page line to the scene that tells them (Inspector → **Realized**) to see where the background reaches the text.
++
++**Files:**
++
++- `utils/pageZones.ts` (new: zones, ordering, band, headers, context menu, project file storage)
++- `views/StorylineView.ts` (lane order by zone, zone gap, band, headers, right-click on line names)
++- `styles.css` (fork section: default band tint and header style)
++
+ ## 1.12.0-km.6
+ 
+ **Subway map: volume name in the act labels**
+diff --git a/manifest.json b/manifest.json
+index 67b8556..fcfd3d5 100644
+--- a/manifest.json
++++ b/manifest.json
+@@ -1,7 +1,7 @@
+ {
+   "id": "storyline-km",
+   "name": "StoryLine",
+-  "version": "1.12.0-km.6",
++  "version": "1.12.0-km.7",
+   "minAppVersion": "1.12.7",
+   "description": "Transform your vault into a powerful book planning and writing tool. Corkboard,KanbanBoard view, timeline, plotlines,character tracking, and more.",
+   "author": "Jan SandstrÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¶m",
+diff --git a/styles.css b/styles.css
+index 5b26390..83ffd20 100644
+--- a/styles.css
++++ b/styles.css
+@@ -14171,3 +14171,18 @@ body.sl-focus-active-global.sl-focus-dim-text .markdown-source-view.mod-cm6 .cm-
+     width: 100%;
+     min-width: 0;
+ }
++
++/* Fork: Subway map on page / off page zones */
++.subway-map-wrapper .sl-km-offpage-band {
++    fill: var(--background-modifier-hover);
++    opacity: 0.6;
++}
++
++.sl-km-zone-header {
++    font-family: var(--font-interface);
++    font-size: var(--font-ui-smaller);
++    font-weight: 700;
++    letter-spacing: 0.08em;
++    color: var(--text-faint);
++    white-space: nowrap;
++}
+diff --git a/utils/pageZones.ts b/utils/pageZones.ts
+new file mode 100644
+index 0000000..1a3a448
+--- /dev/null
++++ b/utils/pageZones.ts
+@@ -0,0 +1,97 @@
++// ═══════════════════════════════════════════════════════
++//  On page / off page zones in the Subway map (fork: storyline-km)
++// ═══════════════════════════════════════════════════════
++//
++// A plotline can be marked "off page": a development that happens in the
++// background (a character arc, technology, politics, genre conventions …)
++// rather than in the written scenes. This is an explicit choice per
++// plotline, independent of whether it holds scenes or Arc Points.
++//
++// Stored in the project file frontmatter:
++//
++//   offPageLines: [Mark, Politics]
++//
++// The Subway map shows on-page lines first and the off-page lines below in
++// their own tinted band. Without `offPageLines` nothing changes.
++
++import { Menu, TFile } from 'obsidian';
++import type { App } from 'obsidian';
++
++export const OFF_PAGE_KEY = 'offPageLines';
++
++/** Vertical space added above the off-page band (room for its header). */
++export const ZONE_GAP = 34;
++
++export function getOffPageLines(app: App, projectFilePath: string | undefined | null): Set<string> {
++    if (!projectFilePath) return new Set();
++    const file = app.vault.getAbstractFileByPath(projectFilePath);
++    if (!(file instanceof TFile)) return new Set();
++    const raw: unknown = app.metadataCache.getFileCache(file)?.frontmatter?.[OFF_PAGE_KEY];
++    if (Array.isArray(raw)) return new Set(raw.map(v => String(v).trim()).filter(Boolean));
++    if (typeof raw === 'string' && raw.trim()) return new Set(raw.split(',').map(v => v.trim()).filter(Boolean));
++    return new Set();
++}
++
++export async function setOffPage(app: App, projectFilePath: string | undefined | null, line: string, off: boolean): Promise<void> {
++    if (!projectFilePath) return;
++    const file = app.vault.getAbstractFileByPath(projectFilePath);
++    if (!(file instanceof TFile)) return;
++    await app.fileManager.processFrontMatter(file, (fm: Record<string, unknown>) => {
++        const current = Array.isArray(fm[OFF_PAGE_KEY]) ? (fm[OFF_PAGE_KEY] as unknown[]).map(String) : [];
++        const next = off ? Array.from(new Set([...current, line])) : current.filter(l => l !== line);
++        if (next.length) fm[OFF_PAGE_KEY] = next; else delete fm[OFF_PAGE_KEY];
++    });
++}
++
++/**
++ * On-page lines first, then off-page lines (each group keeps the current
++ * sort order). `split` is the index of the first off-page lane, or -1 if
++ * there is none.
++ */
++export function orderByZone(keys: string[], offPage: Set<string>): { keys: string[]; split: number } {
++    if (offPage.size === 0) return { keys, split: -1 };
++    const on = keys.filter(k => !offPage.has(k));
++    const off = keys.filter(k => offPage.has(k));
++    return { keys: [...on, ...off], split: off.length ? on.length : -1 };
++}
++
++/** Tinted background band behind the off-page lanes (styled via .sl-km-offpage-band). */
++export function drawOffPageBand(svg: SVGSVGElement, doc: Document, y: number, height: number, width: number): void {
++    const rect = doc.createElementNS('http://www.w3.org/2000/svg', 'rect');
++    rect.setAttribute('x', '0');
++    rect.setAttribute('y', String(y));
++    rect.setAttribute('width', String(width));
++    rect.setAttribute('height', String(height));
++    rect.classList.add('sl-km-offpage-band');
++    svg.insertBefore(rect, svg.firstChild);
++}
++
++/** "ON PAGE" / "OFF PAGE" header in the sticky line-name column. */
++export function renderZoneHeader(labelCol: HTMLElement, text: string, top: number, left: number, off: boolean): void {
++    const el = labelCol.createDiv({ cls: `sl-km-zone-header${off ? ' is-off-page' : ''}`, text });
++    el.setCssStyles({ position: 'absolute', top: `${top}px`, left: `${left}px` });
++}
++
++/** Right-click on a line name: move it between the zones. */
++export function attachZoneMenu(
++    el: HTMLElement,
++    app: App,
++    projectFilePath: string | undefined | null,
++    line: string,
++    isOff: boolean,
++    onChanged: () => void,
++): void {
++    el.setCssStyles({ pointerEvents: 'auto' });
++    el.addEventListener('contextmenu', (evt: MouseEvent) => {
++        evt.preventDefault();
++        const menu = new Menu();
++        menu.addItem(item => item
++            .setTitle(isOff ? 'Move to on page' : 'Move to off page')
++            .setIcon(isOff ? 'file-text' : 'cloud')
++            .onClick(async () => {
++                await setOffPage(app, projectFilePath, line, !isOff);
++                window.setTimeout(onChanged, 150);
++            }));
++        menu.showAtMouseEvent(evt);
++    });
++}
+diff --git a/views/StorylineView.ts b/views/StorylineView.ts
+index a75e66d..707170e 100644
+--- a/views/StorylineView.ts
++++ b/views/StorylineView.ts
+@@ -2,6 +2,7 @@
+ import { ButtonComponent, ItemView, Menu, MenuItem, Modal, Notice, Setting, TFile, TextComponent, WorkspaceLeaf } from 'obsidian';
+ import { aliasRealizedColumns, drawRealizedLinks, removeRealizedStations, resolveRealizations, splitRealizedLanes } from '../utils/arcRealization';
+ import { renderVolumeScopeSelect, scopeFilter } from '../utils/volumeScope';
++import { attachZoneMenu, drawOffPageBand, getOffPageLines, orderByZone, renderZoneHeader, ZONE_GAP } from '../utils/pageZones';
+ import { drawSubwayVolumeMarker, getProjectVolumes, getVolumeForAct, VolumeDividerTracker } from '../utils/volumes';
+ import * as obsidian from 'obsidian';
+ import { Scene } from '../models/Scene';
+@@ -398,6 +399,13 @@ export class StorylineView extends ItemView {
+             this.renderListView(content, scenes, plotlines, plotlineKeys);
+             return;
+         }
++        // fork: on page lines first, off page lines below in their own band
++        const projectPath = this.sceneManager.activeProject?.filePath;
++        const offPageLines = getOffPageLines(this.app, projectPath);
++        const zoned = orderByZone(plotlineKeys, offPageLines);
++        plotlineKeys = zoned.keys;
++        const zoneSplit = zoned.split;
++        const zoneGap = zoneSplit >= 0 ? ZONE_GAP : 0;
+ 
+         const tagColors = this.plugin.settings.tagColors || {};
+         const scheme = this.plugin.settings.colorScheme;
+@@ -455,7 +463,7 @@ export class StorylineView extends ItemView {
+ 
+         // ── SVG dimensions ──
+         const svgWidth = TRACK_LEFT + numCols * SCENE_SPACING + 60;
+-        const trackBottom = TOP_MARGIN + numLanes * LANE_HEIGHT;
++        const trackBottom = TOP_MARGIN + numLanes * LANE_HEIGHT + zoneGap;
+         const svgHeight = trackBottom + 30;
+ 
+         const wrapper = content.createDiv('subway-map-wrapper');
+@@ -494,7 +502,16 @@ export class StorylineView extends ItemView {
+ 
+         const colX = (col: number) => TRACK_LEFT + col * SCENE_SPACING + SCENE_SPACING / 2;
+         // Track Y sits in the upper portion of the lane
+-        const laneY = (lane: number) => TOP_MARGIN + lane * LANE_HEIGHT + LANE_TRACK / 2;
++        const laneY = (lane: number) => TOP_MARGIN + lane * LANE_HEIGHT + LANE_TRACK / 2
++            + (zoneSplit >= 0 && lane >= zoneSplit ? zoneGap : 0);
++
++        // fork: tinted off page band + zone headers in the name column
++        if (zoneSplit >= 0) {
++            const bandTop = TOP_MARGIN + zoneSplit * LANE_HEIGHT + 4;
++            drawOffPageBand(svg, activeDocument, bandTop, trackBottom - bandTop + 10, svgWidth);
++            if (zoneSplit > 0) renderZoneHeader(labelCol, 'ON PAGE', TOP_MARGIN - 22, LABEL_LEFT, false);
++            renderZoneHeader(labelCol, 'OFF PAGE', bandTop + 6, LABEL_LEFT, true);
++        }
+ 
+         // ── Build plotline → columns map ──
+         const plotlineCols = new Map<string, number[]>();
+@@ -598,6 +615,7 @@ export class StorylineView extends ItemView {
+                 fontFamily: 'var(--font-interface)',
+             });
+             lblDiv.textContent = this.formatPlotlineName(pk);
++            attachZoneMenu(lblDiv, this.app, projectPath, pk, offPageLines.has(pk), () => this.refresh()); // fork: on / off page
+ 
+             if (cols.length === 0) continue;
+ 

@@ -1,0 +1,99 @@
+diff --git a/CHANGELOG-km.md b/CHANGELOG-km.md
+index a5f6d11..2a2c767 100644
+--- a/CHANGELOG-km.md
++++ b/CHANGELOG-km.md
+@@ -2,6 +2,23 @@
+ 
+ Changes of this fork compared to the original StoryLine plugin by Jan Sandström. Each `## <version>` section is used as the initial text of the matching GitHub release; texts edited on GitHub (e.g. with screenshots) are never overwritten. Every release also carries `storyline-km-source.zip` (all source files that are new or changed compared to the original, without `main.js`) and `storyline-km.patch` (the full diff against the original).
+ 
++## 1.12.0-km.12
++
++**Manuscript no longer turns blank with Pane Relief's "Maximize active tab"**
++
++- With a maximized tab (Pane Relief), switching to the Manuscript from another view showed an empty page. The Manuscript hosts one embedded editor per scene; while they load, Obsidian briefly reports one of them as the active tab, and Pane Relief maximized that hidden editor instead of the Manuscript.
++- The Manuscript now hands the maximized state back to itself when that happens. Without Pane Relief, or without a maximized tab, nothing changes.
++
++**How and where to use:**
++
++1. In Pane Relief, maximize the StoryLine tab ("Maximize active tab").
++2. Switch to the **Manuscript** from any other StoryLine view: the manuscript stays visible.
++
++**Files:**
++
++- `utils/paneReliefCompat.ts` (new: give the maximized state back to the view that owns the embedded editor)
++- `views/ManuscriptView.ts` (+5: run the check on load, on active tab change and on layout change)
++
+ ## 1.12.0-km.11
+ 
+ **Timeline: POV character no longer listed twice on a card**
+diff --git a/manifest.json b/manifest.json
+index dbad7b9..849462a 100644
+--- a/manifest.json
++++ b/manifest.json
+@@ -1,7 +1,7 @@
+ {
+   "id": "storyline-km",
+   "name": "StoryLine",
+-  "version": "1.12.0-km.11",
++  "version": "1.12.0-km.12",
+   "minAppVersion": "1.12.7",
+   "description": "Transform your vault into a powerful book planning and writing tool. Corkboard,KanbanBoard view, timeline, plotlines,character tracking, and more.",
+   "author": "Jan SandstrÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¶m",
+diff --git a/utils/paneReliefCompat.ts b/utils/paneReliefCompat.ts
+new file mode 100644
+index 0000000..45e4338
+--- /dev/null
++++ b/utils/paneReliefCompat.ts
+@@ -0,0 +1,21 @@
++// ═══════════════════════════════════════════════════════
++//  Compatibility with "Maximize active tab" (Pane Relief) (fork: storyline-km)
++// ═══════════════════════════════════════════════════════
++//
++// The Manuscript hosts one embedded Obsidian editor (a workspace leaf) per
++// scene. While those load, Obsidian briefly reports one of them as the
++// active leaf. Pane Relief maximizes whatever leaf becomes active, so it
++// maximizes the embedded editor and hides everything else, including the
++// Manuscript itself: the page turns blank. When that happens, this hands
++// the maximized state back to the view that owns the embedded editor.
++// Without a maximized tab (or without Pane Relief) the check never fires.
++
++import type { App, WorkspaceLeaf } from 'obsidian';
++
++export function reclaimMaximize(app: App, ownLeaf: WorkspaceLeaf, viewContainer: HTMLElement): void {
++    const workspaceEl = (app.workspace as unknown as { containerEl?: HTMLElement }).containerEl;
++    if (!workspaceEl?.classList.contains('should-maximize')) return;
++    // A maximized leaf INSIDE this view = one of our embedded editors
++    if (!viewContainer.querySelector('.workspace-leaf.is-maximized')) return;
++    app.workspace.setActiveLeaf(ownLeaf, { focus: false });
++}
+diff --git a/views/ManuscriptView.ts b/views/ManuscriptView.ts
+index f482c66..f3f7ee0 100644
+--- a/views/ManuscriptView.ts
++++ b/views/ManuscriptView.ts
+@@ -1,6 +1,7 @@
+ /* eslint-disable @typescript-eslint/no-floating-promises, @typescript-eslint/no-misused-promises, @typescript-eslint/no-unnecessary-type-assertion, @typescript-eslint/no-unused-vars -- Obsidian's API surface and several untyped third-party libraries force dynamic dispatch; floating promises are intentional in DOM/event handlers; matching enable at end of file */
+ import { ItemView, WorkspaceLeaf, WorkspaceSplit, MarkdownRenderer, TFile, setIcon, Notice, Menu } from 'obsidian';
+ import { scopeFilter, volumeScopeKey } from '../utils/volumeScope';
++import { reclaimMaximize } from '../utils/paneReliefCompat';
+ import { getProjectVolumes, VolumeDividerTracker } from '../utils/volumes';
+ import { EditorView, Decoration } from '@codemirror/view';
+ import { RangeSetBuilder, StateEffect, Compartment, EditorSelection } from '@codemirror/state';
+@@ -128,6 +129,10 @@ export class ManuscriptView extends ItemView {
+ 
+     async onOpen(): Promise<void> {
+         this.plugin.storyLeaf = this.leaf;
++        // fork: Pane Relief may maximize an embedded scene editor instead of this view
++        const reclaim = () => window.setTimeout(() => reclaimMaximize(this.app, this.leaf, this.containerEl), 0);
++        this.registerEvent(this.app.workspace.on('active-leaf-change', reclaim));
++        this.registerEvent(this.app.workspace.on('layout-change', reclaim));
+         const container = this.containerEl.children[1] as HTMLElement;
+         container.empty();
+         container.addClass('story-line-manuscript-container');
+@@ -576,6 +581,7 @@ export class ManuscriptView extends ItemView {
+             // scroll position and cursor. On a fresh open (no in-memory state)
+             // we fall back to the persisted state on disk.
+             this.restoreStateAfterRender();
++            reclaimMaximize(this.app, this.leaf, this.containerEl); // fork: Pane Relief
+         } finally {
+             if (this._teardownToken === renderToken) {
+                 this._isMounting = false;

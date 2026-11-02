@@ -1,0 +1,110 @@
+diff --git a/CHANGELOG-km.md b/CHANGELOG-km.md
+index eab98e6..58b370c 100644
+--- a/CHANGELOG-km.md
++++ b/CHANGELOG-km.md
+@@ -2,6 +2,25 @@
+ 
+ Changes of this fork compared to the original StoryLine plugin by Jan Sandström. Each `## <version>` section is used as the initial text of the matching GitHub release; texts edited on GitHub (e.g. with screenshots) are never overwritten. Every release also carries `storyline-km-source.zip` (all source files that are new or changed compared to the original, without `main.js`) and `storyline-km.patch` (the full diff against the original).
+ 
++## 1.12.0-km.6
++
++**Subway map: volume name in the act labels**
++
++- The act labels above the Subway map now read **"VOLUME 1 ACT 1"**, "VOLUME 1 ACT 2" … for acts that belong to a volume. The separate volume title at the top left of each volume is gone; the solid volume divider line stays.
++- Acts without a volume keep their plain label ("ACT 9").
++
++<!-- screenshot: Subway map act labels with volume names -->
++
++**How and where to use:**
++
++1. Define volumes (Manage story structure → Volumes).
++2. Open **Plotlines** in **Subway** mode: each act label carries its volume name.
++
++**Files:**
++
++- `views/StorylineView.ts` (act label with volume name)
++- `utils/volumes.ts` (+1: volume marker without separate title)
++
+ ## 1.12.0-km.5
+ 
+ **Filter bar: "Type" and "State" labels, no more cut-off buttons**
+diff --git a/CLAUDE.md b/CLAUDE.md
+index e96890f..96750e4 100644
+--- a/CLAUDE.md
++++ b/CLAUDE.md
+@@ -25,6 +25,7 @@ Fork of PixeroJan/obsidian-storyline (MIT). Obsidian plugin in TypeScript, built
+ - Without pushing a tag: start `release-km.yml` manually (workflow_dispatch) on the branch with the desired version. The workflow creates tag and release itself. This is how Claude releases from cloud sessions, which cannot push tags.
+ - **Every release needs a `## <version>` section in `CHANGELOG-km.md`, in English** (write it before releasing): what is new, a **How and where to use:** part with step-by-step instructions (which view or dialog, which control), and a **Files:** list of all new and changed source files. The workflow uses the section as release text for the current version only, and never overwrites a release text that was edited on GitHub (the owner adds screenshots there). It attaches `storyline-km-source.zip` and `storyline-km.patch` (diff against `main`). `CHANGELOG.md` belongs to upstream and is not touched.
+ - Each release also gets compare links (all changes vs. the original, and changes since the previous fork release) and `changes-since-<previous>.patch`.
++- **Cosmetic plugin changes need an explicit GO from the owner.** Look/size tweaks go into the owner's Style Settings snippet, not into the plugin. If CSS cannot do it, ask first; never change plugin code for cosmetics on your own. Bundle approved plugin changes instead of many small commits.
+ - **Release only when the owner asks for it.** Collect fixes on `km/base` in between; BRAT only updates when the version number increases.
+ - Test via BRAT with `rk-kontur/obsidian-storyline`.
+ 
+diff --git a/manifest.json b/manifest.json
+index 23c0a40..67b8556 100644
+--- a/manifest.json
++++ b/manifest.json
+@@ -1,7 +1,7 @@
+ {
+   "id": "storyline-km",
+   "name": "StoryLine",
+-  "version": "1.12.0-km.5",
++  "version": "1.12.0-km.6",
+   "minAppVersion": "1.12.7",
+   "description": "Transform your vault into a powerful book planning and writing tool. Corkboard,KanbanBoard view, timeline, plotlines,character tracking, and more.",
+   "author": "Jan SandstrÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¶m",
+diff --git a/utils/volumes.ts b/utils/volumes.ts
+index 84bc478..7581bfa 100644
+--- a/utils/volumes.ts
++++ b/utils/volumes.ts
+@@ -161,6 +161,7 @@ export function drawSubwayVolumeMarker(
+         line.setAttribute('stroke-width', '4');
+         svg.appendChild(line);
+     }
++    if (!opts.title) return; // no separate title (e.g. shown in the act labels instead)
+     const label = doc.createElementNS(svgNS, 'text');
+     label.setAttribute('x', String(opts.labelX));
+     label.setAttribute('y', String(opts.labelY));
+diff --git a/views/StorylineView.ts b/views/StorylineView.ts
+index 79d7935..a75e66d 100644
+--- a/views/StorylineView.ts
++++ b/views/StorylineView.ts
+@@ -2,7 +2,7 @@
+ import { ButtonComponent, ItemView, Menu, MenuItem, Modal, Notice, Setting, TFile, TextComponent, WorkspaceLeaf } from 'obsidian';
+ import { aliasRealizedColumns, drawRealizedLinks, removeRealizedStations, resolveRealizations, splitRealizedLanes } from '../utils/arcRealization';
+ import { renderVolumeScopeSelect, scopeFilter } from '../utils/volumeScope';
+-import { drawSubwayVolumeMarker, getProjectVolumes, VolumeDividerTracker } from '../utils/volumes';
++import { drawSubwayVolumeMarker, getProjectVolumes, getVolumeForAct, VolumeDividerTracker } from '../utils/volumes';
+ import * as obsidian from 'obsidian';
+ import { Scene } from '../models/Scene';
+ import { SceneManager } from '../services/SceneManager';
+@@ -526,7 +526,8 @@ export class StorylineView extends ItemView {
+             acts.get(act)!.push(col);
+         });
+ 
+-        const volumeTracker = new VolumeDividerTracker(getProjectVolumes(this.app, this.sceneManager.activeProject?.filePath));
++        const subwayVolumes = getProjectVolumes(this.app, this.sceneManager.activeProject?.filePath);
++        const volumeTracker = new VolumeDividerTracker(subwayVolumes);
+         const actEntries = [...acts.entries()].sort((a, b) => a[0] - b[0]);
+         for (let ai = 0; ai < actEntries.length; ai++) {
+             const [actNum, cols] = actEntries[ai];
+@@ -542,7 +543,7 @@ export class StorylineView extends ItemView {
+                     labelY: TOP_MARGIN - 40,
+                     y1: TOP_MARGIN - 50,
+                     y2: trackBottom,
+-                    title: startedVolume.title,
++                    title: '', // volume name goes into the act label (below)
+                     drawLine: ai > 0,
+                 });
+             }
+@@ -556,7 +557,9 @@ export class StorylineView extends ItemView {
+             actLabel.setAttribute('font-size', '16');
+             actLabel.setAttribute('font-weight', '700');
+             actLabel.setAttribute('fill', 'var(--text-muted)');
+-            actLabel.textContent = getActDisplayLabel(actNum).toUpperCase();
++            // fork: "VOLUME 1 ACT 1" when the act belongs to a volume
++            const actVolume = getVolumeForAct(subwayVolumes, actNum);
++            actLabel.textContent = `${actVolume ? actVolume.title + ' ' : ''}${getActDisplayLabel(actNum)}`.toUpperCase();
+             svg.appendChild(actLabel);
+ 
+             // Vertical divider line before this act group (clear, visible)

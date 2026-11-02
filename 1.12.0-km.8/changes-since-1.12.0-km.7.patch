@@ -1,0 +1,115 @@
+diff --git a/CHANGELOG-km.md b/CHANGELOG-km.md
+index af5881e..bd35450 100644
+--- a/CHANGELOG-km.md
++++ b/CHANGELOG-km.md
+@@ -2,6 +2,26 @@
+ 
+ Changes of this fork compared to the original StoryLine plugin by Jan Sandström. Each `## <version>` section is used as the initial text of the matching GitHub release; texts edited on GitHub (e.g. with screenshots) are never overwritten. Every release also carries `storyline-km-source.zip` (all source files that are new or changed compared to the original, without `main.js`) and `storyline-km.patch` (the full diff against the original).
+ 
++## 1.12.0-km.8
++
++**Subway map: off page band also behind the line names**
++
++- The tinted OFF PAGE band now continues behind the line names in the name column on the left, so the zone reads as one band across the whole width.
++- More space above the off page lines; the OFF PAGE header sits with some air above the first line name.
++
++<!-- screenshot: Subway map with tinted name column in the off page zone -->
++
++**How and where to use:**
++
++1. Open **Plotlines** in **Subway** mode with at least one line moved to off page (right-click a line name → **Move to off page**).
++2. The tint covers the line names and the map.
++
++**Files:**
++
++- `utils/pageZones.ts` (band in the name column, larger zone gap)
++- `views/StorylineView.ts` (+1)
++- `styles.css` (fork section: name column band)
++
+ ## 1.12.0-km.7
+ 
+ **Subway map: "on page" and "off page" zones**
+diff --git a/manifest.json b/manifest.json
+index fcfd3d5..2951b03 100644
+--- a/manifest.json
++++ b/manifest.json
+@@ -1,7 +1,7 @@
+ {
+   "id": "storyline-km",
+   "name": "StoryLine",
+-  "version": "1.12.0-km.7",
++  "version": "1.12.0-km.8",
+   "minAppVersion": "1.12.7",
+   "description": "Transform your vault into a powerful book planning and writing tool. Corkboard,KanbanBoard view, timeline, plotlines,character tracking, and more.",
+   "author": "Jan SandstrÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¶m",
+diff --git a/styles.css b/styles.css
+index 83ffd20..b81cd0e 100644
+--- a/styles.css
++++ b/styles.css
+@@ -14178,6 +14178,16 @@ body.sl-focus-active-global.sl-focus-dim-text .markdown-source-view.mod-cm6 .cm-
+     opacity: 0.6;
+ }
+ 
++.subway-label-col .sl-km-offpage-band-label {
++    z-index: -1;
++    background: var(--background-modifier-hover);
++    opacity: 0.6;
++}
++
++.subway-label-col {
++    isolation: isolate;
++}
++
+ .sl-km-zone-header {
+     font-family: var(--font-interface);
+     font-size: var(--font-ui-smaller);
+diff --git a/utils/pageZones.ts b/utils/pageZones.ts
+index 1a3a448..6f9d28d 100644
+--- a/utils/pageZones.ts
++++ b/utils/pageZones.ts
+@@ -20,7 +20,7 @@ import type { App } from 'obsidian';
+ export const OFF_PAGE_KEY = 'offPageLines';
+ 
+ /** Vertical space added above the off-page band (room for its header). */
+-export const ZONE_GAP = 34;
++export const ZONE_GAP = 44;
+ 
+ export function getOffPageLines(app: App, projectFilePath: string | undefined | null): Set<string> {
+     if (!projectFilePath) return new Set();
+@@ -66,6 +66,12 @@ export function drawOffPageBand(svg: SVGSVGElement, doc: Document, y: number, he
+     svg.insertBefore(rect, svg.firstChild);
+ }
+ 
++/** Same tint behind the line names in the sticky name column. */
++export function renderOffPageLabelBand(labelCol: HTMLElement, top: number, height: number): void {
++    const band = labelCol.createDiv('sl-km-offpage-band-label');
++    band.setCssStyles({ position: 'absolute', left: '0', right: '0', top: `${top}px`, height: `${height}px` });
++}
++
+ /** "ON PAGE" / "OFF PAGE" header in the sticky line-name column. */
+ export function renderZoneHeader(labelCol: HTMLElement, text: string, top: number, left: number, off: boolean): void {
+     const el = labelCol.createDiv({ cls: `sl-km-zone-header${off ? ' is-off-page' : ''}`, text });
+diff --git a/views/StorylineView.ts b/views/StorylineView.ts
+index 707170e..a44d45f 100644
+--- a/views/StorylineView.ts
++++ b/views/StorylineView.ts
+@@ -2,7 +2,7 @@
+ import { ButtonComponent, ItemView, Menu, MenuItem, Modal, Notice, Setting, TFile, TextComponent, WorkspaceLeaf } from 'obsidian';
+ import { aliasRealizedColumns, drawRealizedLinks, removeRealizedStations, resolveRealizations, splitRealizedLanes } from '../utils/arcRealization';
+ import { renderVolumeScopeSelect, scopeFilter } from '../utils/volumeScope';
+-import { attachZoneMenu, drawOffPageBand, getOffPageLines, orderByZone, renderZoneHeader, ZONE_GAP } from '../utils/pageZones';
++import { attachZoneMenu, drawOffPageBand, getOffPageLines, orderByZone, renderOffPageLabelBand, renderZoneHeader, ZONE_GAP } from '../utils/pageZones';
+ import { drawSubwayVolumeMarker, getProjectVolumes, getVolumeForAct, VolumeDividerTracker } from '../utils/volumes';
+ import * as obsidian from 'obsidian';
+ import { Scene } from '../models/Scene';
+@@ -509,8 +509,9 @@ export class StorylineView extends ItemView {
+         if (zoneSplit >= 0) {
+             const bandTop = TOP_MARGIN + zoneSplit * LANE_HEIGHT + 4;
+             drawOffPageBand(svg, activeDocument, bandTop, trackBottom - bandTop + 10, svgWidth);
++            renderOffPageLabelBand(labelCol, bandTop, trackBottom - bandTop + 10);
+             if (zoneSplit > 0) renderZoneHeader(labelCol, 'ON PAGE', TOP_MARGIN - 22, LABEL_LEFT, false);
+-            renderZoneHeader(labelCol, 'OFF PAGE', bandTop + 6, LABEL_LEFT, true);
++            renderZoneHeader(labelCol, 'OFF PAGE', bandTop + 10, LABEL_LEFT, true);
+         }
+ 
+         // ── Build plotline → columns map ──

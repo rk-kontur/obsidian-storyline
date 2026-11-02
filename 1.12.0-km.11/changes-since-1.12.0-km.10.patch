@@ -1,0 +1,68 @@
+diff --git a/CHANGELOG-km.md b/CHANGELOG-km.md
+index f8d329c..a5f6d11 100644
+--- a/CHANGELOG-km.md
++++ b/CHANGELOG-km.md
+@@ -2,6 +2,22 @@
+ 
+ Changes of this fork compared to the original StoryLine plugin by Jan Sandström. Each `## <version>` section is used as the initial text of the matching GitHub release; texts edited on GitHub (e.g. with screenshots) are never overwritten. Every release also carries `storyline-km-source.zip` (all source files that are new or changed compared to the original, without `main.js`) and `storyline-km.patch` (the full diff against the original).
+ 
++## 1.12.0-km.11
++
++**Timeline: POV character no longer listed twice on a card**
++
++- A Timeline card showed the POV character twice when it was also entered under Characters: once as "POV: Yasemin" and again in the character list below. The list now leaves out the POV character, as the Board cards already do. `Yasemin` and `[[Yasemin]]` count as the same character.
++
++<!-- screenshot: Timeline card with POV and characters -->
++
++**How and where to use:**
++
++1. Open the **Timeline** (linear mode). A scene with POV Yasemin and Characters Yasemin, Mark shows "POV: Yasemin" and below only "Mark".
++
++**Files:**
++
++- `views/TimelineView.ts` (character list without the POV character)
++
+ ## 1.12.0-km.10
+ 
+ **The POV character counts as a character of the scene everywhere**
+diff --git a/manifest.json b/manifest.json
+index e4f5dda..dbad7b9 100644
+--- a/manifest.json
++++ b/manifest.json
+@@ -1,7 +1,7 @@
+ {
+   "id": "storyline-km",
+   "name": "StoryLine",
+-  "version": "1.12.0-km.10",
++  "version": "1.12.0-km.11",
+   "minAppVersion": "1.12.7",
+   "description": "Transform your vault into a powerful book planning and writing tool. Corkboard,KanbanBoard view, timeline, plotlines,character tracking, and more.",
+   "author": "Jan SandstrÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¶m",
+diff --git a/views/TimelineView.ts b/views/TimelineView.ts
+index aa62969..141f8a8 100644
+--- a/views/TimelineView.ts
++++ b/views/TimelineView.ts
+@@ -5,7 +5,7 @@ import { SceneManager } from '../services/SceneManager';
+ import { SceneCardComponent } from '../components/SceneCard';
+ import { getProjectVolumes, VolumeDividerTracker } from '../utils/volumes';
+ import { getOffPageLines, orderByZone } from '../utils/pageZones';
+-import { sceneCharacterNames } from '../utils/sceneCharacters';
++import { characterKey, sceneCharacterNames } from '../utils/sceneCharacters';
+ import { defaultActForScope, placeInFullList, renderVolumeScopeSelect, scopeActs, scopeFilter } from '../utils/volumeScope';
+ import { ArcFilterMode, arcFilterQuery, loadArcFilter, renderArcFilterToggle, renderArcPointBadge, saveArcFilter } from '../components/ArcPointUI';
+ import { InspectorComponent } from '../components/Inspector';
+@@ -1079,10 +1079,11 @@ export class TimelineView extends ItemView {
+             });
+         }
+ 
+-        // Characters
+-        if (scene.characters?.length) {
++        // Characters (fork: without the POV character, it is already shown as "POV: …")
++        const timelineChars = (scene.characters ?? []).filter(c => !scene.pov || characterKey(c) !== characterKey(scene.pov));
++        if (timelineChars.length) {
+             const chars = card.createDiv('timeline-card-chars');
+-            scene.characters.forEach(c => {
++            timelineChars.forEach(c => {
+                 chars.createSpan({ cls: 'timeline-char-tag', text: c });
+             });
+         }

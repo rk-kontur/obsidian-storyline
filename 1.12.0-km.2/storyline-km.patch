@@ -1,0 +1,2791 @@
+diff --git a/.github/scripts/km-release-notes.js b/.github/scripts/km-release-notes.js
+new file mode 100644
+index 0000000..51e1b49
+--- /dev/null
++++ b/.github/scripts/km-release-notes.js
+@@ -0,0 +1,17 @@
++// Splits CHANGELOG-km.md into one notes file per version:
++//   node .github/scripts/km-release-notes.js <outDir>
++// Every "## <x.y.z-km.N>" section becomes <outDir>/<version>.md
++const fs = require('fs');
++const path = require('path');
++
++const outDir = process.argv[2] || 'notes';
++fs.mkdirSync(outDir, { recursive: true });
++if (!fs.existsSync('CHANGELOG-km.md')) process.exit(0);
++
++const parts = fs.readFileSync('CHANGELOG-km.md', 'utf8').split(/^## /m).slice(1);
++for (const part of parts) {
++    const nl = part.indexOf('\n');
++    const version = part.slice(0, nl).trim();
++    if (!/^\d+\.\d+\.\d+-km\.\d+$/.test(version)) continue;
++    fs.writeFileSync(path.join(outDir, `${version}.md`), part.slice(nl + 1).trim() + '\n');
++}
+diff --git a/.github/workflows/release-km.yml b/.github/workflows/release-km.yml
+new file mode 100644
+index 0000000..4b86298
+--- /dev/null
++++ b/.github/workflows/release-km.yml
+@@ -0,0 +1,95 @@
++name: Release km
++
++# Builds the plugin and publishes a GitHub release for BRAT
++# when a tag of the form 1.2.3-km.N is pushed.
++# The tag must match "version" in manifest.json.
++#
++# Can also be started manually (workflow_dispatch): the version is taken
++# from manifest.json and the tag is created on the selected branch.
++
++on:
++  push:
++    tags:
++      - "*-km.*"
++  workflow_dispatch:
++
++permissions:
++  contents: write
++
++jobs:
++  release:
++    runs-on: ubuntu-latest
++    steps:
++      - uses: actions/checkout@v5
++        with:
++          fetch-depth: 0
++
++      - uses: actions/setup-node@v5
++        with:
++          node-version: 20.19.1
++          cache: npm
++
++      - name: Resolve version
++        id: v
++        run: |
++          V=$(node -p "require('./manifest.json').version")
++          if [ "${GITHUB_EVENT_NAME}" = "push" ] && [ "$V" != "${GITHUB_REF_NAME}" ]; then
++            echo "Tag ${GITHUB_REF_NAME} does not match manifest.json ($V)"
++            exit 1
++          fi
++          case "$V" in
++            *-km.*) ;;
++            *) echo "Version $V has no -km.N suffix"; exit 1 ;;
++          esac
++          echo "version=$V" >> "$GITHUB_OUTPUT"
++
++      - run: npm ci
++      - run: npm run build
++
++      - name: Publish release assets
++        env:
++          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
++          V: ${{ steps.v.outputs.version }}
++        run: |
++          if ! gh release view "$V" >/dev/null 2>&1; then
++            gh release create "$V" \
++              --target "${GITHUB_SHA}" \
++              --title "$V" \
++              --notes "Fork build of StoryLine (id storyline-km) for BRAT testing."
++          fi
++          gh release upload "$V" main.js manifest.json styles.css --clobber
++
++      - name: Source bundle (changes compared to upstream)
++        run: |
++          # All source files the fork adds or changes compared to main (= upstream),
++          # without build output, plus a patch with the full diff.
++          git fetch --no-tags origin main:refs/remotes/origin/main
++          EXCL=(':(exclude)main.js' ':(exclude)package-lock.json')
++          git diff --name-only --diff-filter=AMR origin/main...HEAD -- . "${EXCL[@]}" > changed-files.txt
++          cat changed-files.txt
++          zip -q storyline-km-source.zip -@ < changed-files.txt
++          zip -q storyline-km-source.zip changed-files.txt
++          git diff origin/main...HEAD -- . "${EXCL[@]}" > storyline-km.patch
++
++      - name: Release notes and attachments
++        env:
++          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
++          V: ${{ steps.v.outputs.version }}
++        run: |
++          node .github/scripts/km-release-notes.js notes
++          gh release upload "$V" storyline-km-source.zip storyline-km.patch --clobber
++          # Release text comes from the matching CHANGELOG-km.md section, but ONLY for the
++          # current version, and never when the text was edited by hand on GitHub
++          # (screenshots, images, extra notes). Older releases are never touched.
++          f="notes/$V.md"
++          [ -e "$f" ] || { echo "No changelog section for $V"; exit 0; }
++          current=$(gh release view "$V" --json body -q .body)
++          placeholder="Fork build of StoryLine (id storyline-km) for BRAT testing."
++          if [ -z "$current" ] || [ "$current" = "$placeholder" ] || [ "$current" = "$(cat "$f")" ]; then
++            gh release edit "$V" --notes-file "$f"
++            echo "Notes set: $V"
++          elif printf '%s' "$current" | grep -q -E '!\[|<img|user-attachments'; then
++            echo "Notes of $V contain images edited on GitHub - left untouched"
++          else
++            echo "Notes of $V were edited on GitHub - left untouched"
++          fi
+diff --git a/CHANGELOG-km.md b/CHANGELOG-km.md
+new file mode 100644
+index 0000000..d7e0aed
+--- /dev/null
++++ b/CHANGELOG-km.md
+@@ -0,0 +1,368 @@
++# Changelog: fork storyline-km
++
++Changes of this fork compared to the original StoryLine plugin by Jan Sandström. Each `## <version>` section is used as the initial text of the matching GitHub release; texts edited on GitHub (e.g. with screenshots) are never overwritten. Every release also carries `storyline-km-source.zip` (all source files that are new or changed compared to the original, without `main.js`) and `storyline-km.patch` (the full diff against the original).
++
++## 1.12.0-km.2
++
++**"Manage story structure": collapsible sections like the plugin settings, wider dialog**
++
++- The tabs are replaced by collapsible sections with the same look as the plugin settings: **Volumes**, **Acts**, **Chapters**, **Templates**. Several sections can be open at the same time; which ones are open is remembered.
++- **Templates** contains beat sheet templates, saved custom beat sheets and the custom structure builder as nested collapsible blocks.
++- The dialog is wider (up to 960 px) and no longer shows a horizontal scrollbar.
++- Fix: "Apply custom structure" / "Save as beat sheet" were shown below every tab; they now sit inside the custom structure builder where they belong. **Done** stays at the bottom of the dialog.
++- The command **Manage volumes** opens the dialog with the Volumes section expanded.
++
++<!-- screenshot: dialog with collapsible sections -->
++
++**How and where to use:**
++
++1. Open the dialog: Board or Timeline toolbar → structure button (columns icon), or Command palette → **StoryLine: Manage story structure** / **StoryLine: Manage volumes**.
++2. Click a section title (▸ Volumes, ▸ Acts, ▸ Chapters, ▸ Templates) to expand or collapse it.
++3. Close with **Done**.
++
++**Files:**
++
++- `components/StructureModalSections.ts` (renamed from `StructureModalTabs.ts`, sections instead of tabs)
++- `services/ForkCommands.ts` (open a given section)
++- `views/BoardView.ts`, `views/TimelineView.ts` (hook renamed)
++- `styles.css` (fork section: dialog width, no horizontal scrollbar)
++
++## 1.12.0-km.1
++
++**Volumes in every view, one shared volume selector**
++
++This release completes the volume feature (series with several volumes in one project). A volume is a named group of acts, defined in the **Volumes** tab of **Manage story structure** (see 1.11.8-km.12). This release adds a **shared volume selector** that works across all views and shows volume boundaries everywhere.
++
++Nothing changes for projects without volumes: the selector, badges and dividers only appear once at least one volume is defined.
++
++### 1. Shared volume selector ("All volumes / Volume 1 / …")
++
++- A dropdown in the toolbar of **Board (Kanban and Corkboard)**, **Plot Grid**, **Timeline**, **Plotlines (Subway)**, **Manuscript** and the **Navigator** sidebar.
++- It is **one setting for all views**: choose "Volume 2" in the Board, and Timeline, Subway, Plot Grid, Manuscript and Navigator show Volume 2 as well. Every open StoryLine view refreshes immediately.
++- **All volumes** shows the whole project as before.
++- Remembered per vault.
++- Works together with all existing filters: the volume restricts the acts, the other filters (status, POV, tags, Arc Points …) still apply. If an act filter is active, only its acts inside the selected volume remain.
++- Not affected on purpose: **Statistics** (always shows the per-volume table) and **Export** (has its own "Volume" choice).
++
++<!-- screenshot: toolbar with the volume dropdown -->
++
++### 2. Volume boundaries in each view
++
++| View | What you see |
++|---|---|
++| **Board · Kanban** (grouped by act) | A narrow vertical band with the volume title between the act columns where a new volume starts. |
++| **Board · Kanban and Corkboard** | Every scene card shows a small badge such as **V2** at the right of the card header (hover: full volume title). |
++| **Plot Grid** | A full-width volume band above the first act divider of each volume. |
++| **Timeline** (linear and swimlanes) | A volume band above the first act divider of each volume. |
++| **Plotlines · Subway** | A solid line with the volume title (instead of the dashed act divider) where a volume starts. |
++| **Manuscript** | A volume heading above the first act divider of each volume. |
++| **Navigator** (grouped by act) | A volume heading above the first act of each volume. |
++
++<!-- screenshot: Kanban with volume band and V-badges -->
++<!-- screenshot: Corkboard cards with V-badges -->
++<!-- screenshot: Manuscript with volume heading -->
++<!-- screenshot: Navigator with volume headings -->
++
++### 3. Overview: all volume features so far
++
++- **Define volumes:** Manage story structure → **Volumes** tab (title, acts from–to, word goal, deadline). Command: **Manage volumes**. (1.11.8-km.12)
++- **Select a volume for all views:** volume dropdown in any toolbar. (this release)
++- **Volume chips in the filter panel** of Board, Manuscript, Plot Grid: select the acts of one or more volumes. (1.11.8-km.5)
++- **Statistics → Volumes:** scenes, words, goal, progress, deadline, words per day, and **open setups at the end of each volume**. (1.11.8-km.5, km.6)
++- **Export:** "Volume" choice for Manuscript and Outline. (1.11.8-km.5)
++
++**How and where to use:**
++
++1. Define volumes once: Command palette → **StoryLine: Manage volumes** (or the structure button in Board / Timeline → **Volumes** tab) → **+ Add volume**.
++2. Open any StoryLine view. In its toolbar you now find the volume dropdown:
++   - **Board:** left of the Corkboard / Kanban switch.
++   - **Plot Grid:** at the start of the toolbar.
++   - **Timeline:** left of the All / Scenes / Arc Points buttons.
++   - **Plotlines (Subway):** left of the All / Scenes / Arc Points buttons.
++   - **Manuscript:** below the filter bar.
++   - **Navigator:** between the search field and the sort button.
++3. Choose a volume. All open views switch to it. Choose **All volumes** to see everything again.
++4. Kanban shows the volume bands only when **Group by** is set to **Act**. The V-badges on cards are always shown when volumes exist.
++
++**Files:**
++
++- `utils/volumeScope.ts` (new: shared scope, dropdown, card badge)
++- `utils/volumes.ts` (Kanban column band, act from column key)
++- `components/SceneCard.ts` (+2, volume badge)
++- `views/BoardView.ts` (dropdown, scope for Kanban and Corkboard, column bands)
++- `views/PlotgridView.ts` (dropdown, scope)
++- `views/TimelineView.ts` (dropdown, scope)
++- `views/StorylineView.ts` (dropdown, scope)
++- `views/ManuscriptView.ts` (dropdown, scope, volume headings)
++- `views/NavigatorView.ts` (dropdown, scope, volume headings)
++- `styles.css` (fork section)
++- `.github/workflows/release-km.yml` (release texts edited on GitHub are never overwritten)
++
++## 1.11.8-km.12
++
++**Volumes editor, tabbed "Manage story structure" dialog, new commands**
++
++- **Volumes editor:** No more hand-editing YAML. Each volume is one row: title, from act, to act, word goal, deadline (date picker), remove. **+ Add volume** proposes the next free acts with the size of the previous volume. Acts assigned to two volumes are marked red; acts without a volume are listed. Changes are saved automatically to the `volumes:` block of the project file.
++- **"Manage story structure" as tabs:** The dialog is split into **Volumes | Acts | Chapters | Templates**. Templates holds beat sheet templates, saved custom beat sheets and the custom structure builder as collapsible blocks. The last used tab is remembered. If a future upstream version changes the dialog, it simply falls back to its original layout.
++- **New commands** (assign a hotkey in Settings → Hotkeys): **Manage story structure** and **Manage volumes** (opens the dialog on the Volumes tab). Both work from anywhere; if neither Board nor Timeline is open, the Board is opened first.
++- **Statistics:** the Volumes section has an **Edit volumes** button.
++
++**How and where to use:**
++
++1. Open the dialog in one of these ways:
++   - Board or Timeline toolbar → structure button (columns icon), or
++   - Command palette (`Ctrl/Cmd + P`) → **StoryLine: Manage story structure** / **StoryLine: Manage volumes**, or
++   - Statistics → Volumes → **Edit volumes**.
++2. Go to the **Volumes** tab, click **+ Add volume**, adjust title, acts, goal and deadline.
++3. Close with **Done**. The volume dividers, filter chips, statistics and export options use the new volumes right away.
++4. Hotkey: Settings → Hotkeys → search "Manage story structure" → set a key combination.
++
++**Files:**
++
++- `components/VolumesEditor.ts` (new)
++- `components/StructureModalTabs.ts` (new)
++- `services/ForkCommands.ts` (new)
++- `views/BoardView.ts` (+3, tab hook)
++- `views/TimelineView.ts` (+3, tab hook)
++- `main.ts` (+2, registers the commands)
++- `components/VolumeStatsSection.ts` (Edit volumes button)
++- `views/StatsView.ts` (+2)
++- `styles.css` (fork section)
++
++## 1.11.8-km.11
++
++**Subway map: dashed realized link blends colours**
++
++- The dashed link between a realized Arc Point and its scene now blends from the Arc Point's plotline colour to the scene's plotline colour, like the solid connectors between plotlines.
++- Opacity 65 %.
++
++**How and where to use:**
++
++1. Link an Arc Point to a scene via **Realized** in the Inspector (next to **Arc point**).
++2. Open **Plotlines** in **Subway** mode: the dashed link runs in a colour gradient between both lines.
++
++**Files:**
++
++- `utils/arcRealization.ts` (gradient, opacity)
++
++## 1.11.8-km.10
++
++**Inspector: "Realized" sits in the Arc point row**
++
++- The link control is now on the same line as the **Arc point** checkbox: `☑ Arc point   Realized [not yet ▾]`. No separate row any more.
++- The dropdown shows **not yet** as long as no scene is linked.
++
++**How and where to use:**
++
++1. Click the Arc Point scene in Board or Timeline (or use **Open Scene Details Sidebar**) to open the Inspector.
++2. Tick **Arc point**. Next to it, **Realized** and the dropdown appear.
++3. Pick the scene that tells this stage. Pick **not yet** to remove the link.
++
++**Files:**
++
++- `components/RealizedByControl.ts` (label, placement)
++- `components/Inspector.ts` (renders into the Arc point row)
++- `styles.css` (fork section)
++
++## 1.11.8-km.9
++
++**Subway map: finer dashed link for realized Arc Points**
++
++- The dashed link between a realized Arc Point and its scene has shorter gaps (12/4 instead of 12/8) and lower opacity (55 % instead of 75 %).
++
++**How and where to use:**
++
++1. Open **Plotlines** in **Subway** mode with at least one Arc Point linked via **realized by** (Inspector).
++2. The link between the diamond and the scene is now a denser, lighter dashed line.
++
++**Files:**
++
++- `utils/arcRealization.ts` (dash pattern, opacity)
++
++## 1.11.8-km.8
++
++**Realized by: one-line dropdown, dashed link in the Subway map**
++
++- **Inspector:** The "Realized by" row is now a single line: label **realized by** plus a dropdown. Default is **not yet**; the list contains all regular scenes, sorted by act and sequence. Choosing **not yet** removes the link.
++- **Subway map:** A realized Arc Point is now joined to its scene with a **dashed** line in the Arc Point's colour, so it is clearly different from the solid connector of a scene that sits on several plotlines.
++- A `realizedBy` link typed by hand that cannot be resolved shows up in the dropdown as "(not found)" instead of being hidden.
++
++**How and where to use:**
++
++1. Click the Arc Point scene in Board or Timeline (or use **Open Scene Details Sidebar**) to open the Inspector.
++2. With **Arc point** ticked, the row **realized by** appears right below it.
++3. Pick the scene from the dropdown. Pick **not yet** to remove the link.
++4. Open **Plotlines** in **Subway** mode: the diamond sits at the scene's station, connected by a dashed line.
++
++**Files:**
++
++- `components/RealizedByControl.ts` (dropdown)
++- `utils/arcRealization.ts` (splitRealizedLanes, drawRealizedLinks)
++- `views/StorylineView.ts` (+3)
++- `styles.css` (fork section)
++
++## 1.11.8-km.7
++
++**Arc Points: "Realized by" links a stage to the scene that tells it**
++
++- An Arc Point is a stage a character goes through, not a scene. That stage is often told in another scene, even another character's (e.g. Mark's "goes home for the funeral" is told in a Yasemin scene where she sees him there).
++- **Inspector:** Arc Points get a "Realized by" row below the Arc Point checkbox. "Choose…" picks the scene, "×" removes the link. Stored as `realizedBy: "[[Scene]]"` in the Arc Point's frontmatter.
++- **Subway map:** A linked Arc Point no longer gets its own station. Its diamond sits on its own lines at the station of the linked scene, and the interchange connector joins both lines. Unlinked Arc Points stay where they are, so open diamonds show stages that are not told yet.
++- Useful for Story Grid conventions and obligatory scenes: put them as Arc Points on their own line (e.g. `Genre: Thriller`) and link each to the scene that delivers it.
++- With the "Arc Points" filter (scenes hidden), Arc Points fall back to their own stations.
++
++**How and where to use:**
++
++1. Open any view with the Inspector (Board, Timeline, Plot Grid) and click the Arc Point scene. The Inspector opens on the right.
++2. Make sure **Arc point** is ticked. Directly below it, the row **Realized by** appears.
++3. Click **Choose…** and pick the scene that tells this stage (search by title). Click **Change** to pick another one, **×** to remove the link.
++4. Open the **Plotlines** view in **Subway** mode: the diamond now sits on the Arc Point's line at the station of the linked scene, joined by the vertical connector.
++5. Alternatively type it by hand in the Arc Point's frontmatter: `realizedBy: "[[Funeral]]"`.
++
++**Files:**
++
++- `utils/arcRealization.ts` (new)
++- `components/RealizedByControl.ts` (new)
++- `components/Inspector.ts` (+3)
++- `views/StorylineView.ts` (+6)
++- `styles.css` (fork section)
++
++## 1.11.8-km.6
++
++**Report: open setups at the end of each volume**
++
++- The "Volumes" section in Statistics now lists, per volume, every setup that is still open at the end of that volume: its payoff lies in a later volume, in no volume, or does not exist.
++- Each entry shows where the payoff is ("Volume 3", "missing"). Click the setup to open the scene.
++- Setup/payoff links are read from both sides (`payoff_scenes` on the setup, `setup_scenes` on the payoff), matched by scene title like the built-in Validator. `[[wikilinks]]` are accepted.
++- Only shown when the project file defines `volumes:`.
++
++**How and where to use:**
++
++1. Define `volumes:` in the project file (see 1.11.8-km.4).
++2. Link setups and payoffs as usual in the Inspector (Setup / Payoff fields).
++3. Open the **Statistics** view. In the **Volumes** section at the top, scroll to **Open setups at end of volume**.
++4. Expand a volume to see its open setups and where each payoff lies. Click a setup to open the scene.
++
++**Files:**
++
++- `utils/volumeSetups.ts` (new)
++- `components/VolumeStatsSection.ts` (report)
++- `views/StatsView.ts` (open scene on click)
++- `styles.css` (fork section)
++
++## 1.11.8-km.5
++
++**Volume filter, statistics and goals per volume, export per volume**
++
++- **Volume filter:** The filter panel of Board, Manuscript and Plot Grid gets a "Volume" chip group below "Act". A volume chip selects all acts of that volume; clicking again clears them. Single act chips keep working.
++- **Statistics per volume:** Statistics shows a "Volumes" section at the top with scenes, arc points, words, word goal, progress, deadline and words per day needed, per volume.
++- **Goals per volume:** `wordGoal` and `deadline` from the `volumes:` definition are evaluated there.
++- **Export per volume:** The export dialog offers a "Volume" choice for Manuscript and Outline. Only the acts of the chosen volume are exported.
++- Everything appears only when the project file defines `volumes:`.
++
++**How and where to use:**
++
++1. Define `volumes:` in the project file (see 1.11.8-km.4).
++2. **Filter:** In Board, Manuscript or Plot Grid open the filter panel (funnel icon). Below **Act** you find **Volume**. Click a volume chip.
++3. **Statistics and goals:** Open the **Statistics** view. The **Volumes** table is at the top. Add `wordGoal` and `deadline` to a volume to get progress and words per day.
++4. **Export:** Command palette → **StoryLine: Export project**, choose content **Manuscript** or **Outline**, then pick a volume under **Volume**.
++
++**Files:**
++
++- `components/VolumeFilterChips.ts` (new)
++- `components/VolumeStatsSection.ts` (new)
++- `components/Filters.ts` (+6 lines)
++- `components/ExportModal.ts` (+17)
++- `services/ExportService.ts` (+2)
++- `views/StatsView.ts` (+5)
++- `utils/volumes.ts` (volumeExportRange)
++- `styles.css` (fork section at the end)
++
++## 1.11.8-km.4
++
++**Volumes as act groups**
++
++- New optional `volumes:` block in the project file. A volume is a named group of acts:
++
++  ```yaml
++  volumes:
++    - id: b1
++      title: "Volume 1"
++      acts: [1, 2, 3, 4]    # or "1-4"
++      wordGoal: 90000       # optional
++      deadline: 2027-03-01  # optional
++  ```
++
++- Scenes, numbering, sorting and file names stay unchanged. A scene's volume is derived from its act.
++- **Volume dividers** in the Subway map (solid line with volume title), Timeline (linear and swimlanes) and Plot Grid.
++- Without `volumes:` the plugin behaves exactly like the original.
++
++**How and where to use:**
++
++1. Open your project file (the note with `type: storyline` in the project folder).
++2. Add a `volumes:` block to its frontmatter as shown above. Use your global act numbers (e.g. volume 2 = acts 5–8).
++3. Open the **Plotlines** view (Subway mode), **Timeline** or **Plot Grid**: a volume band appears where each volume starts.
++4. Tip: give acts per-volume names with the existing `actLabels:` in the project file, e.g. `5: "Volume 2 · Act 1"`.
++
++**Files:**
++
++- `utils/volumes.ts` (new)
++- `views/StorylineView.ts` (+17)
++- `views/TimelineView.ts` (+5)
++- `views/PlotgridView.ts` (+5)
++- `styles.css` (new fork section at the end)
++
++## 1.11.8-km.3
++
++**Arc Points in Timeline and Plot Grid**
++
++- **Timeline:** Arc Points carry the "◆ Arc Point" badge known from the Board, in linear and swimlane mode.
++- **Timeline:** New "All / Scenes / Arc Points" filter in the toolbar. The choice is remembered per vault.
++- **Plot Grid:** Linked Arc Point scenes show a diamond in the mini card and in the row header.
++
++**How and where to use:**
++
++1. Mark a scene as Arc Point (Inspector → **Arc point** checkbox).
++2. Open the **Timeline** view: the card shows the **◆ Arc Point** badge.
++3. Use the **All / Scenes / Arc Points** buttons in the Timeline toolbar to filter.
++4. Open the **Plot Grid**: linked Arc Point scenes show a small diamond next to the title and in the row header.
++
++**Files:**
++
++- `components/ArcPointUI.ts` (new)
++- `views/TimelineView.ts` (+12)
++- `views/PlotgridView.ts` (+3)
++
++## 1.11.8-km.2
++
++**Fix: plotline colours in the Subway map**
++
++- Plotline colours shifted whenever the Arc Point filter was toggled or a plotline was hidden. The colour now depends on all plotlines of the project, not only the visible ones. Affects lines, tag pills and the list view.
++- The release workflow can be started manually and sets the tag itself.
++
++**How and where to use:**
++
++1. Open the **Plotlines** view in **Subway** mode.
++2. Toggle **All / Scenes / Arc Points** or hide a plotline: the colours of the remaining plotlines stay the same.
++
++**Files:**
++
++- `views/StorylineView.ts` (colour index)
++- `.github/workflows/release-km.yml`
++
++## 1.11.8-km.1
++
++**First fork version**
++
++- Own plugin id `storyline-km`, so the fork can be installed next to the original. Never enable both at the same time.
++
++**How and where to use:**
++
++1. Install BRAT, add the beta plugin `rk-kontur/obsidian-storyline`.
++2. In Settings → Community plugins, disable **StoryLine** and enable the fork (id `storyline-km`). Switch back the same way.
++
++**Files:**
++
++- `manifest.json` (id, version)
++- `.github/workflows/release-km.yml` (new)
++- `CLAUDE.md` (new)
+diff --git a/CLAUDE.md b/CLAUDE.md
+new file mode 100644
+index 0000000..0ab81e7
+--- /dev/null
++++ b/CLAUDE.md
+@@ -0,0 +1,33 @@
++# StoryLine fork (rk-kontur)
++
++Fork of PixeroJan/obsidian-storyline (MIT). Obsidian plugin in TypeScript, built with esbuild.
++
++## Language
++- **Everything in the repository is English**: code, comments, UI strings, CSS comments, workflow files, changelog, commit messages, release notes. The maintainer (Jan) must be able to read all of it.
++- Conversation with the fork owner is in German.
++
++## Branches
++- `main` only mirrors `upstream/main`. No own commits, only `git merge --ff-only upstream/main`.
++- Own work lives on `km/base` and feature branches (`feature/<name>`).
++- Pulling upstream: `git fetch upstream`, update `main`, then `git merge main` into the working branch. `rerere` is enabled.
++
++## Manifest
++- Only change `id` (`storyline-km`) and `version`. Do not touch `name` and `author`: `name` because of merge conflicts, `author` is mis-encoded upstream and must not be re-saved by an editor. Edit with `sed` or targeted edits.
++- The fork must never be enabled in the same vault together with the original (`storyline`).
++
++## Versions and releases
++- Scheme `x.y.z-km.N`, where x.y.z is the upstream base.
++	- Fix or follow-up: increase `N` only (`1.11.8-km.1` → `1.11.8-km.2`).
++	- Larger update: increase minor and reset `N` to 1 (`1.11.8-km.3` → `1.12.0-km.1`).
++	- New upstream base: adjust x.y.z, reset `N` to 1.
++- Release: set the version in `manifest.json`, push to `km/base`, then tag exactly this version on `km/base` (`git tag <version> && git push origin <version>`, or in the browser: Draft a new release, target `km/base`).
++- `.github/workflows/release-km.yml` builds on every `*-km.*` tag, checks the tag against `manifest.json` and uploads `main.js`, `manifest.json`, `styles.css` to the release (also to an existing one).
++- Without pushing a tag: start `release-km.yml` manually (workflow_dispatch) on the branch with the desired version. The workflow creates tag and release itself. This is how Claude releases from cloud sessions, which cannot push tags.
++- **Every release needs a `## <version>` section in `CHANGELOG-km.md`, in English** (write it before releasing): what is new, a **How and where to use:** part with step-by-step instructions (which view or dialog, which control), and a **Files:** list of all new and changed source files. The workflow uses the section as release text for the current version only, and never overwrites a release text that was edited on GitHub (the owner adds screenshots there). It attaches `storyline-km-source.zip` and `storyline-km.patch` (diff against `main`). `CHANGELOG.md` belongs to upstream and is not touched.
++- Test via BRAT with `rk-kontur/obsidian-storyline`.
++
++## Development
++- Keep changes to existing files small, especially `main.ts`, `settings.ts` and `styles.css` (frequent conflict spots). New features go into new files under `views/`, `services/`, `components/`, `models/`, `utils/`. Own styles go into the clearly marked fork section at the end of `styles.css`.
++- Build: `npm install`, `npm run build`. `main.js` is checked in: on merge conflicts take one side and rebuild.
++- No `.gitignore` in the repo: never commit `node_modules/`, add files explicitly with `git add <path>`.
++- Larger features should be discussed with the maintainer first and, where possible, be sent as a pull request to the original.
+diff --git a/components/ArcPointUI.ts b/components/ArcPointUI.ts
+new file mode 100644
+index 0000000..418eb2b
+--- /dev/null
++++ b/components/ArcPointUI.ts
+@@ -0,0 +1,79 @@
++// ═══════════════════════════════════════════════════════
++//  Arc Point UI helpers (fork: storyline-km)
++// ═══════════════════════════════════════════════════════
++//
++// Shared building blocks so views that did not know about Arc Points yet
++// (Timeline, Plotgrid) can show them with the same look and filter as
++// Board and Subway. Reuses the existing CSS classes
++// `story-line-arc-filter*` and `scene-card-arc-point-badge`.
++
++import * as obsidian from 'obsidian';
++import type { App } from 'obsidian';
++import type { Scene } from '../models/Scene';
++
++export type ArcFilterMode = 'all' | 'scenes' | 'arcPoints';
++
++const ARC_MODES: { value: ArcFilterMode; label: string }[] = [
++    { value: 'all', label: 'All' },
++    { value: 'scenes', label: 'Scenes' },
++    { value: 'arcPoints', label: 'Arc Points' },
++];
++
++/** Three-way Arc Point filter toggle, same markup as the Subway view. */
++export function renderArcFilterToggle(
++    parent: HTMLElement,
++    current: ArcFilterMode,
++    onChange: (mode: ArcFilterMode) => void,
++): HTMLElement {
++    const container = parent.createDiv('story-line-arc-filter');
++    for (const mode of ARC_MODES) {
++        const btn = container.createEl('button', {
++            cls: `story-line-arc-filter-btn${current === mode.value ? ' is-active' : ''}`,
++            text: mode.label,
++        });
++        btn.addEventListener('click', () => {
++            container.querySelectorAll('.story-line-arc-filter-btn').forEach(b => b.removeClass('is-active'));
++            btn.addClass('is-active');
++            onChange(mode.value);
++        });
++    }
++    return container;
++}
++
++/** Filter object for SceneQueryService.getFilteredScenes, undefined for 'all'. */
++export function arcFilterQuery(mode: ArcFilterMode): { arcAnchorFilter: ArcFilterMode } | undefined {
++    return mode === 'all' ? undefined : { arcAnchorFilter: mode };
++}
++
++/** "◆ Arc Point" badge as used on Board cards. No-op for regular scenes. */
++export function renderArcPointBadge(parent: HTMLElement, scene: Scene): void {
++    if (!scene.arcAnchor) return;
++    const badge = parent.createDiv({ cls: 'scene-card-arc-point-badge' });
++    const icon = badge.createSpan();
++    obsidian.setIcon(icon, 'diamond');
++    badge.createSpan({ text: ' Arc Point' });
++}
++
++/** Small inline diamond icon (for compact places like grid cells and headers). */
++export function renderArcPointIcon(parent: HTMLElement, scene: Scene | undefined): void {
++    if (!scene?.arcAnchor) return;
++    const icon = parent.createSpan({ cls: 'sl-km-arc-point-icon' });
++    obsidian.setIcon(icon, 'diamond');
++    icon.title = 'Arc Point';
++    icon.setCssStyles({ display: 'inline-flex', marginLeft: '4px', opacity: '0.8' });
++    const svg = icon.querySelector('svg');
++    if (svg) { svg.setAttribute('width', '12'); svg.setAttribute('height', '12'); }
++}
++
++// Persist small per-view UI choices in vault-local storage instead of
++// plugin settings, to keep settings.ts free of fork changes.
++const STORAGE_PREFIX = 'storyline-km:';
++
++export function loadArcFilter(app: App, key: string): ArcFilterMode {
++    const v: unknown = app.loadLocalStorage(STORAGE_PREFIX + key);
++    return v === 'scenes' || v === 'arcPoints' ? v : 'all';
++}
++
++export function saveArcFilter(app: App, key: string, mode: ArcFilterMode): void {
++    app.saveLocalStorage(STORAGE_PREFIX + key, mode);
++}
+diff --git a/components/ExportModal.ts b/components/ExportModal.ts
+index 04d967f..2dc5320 100644
+--- a/components/ExportModal.ts
++++ b/components/ExportModal.ts
+@@ -1,6 +1,7 @@
+ /* eslint-disable @typescript-eslint/no-misused-promises -- Obsidian's API surface and several untyped third-party libraries force dynamic dispatch; floating promises are intentional in DOM/event handlers; matching enable at end of file */
+ import { Modal, Setting, Notice, DropdownComponent, ToggleComponent } from 'obsidian';
+ import { ExportService, ExportFormat, ExportRange, ExportScope } from '../services/ExportService';
++import { getProjectVolumes, volumeExportRange } from '../utils/volumes';
+ import type SceneCardsPlugin from '../main';
+ 
+ type ExportContent = ExportScope | 'scenes' | 'chapters';
+@@ -17,6 +18,8 @@ export class ExportModal extends Modal {
+     private exportScope: ExportScope = 'manuscript';
+     private exportContent: ExportContent = 'manuscript';
+     private exportRangeText = '';
++    /** Fork: export only one volume (act group); '' = all */
++    private exportVolumeId = '';
+ 
+     // Per-export options (issues #85 / #87)
+     private includeSceneTitles = true;
+@@ -128,6 +131,20 @@ export class ExportModal extends Modal {
+                         .onChange(v => { this.exportRangeText = v; }));
+             }
+ 
++            // Volume selection (fork) — only when the project defines `volumes:`
++            const volumes = getProjectVolumes(this.app, this.plugin.sceneManager.activeProject?.filePath);
++            if (volumes.length > 0 && this.exportContent !== 'scenes' && this.exportContent !== 'chapters') {
++                new Setting(manuscriptOptions)
++                    .setName('Volume')
++                    .setDesc('Export a single volume (its acts) or the whole project.')
++                    .addDropdown(dd => {
++                        dd.addOption('', 'All volumes');
++                        volumes.forEach(v => dd.addOption(v.id, v.title));
++                        dd.setValue(this.exportVolumeId);
++                        dd.onChange(v => { this.exportVolumeId = v; });
++                    });
++            }
++
+             new Setting(manuscriptOptions)
+                 .setName('Include inactive scenes')
+                 .setDesc('Include parked scenes marked inactive. Off by default.')
+@@ -218,7 +235,7 @@ export class ExportModal extends Modal {
+         exportBtn.addEventListener('click', async () => {
+             const exportRange = this.exportContent === 'scenes' || this.exportContent === 'chapters'
+                 ? this.parseExportRange(this.exportRangeText)
+-                : undefined;
++                : volumeExportRange(getProjectVolumes(this.app, this.plugin.sceneManager.activeProject?.filePath), this.exportVolumeId);
+             if ((this.exportContent === 'scenes' || this.exportContent === 'chapters') && !exportRange) {
+                 const valueLabel = this.exportContent === 'scenes' ? 'scene' : 'chapter';
+                 new Notice(`Enter ${valueLabel} numbers like 1-4, 6, 8.`);
+diff --git a/components/Filters.ts b/components/Filters.ts
+index bd14278..ccc61ac 100644
+--- a/components/Filters.ts
++++ b/components/Filters.ts
+@@ -6,6 +6,8 @@ import type SceneCardsPlugin from '../main';
+ import type { SceneFilter, SortConfig, SortField, FilterPreset } from '../models/Scene';
+ import { getStatusOrder } from '../models/Scene';
+ import { getActDisplayLabel } from '../utils/actChapter';
++import { renderVolumeFilterChips } from './VolumeFilterChips';
++import { getProjectVolumes } from '../utils/volumes';
+ 
+ type FocusModeCallback = (active: boolean) => void;
+ 
+@@ -231,6 +233,11 @@ export class FiltersComponent {
+                     this.emitChange();
+                 });
+             });
++            // Volume chips (fork): shortcut for all acts of a volume
++            if (this.plugin) {
++                renderVolumeFilterChips(panel, getProjectVolumes(this.plugin.app, this.sceneManager.activeProject?.filePath),
++                    this.currentFilter, actValues, actContainer, () => this.emitChange());
++            }
+         }
+ 
+         // Chapter filter
+diff --git a/components/Inspector.ts b/components/Inspector.ts
+index e5d2bd1..122b376 100644
+--- a/components/Inspector.ts
++++ b/components/Inspector.ts
+@@ -1,5 +1,6 @@
+ /* eslint-disable @typescript-eslint/no-floating-promises, @typescript-eslint/no-misused-promises, @typescript-eslint/no-unused-vars -- Obsidian's API surface and several untyped third-party libraries force dynamic dispatch; floating promises are intentional in DOM/event handlers; matching enable at end of file */
+ import { Modal, App, Notice } from 'obsidian';
++import { renderRealizedByControl } from './RealizedByControl';
+ import * as obsidian from 'obsidian';
+ import { openConfirmModal } from './ConfirmModal';
+ import { SplitSceneModal } from './SplitMergeModals';
+@@ -493,6 +494,8 @@ export class InspectorComponent {
+             await this.sceneManager.updateScene(scene.filePath, { arcAnchor: val });
+             scene.arcAnchor = val || undefined;
+         });
++        // Arc Point → realizing scene, in the same row as the checkbox (fork)
++        renderRealizedByControl(arcRow, this.plugin.app, scene, () => this.sceneManager.getAllScenes());
+ 
+         // ── Story Date / Time ──
+         const dtRow = this.container.createDiv('inspector-section');
+diff --git a/components/RealizedByControl.ts b/components/RealizedByControl.ts
+new file mode 100644
+index 0000000..6d8ac58
+--- /dev/null
++++ b/components/RealizedByControl.ts
+@@ -0,0 +1,75 @@
++// ═══════════════════════════════════════════════════════
++//  Inspector control for Arc Point "realizedBy" (fork: storyline-km)
++// ═══════════════════════════════════════════════════════
++
++import { TFile } from 'obsidian';
++import type { App } from 'obsidian';
++import type { Scene } from '../models/Scene';
++import { linkpathOf, readRealizedBy, REALIZED_BY_KEY, resolveRealizingScene } from '../utils/arcRealization';
++
++async function writeRealizedBy(app: App, arc: Scene, target: Scene | undefined): Promise<void> {
++    const file = app.vault.getAbstractFileByPath(arc.filePath);
++    if (!(file instanceof TFile)) return;
++    await app.fileManager.processFrontMatter(file, (fm: Record<string, unknown>) => {
++        delete fm.realized_by;
++        if (!target) { delete fm[REALIZED_BY_KEY]; return; }
++        const targetFile = app.vault.getAbstractFileByPath(target.filePath);
++        const linktext = targetFile instanceof TFile
++            ? app.metadataCache.fileToLinktext(targetFile, arc.filePath, true)
++            : (target.title || '');
++        fm[REALIZED_BY_KEY] = `[[${linktext}]]`;
++    });
++}
++
++/**
++ * Renders "Realized [dropdown: not yet | scenes…]" next to the Arc point checkbox.
++ * `container` is the Arc point row of the Inspector.
++ * `getScenes` returns the candidate scenes (regular scenes of the project).
++ */
++export function renderRealizedByControl(
++    container: HTMLElement,
++    app: App,
++    scene: Scene,
++    getScenes: () => Scene[],
++    onChanged?: () => void,
++): void {
++    const row = container.createDiv('sl-km-realized-by');
++    const isArc = () => {
++        const cb = container.querySelector<HTMLInputElement>('#arc-anchor-toggle');
++        return cb ? cb.checked : !!scene.arcAnchor;
++    };
++    const render = () => {
++        row.empty();
++        if (!isArc()) { row.hide(); return; }
++        row.show();
++        row.createSpan({ cls: 'sl-km-realized-by-label', text: 'Realized' });
++
++        const raw = readRealizedBy(app, scene);
++        const candidates = getScenes()
++            .filter(s => !s.arcAnchor && !s.corkboardNote && s.filePath !== scene.filePath)
++            .sort((a, b) => (Number(a.act) || 0) - (Number(b.act) || 0) || (a.sequence ?? 0) - (b.sequence ?? 0));
++        const current = raw ? resolveRealizingScene(app, scene, candidates) : undefined;
++
++        const select = row.createEl('select', { cls: 'dropdown sl-km-realized-by-select' });
++        select.createEl('option', { text: 'not yet', value: '' });
++        for (const c of candidates) {
++            const label = `${c.act !== undefined ? `${c.act}-` : ''}${c.sequence ?? ''} ${c.title || c.filePath}`.trim();
++            select.createEl('option', { text: label, value: c.filePath });
++        }
++        // Link set by hand that does not resolve: keep it visible instead of silently showing "not yet"
++        if (raw && !current) {
++            select.createEl('option', { text: `${linkpathOf(raw)} (not found)`, value: '__raw__' });
++        }
++        select.value = current ? current.filePath : (raw ? '__raw__' : '');
++        select.addEventListener('keydown', (e: KeyboardEvent) => e.stopPropagation());
++        select.addEventListener('change', async () => {
++            if (select.value === '__raw__') return;
++            const target = candidates.find(c => c.filePath === select.value);
++            await writeRealizedBy(app, scene, target);
++            onChanged?.();
++        });
++    };
++    render();
++    // Re-render when the Arc Point checkbox right above changes.
++    container.querySelector('#arc-anchor-toggle')?.addEventListener('change', () => window.setTimeout(render, 0));
++}
+diff --git a/components/SceneCard.ts b/components/SceneCard.ts
+index cf8737f..7aef0cb 100644
+--- a/components/SceneCard.ts
++++ b/components/SceneCard.ts
+@@ -1,5 +1,6 @@
+ /* eslint-disable @typescript-eslint/no-unsafe-return, @typescript-eslint/no-floating-promises, @typescript-eslint/no-misused-promises, @typescript-eslint/no-unnecessary-type-assertion -- Obsidian's API surface and several untyped third-party libraries force dynamic dispatch; floating promises are intentional in DOM/event handlers; matching enable at end of file */
+ import * as obsidian from 'obsidian';
++import { renderVolumeBadge } from '../utils/volumeScope';
+ import { Modal, App } from 'obsidian';
+ import type SceneCardsPlugin from '../main';
+ import { resolveTagColor, getPlotlineHSL, resolveStickyNoteColors, resolveStickyNoteFontColor } from '../settings';
+@@ -74,6 +75,7 @@ export class SceneCardComponent {
+             attr: { title: statusCfg.label }
+         });
+         obsidian.setIcon(statusIconEl, statusCfg.icon);
++        renderVolumeBadge(header, this.plugin, scene); // fork: "V2" badge when volumes are defined
+ 
+         // Title
+         const displayTitle = this.getDisplayTitle(scene);
+diff --git a/components/StructureModalSections.ts b/components/StructureModalSections.ts
+new file mode 100644
+index 0000000..9ff78b8
+--- /dev/null
++++ b/components/StructureModalSections.ts
+@@ -0,0 +1,123 @@
++// ═══════════════════════════════════════════════════════
++//  "Manage story structure" as collapsible sections (fork: storyline-km)
++// ═══════════════════════════════════════════════════════
++//
++// The dialog is built by BoardView / TimelineView exactly as upstream does.
++// Right before it opens, this module regroups its content at the existing
++// <h3> headings into collapsible sections that look like the plugin
++// settings (same classes: story-line-settings-section):
++//
++//   ▸ Volumes   ▸ Acts   ▸ Chapters   ▸ Templates
++//
++// Templates holds the beat sheet blocks as nested collapsible blocks.
++// Open/closed state is remembered per section. If the expected headings
++// are not found (upstream changed the dialog), the dialog is left as it is.
++
++import type { App, Modal } from 'obsidian';
++import { renderVolumesEditor } from './VolumesEditor';
++
++export type StructureSection = 'volumes' | 'acts' | 'chapters' | 'templates';
++
++const SECTIONS: { id: StructureSection; label: string }[] = [
++    { id: 'volumes', label: 'Volumes' },
++    { id: 'acts', label: 'Acts' },
++    { id: 'chapters', label: 'Chapters' },
++    { id: 'templates', label: 'Templates' },
++];
++
++const OPEN_KEY = 'storyline-km:structureOpenSections';
++const FORCE_KEY = 'storyline-km:structureForceOpen';
++
++function sectionForHeading(text: string): StructureSection {
++    const t = text.trim().toLowerCase();
++    if (t === 'acts') return 'acts';
++    if (t === 'chapters') return 'chapters';
++    return 'templates';
++}
++
++function loadOpen(app: App): Set<StructureSection> {
++    const raw: unknown = app.loadLocalStorage(OPEN_KEY);
++    if (Array.isArray(raw)) return new Set(raw.filter((x): x is StructureSection => SECTIONS.some(s => s.id === x)));
++    return new Set<StructureSection>(['acts']);
++}
++
++/** Open the given section the next time the dialog opens (used by commands). */
++export function setNextStructureSection(app: App, section: StructureSection): void {
++    app.saveLocalStorage(FORCE_KEY, section);
++}
++
++export interface StructureModalContext {
++    app: App;
++    projectFilePath: string | undefined;
++    definedActs: number[];
++}
++
++export function enhanceStructureModal(modal: Modal, ctx: StructureModalContext): void {
++    const content = modal.contentEl;
++    const children = Array.from(content.children) as HTMLElement[];
++    const names = children.filter(el => el.tagName === 'H3').map(h => (h.textContent || '').trim().toLowerCase());
++    if (!names.includes('acts') || !names.includes('chapters')) return; // unknown layout: leave untouched
++
++    // The real footer is the LAST .structure-close-row ("Done"). Other rows with the
++    // same class (e.g. "Apply custom structure") belong to their section.
++    const closeRows = children.filter(el => el.classList.contains('structure-close-row'));
++    const footer = closeRows[closeRows.length - 1];
++
++    const preamble: HTMLElement[] = [];
++    const groups: { section: StructureSection; heading: HTMLElement; nodes: HTMLElement[] }[] = [];
++    for (const el of children) {
++        if (el === footer) continue;
++        if (el.tagName === 'H3') {
++            groups.push({ section: sectionForHeading(el.textContent || ''), heading: el, nodes: [] });
++        } else if (groups.length === 0) {
++            preamble.push(el);
++        } else {
++            groups[groups.length - 1].nodes.push(el);
++        }
++    }
++
++    modal.containerEl.addClass('sl-km-structure-modal');
++
++    const open = loadOpen(ctx.app);
++    const forced: unknown = ctx.app.loadLocalStorage(FORCE_KEY);
++    if (typeof forced === 'string' && SECTIONS.some(s => s.id === forced)) {
++        open.add(forced as StructureSection);
++        ctx.app.saveLocalStorage(FORCE_KEY, null);
++    }
++    const saveOpen = () => ctx.app.saveLocalStorage(OPEN_KEY, [...open]);
++
++    // Same markup and classes as the plugin settings sections
++    const bodies = new Map<StructureSection, HTMLElement>();
++    const sectionEls: HTMLElement[] = [];
++    for (const s of SECTIONS) {
++        const details = createEl('details', { cls: 'story-line-settings-section' });
++        details.open = open.has(s.id);
++        details.createEl('summary', { text: s.label });
++        details.addEventListener('toggle', () => {
++            if (details.open) open.add(s.id); else open.delete(s.id);
++            saveOpen();
++        });
++        bodies.set(s.id, details.createDiv('story-line-settings-section-body'));
++        sectionEls.push(details);
++    }
++
++    for (const g of groups) {
++        const body = bodies.get(g.section)!;
++        if (g.section === 'templates') {
++            // Nested blocks, like "Image settings" inside a settings section
++            const sub = body.createEl('details', { cls: 'story-line-color-section sl-km-structure-sub' });
++            sub.open = body.childElementCount === 1; // first block open
++            sub.createEl('summary', { text: g.heading.textContent || '' });
++            g.nodes.forEach(n => sub.appendChild(n));
++        } else {
++            g.nodes.forEach(n => body.appendChild(n));
++        }
++        g.heading.remove();
++    }
++    renderVolumesEditor(bodies.get('volumes')!, ctx.app, ctx.projectFilePath, ctx.definedActs);
++
++    content.empty();
++    preamble.forEach(n => content.appendChild(n));
++    sectionEls.forEach(n => content.appendChild(n));
++    if (footer) content.appendChild(footer);
++}
+diff --git a/components/VolumeFilterChips.ts b/components/VolumeFilterChips.ts
+new file mode 100644
+index 0000000..7e7566f
+--- /dev/null
++++ b/components/VolumeFilterChips.ts
+@@ -0,0 +1,71 @@
++// ═══════════════════════════════════════════════════════
++//  Volume filter chips (fork: storyline-km)
++// ═══════════════════════════════════════════════════════
++//
++// A volume chip is a shortcut for "all acts of this volume" in the existing
++// act filter (SceneFilter.act). No new filter dimension, no change to
++// SceneQueryService.matchesFilter.
++
++import { Setting } from 'obsidian';
++import type { SceneFilter } from '../models/Scene';
++import { getActDisplayLabel } from '../utils/actChapter';
++import type { VolumeDef } from '../utils/volumes';
++
++export function renderVolumeFilterChips(
++    panel: HTMLElement,
++    volumes: VolumeDef[],
++    filter: SceneFilter,
++    actValues: string[],
++    actContainer: HTMLElement,
++    onChange: () => void,
++): void {
++    if (volumes.length === 0) return;
++
++    // Only acts that actually exist in the project count for a volume.
++    const existing = new Set(actValues.map(String));
++    const actsOf = (v: VolumeDef) => v.acts.map(String).filter(a => existing.has(a));
++    const usable = volumes.filter(v => actsOf(v).length > 0);
++    if (usable.length === 0) return;
++
++    new Setting(panel).setName('Volume');
++    const container = panel.createDiv('story-line-filter-chips');
++    const chips: { vol: VolumeDef; chip: HTMLElement }[] = [];
++
++    const isActive = (v: VolumeDef) => {
++        const selected = new Set((filter.act ?? []).map(String));
++        return actsOf(v).every(a => selected.has(a));
++    };
++
++    const syncActChips = () => {
++        const selected = new Set((filter.act ?? []).map(String));
++        actContainer.querySelectorAll('button.story-line-chip').forEach(btn => {
++            const act = actValues.find(a => getActDisplayLabel(a) === btn.textContent);
++            if (act !== undefined) btn.toggleClass('active', selected.has(String(act)));
++        });
++    };
++
++    const syncVolumeChips = () => {
++        for (const { vol, chip } of chips) chip.toggleClass('active', isActive(vol));
++    };
++
++    for (const vol of usable) {
++        const chip = container.createEl('button', { cls: 'story-line-chip', text: vol.title });
++        chips.push({ vol, chip });
++        chip.addEventListener('click', () => {
++            const acts = actsOf(vol);
++            const current = (filter.act ?? []).map(String);
++            if (isActive(vol)) {
++                filter.act = (filter.act ?? []).filter(a => !acts.includes(String(a)));
++            } else {
++                filter.act = [...(filter.act ?? []), ...acts.filter(a => !current.includes(a))];
++            }
++            syncActChips();
++            syncVolumeChips();
++            onChange();
++        });
++    }
++    syncVolumeChips();
++
++    // Keep volume chips in sync when single act chips are toggled.
++    actContainer.addEventListener('click', () => window.setTimeout(syncVolumeChips, 0));
++}
+diff --git a/components/VolumeStatsSection.ts b/components/VolumeStatsSection.ts
+new file mode 100644
+index 0000000..c0706d2
+--- /dev/null
++++ b/components/VolumeStatsSection.ts
+@@ -0,0 +1,153 @@
++// ═══════════════════════════════════════════════════════
++//  Per-volume statistics and goals (fork: storyline-km)
++// ═══════════════════════════════════════════════════════
++//
++// Additive section for the Statistics view. Rendered only when the
++// project file defines `volumes:`. Uses the scene list the view already
++// computed, so nothing in SceneQueryService changes.
++
++import type { Scene } from '../models/Scene';
++import { getVolumeForAct, type VolumeDef } from '../utils/volumes';
++import { computeOpenSetups } from '../utils/volumeSetups';
++
++export interface VolumeStatsRow {
++    volume: VolumeDef;
++    scenes: number;
++    words: number;
++    arcPoints: number;
++    progress?: number;      // 0..1 against wordGoal
++    daysLeft?: number;      // until deadline
++    wordsPerDay?: number;   // needed to reach the goal by the deadline
++}
++
++export function computeVolumeStats(
++    volumes: VolumeDef[],
++    scenes: Scene[],
++    excludeArcPoints: boolean,
++    today: Date = new Date(),
++): VolumeStatsRow[] {
++    const rows = new Map<string, VolumeStatsRow>();
++    for (const v of volumes) rows.set(v.id, { volume: v, scenes: 0, words: 0, arcPoints: 0 });
++
++    for (const s of scenes) {
++        const v = getVolumeForAct(volumes, s.act);
++        if (!v) continue;
++        const row = rows.get(v.id)!;
++        if (s.arcAnchor) {
++            row.arcPoints++;
++            if (excludeArcPoints) continue;
++        } else {
++            row.scenes++;
++        }
++        row.words += s.wordcount || 0;
++    }
++
++    const startOfToday = new Date(today.getFullYear(), today.getMonth(), today.getDate()).getTime();
++    for (const row of rows.values()) {
++        const goal = row.volume.wordGoal;
++        if (goal) row.progress = Math.min(1, row.words / goal);
++        if (row.volume.deadline) {
++            const d = new Date(row.volume.deadline);
++            if (!isNaN(d.getTime())) {
++                row.daysLeft = Math.ceil((d.getTime() - startOfToday) / 86400000);
++                if (goal && row.daysLeft > 0) {
++                    row.wordsPerDay = Math.max(0, Math.ceil((goal - row.words) / row.daysLeft));
++                }
++            }
++        }
++    }
++    return volumes.map(v => rows.get(v.id)!);
++}
++
++export function renderVolumeStatsSection(
++    parent: HTMLElement,
++    volumes: VolumeDef[],
++    scenes: Scene[],
++    excludeArcPoints: boolean,
++    openScene?: (scene: Scene) => void,
++    onEditVolumes?: () => void,
++): void {
++    if (volumes.length === 0) return;
++    const rows = computeVolumeStats(volumes, scenes, excludeArcPoints);
++
++    const details = parent.createEl('details', { cls: 'sl-km-volume-stats' });
++    details.open = true;
++    details.createEl('summary', { text: 'Volumes' });
++    if (onEditVolumes) {
++        const edit = details.createEl('button', { cls: 'sl-km-edit-volumes', text: 'Edit volumes' });
++        edit.addEventListener('click', onEditVolumes);
++    }
++
++    const table = details.createEl('table', { cls: 'sl-km-volume-stats-table' });
++    const head = table.createEl('thead').createEl('tr');
++    ['Volume', 'Acts', 'Scenes', 'Arc Points', 'Words', 'Goal', 'Progress', 'Deadline', 'Words/day'].forEach(h => head.createEl('th', { text: h }));
++
++    const body = table.createEl('tbody');
++    const fmt = (n: number) => n.toLocaleString();
++    for (const r of rows) {
++        const tr = body.createEl('tr');
++        tr.createEl('td', { text: r.volume.title });
++        const acts = r.volume.acts;
++        tr.createEl('td', { text: acts.length > 1 ? `${acts[0]}–${acts[acts.length - 1]}` : String(acts[0]) });
++        tr.createEl('td', { text: fmt(r.scenes) });
++        tr.createEl('td', { text: fmt(r.arcPoints) });
++        tr.createEl('td', { text: fmt(r.words) });
++        tr.createEl('td', { text: r.volume.wordGoal ? fmt(r.volume.wordGoal) : '–' });
++
++        const progCell = tr.createEl('td');
++        if (r.progress !== undefined) {
++            const bar = progCell.createDiv('sl-km-volume-progress');
++            const fill = bar.createDiv('sl-km-volume-progress-fill');
++            fill.setCssStyles({ width: `${Math.round(r.progress * 100)}%` });
++            progCell.createSpan({ text: ` ${Math.round(r.progress * 100)}%` });
++        } else {
++            progCell.setText('–');
++        }
++
++        const dl = tr.createEl('td');
++        if (r.volume.deadline) {
++            dl.setText(r.volume.deadline);
++            if (r.daysLeft !== undefined) {
++                dl.createSpan({
++                    cls: r.daysLeft < 0 ? 'sl-km-overdue' : 'sl-km-muted',
++                    text: r.daysLeft < 0 ? ` (${-r.daysLeft} d overdue)` : ` (${r.daysLeft} d)`,
++                });
++            }
++        } else {
++            dl.setText('–');
++        }
++        tr.createEl('td', { text: r.wordsPerDay !== undefined ? fmt(r.wordsPerDay) : '–' });
++    }
++
++    renderOpenSetups(details, volumes, scenes, openScene);
++}
++
++/** "Open setups at end of volume N": setups whose payoff comes later or is missing. */
++function renderOpenSetups(
++    parent: HTMLElement,
++    volumes: VolumeDef[],
++    scenes: Scene[],
++    openScene?: (scene: Scene) => void,
++): void {
++    const report = computeOpenSetups(volumes, scenes);
++    const wrap = parent.createDiv('sl-km-open-setups');
++    wrap.createEl('h4', { text: 'Open setups at end of volume' });
++    if (report.every(r => r.open.length === 0)) {
++        wrap.createDiv({ cls: 'sl-km-muted', text: 'No open setups: every setup pays off within its volume.' });
++        return;
++    }
++    for (const { volume, open } of report) {
++        const d = wrap.createEl('details');
++        d.createEl('summary', { text: `${volume.title}: ${open.length} open` });
++        const ul = d.createEl('ul');
++        for (const o of open) {
++            const li = ul.createEl('li');
++            const link = li.createEl('a', { text: o.setup.title || o.setup.filePath, href: '#' });
++            link.addEventListener('click', (e) => { e.preventDefault(); openScene?.(o.setup); });
++            const targets = o.payoffs.length
++                ? o.payoffs.map(p => `${p.title} (${p.where})`).join(', ')
++                : 'no payoff';
++            li.createSpan({ cls: 'sl-km-muted', text: ` → ${targets}` });
++        }
++    }
++}
+diff --git a/components/VolumesEditor.ts b/components/VolumesEditor.ts
+new file mode 100644
+index 0000000..499df22
+--- /dev/null
++++ b/components/VolumesEditor.ts
+@@ -0,0 +1,176 @@
++// ═══════════════════════════════════════════════════════
++//  Volumes editor (fork: storyline-km)
++// ═══════════════════════════════════════════════════════
++//
++// Edits the optional `volumes:` block of the project file. Used as the
++// "Volumes" tab of the "Manage story structure" dialog.
++
++import { Notice, TFile } from 'obsidian';
++import type { App } from 'obsidian';
++import { getProjectVolumes, type VolumeDef } from '../utils/volumes';
++
++interface EditableVolume {
++    id: string;
++    title: string;
++    acts: number[];
++    wordGoal?: number;
++    deadline?: string;
++}
++
++function rangeText(acts: number[]): string {
++    if (acts.length === 0) return '';
++    const contiguous = acts.every((a, i) => i === 0 || a === acts[i - 1] + 1);
++    return contiguous ? `${acts[0]}–${acts[acts.length - 1]}` : acts.join(', ');
++}
++
++function toRange(from: number, to: number): number[] {
++    const a = Math.min(from, to);
++    const b = Math.max(from, to);
++    const out: number[] = [];
++    for (let i = a; i <= b; i++) out.push(i);
++    return out;
++}
++
++/** Volume rows that share acts with an earlier volume: index → overlapping acts. */
++export function findOverlaps(volumes: { acts: number[] }[]): Map<number, number[]> {
++    const seen = new Map<number, number>();
++    const result = new Map<number, number[]>();
++    volumes.forEach((v, i) => {
++        for (const a of v.acts) {
++            if (seen.has(a)) {
++                if (!result.has(i)) result.set(i, []);
++                result.get(i)!.push(a);
++            } else {
++                seen.set(a, i);
++            }
++        }
++    });
++    return result;
++}
++
++async function saveVolumes(app: App, projectFilePath: string, volumes: EditableVolume[]): Promise<void> {
++    const file = app.vault.getAbstractFileByPath(projectFilePath);
++    if (!(file instanceof TFile)) {
++        new Notice('Project file not found.');
++        return;
++    }
++    await app.fileManager.processFrontMatter(file, (fm: Record<string, unknown>) => {
++        if (volumes.length === 0) { delete fm.volumes; return; }
++        fm.volumes = volumes.map(v => {
++            const out: Record<string, unknown> = { id: v.id, title: v.title, acts: v.acts };
++            if (v.wordGoal) out.wordGoal = v.wordGoal;
++            if (v.deadline) out.deadline = v.deadline;
++            return out;
++        });
++    });
++}
++
++export function renderVolumesEditor(
++    container: HTMLElement,
++    app: App,
++    projectFilePath: string | undefined,
++    definedActs: number[],
++): void {
++    container.empty();
++    container.addClass('sl-km-volumes-editor');
++    container.createEl('p', {
++        cls: 'setting-item-description',
++        text: 'A volume is a named group of acts. Scenes, numbering and file names stay as they are; a scene belongs to the volume of its act.',
++    });
++    if (!projectFilePath) {
++        container.createEl('p', { cls: 'structure-empty', text: 'No active project.' });
++        return;
++    }
++
++    const volumes: EditableVolume[] = getProjectVolumes(app, projectFilePath)
++        .map((v: VolumeDef) => ({ ...v, acts: [...v.acts] }));
++
++    const list = container.createDiv('sl-km-volumes-list');
++    const warn = container.createDiv('sl-km-volumes-warning');
++    let saveTimer: number | null = null;
++    const scheduleSave = () => {
++        if (saveTimer) window.clearTimeout(saveTimer);
++        saveTimer = window.setTimeout(() => { void saveVolumes(app, projectFilePath, volumes); }, 400);
++    };
++
++    const render = () => {
++        list.empty();
++        warn.empty();
++        if (volumes.length === 0) {
++            list.createEl('p', { cls: 'structure-empty', text: 'No volumes defined yet.' });
++        } else {
++            const head = list.createDiv('sl-km-volume-row sl-km-volume-head');
++            ['Title', 'From act', 'To act', 'Word goal', 'Deadline', ''].forEach(t => head.createSpan({ text: t }));
++        }
++        const overlaps = findOverlaps(volumes);
++
++        volumes.forEach((v, i) => {
++            const row = list.createDiv('sl-km-volume-row');
++            if (overlaps.has(i)) row.addClass('has-overlap');
++
++            const title = row.createEl('input', { type: 'text', value: v.title });
++            title.addEventListener('change', () => { v.title = title.value.trim() || `Volume ${i + 1}`; scheduleSave(); });
++
++            const contiguous = v.acts.every((a, k) => k === 0 || a === v.acts[k - 1] + 1);
++            const from = row.createEl('input', { type: 'number', value: String(v.acts[0] ?? '') });
++            const to = row.createEl('input', { type: 'number', value: String(v.acts[v.acts.length - 1] ?? '') });
++            if (!contiguous) {
++                from.title = to.title = `Acts ${rangeText(v.acts)} (editing turns this into a range)`;
++            }
++            const onRange = () => {
++                const f = parseInt(from.value, 10);
++                const t = parseInt(to.value, 10);
++                if (isNaN(f) || isNaN(t) || f < 0 || t < 0) return;
++                v.acts = toRange(f, t);
++                scheduleSave();
++                render();
++            };
++            from.addEventListener('change', onRange);
++            to.addEventListener('change', onRange);
++
++            const goal = row.createEl('input', { type: 'number', value: v.wordGoal ? String(v.wordGoal) : '' });
++            goal.placeholder = '–';
++            goal.addEventListener('change', () => {
++                const n = parseInt(goal.value, 10);
++                v.wordGoal = !isNaN(n) && n > 0 ? n : undefined;
++                scheduleSave();
++            });
++
++            const deadline = row.createEl('input', { type: 'date', value: v.deadline ?? '' });
++            deadline.addEventListener('change', () => { v.deadline = deadline.value || undefined; scheduleSave(); });
++
++            const del = row.createEl('button', { cls: 'clickable-icon structure-remove', text: '×', attr: { 'aria-label': `Remove ${v.title}` } });
++            del.addEventListener('click', () => { volumes.splice(i, 1); scheduleSave(); render(); });
++
++            row.querySelectorAll('input').forEach(inp => inp.addEventListener('keydown', (e: KeyboardEvent) => e.stopPropagation()));
++        });
++
++        if (overlaps.size > 0) {
++            const parts = [...overlaps.entries()].map(([i, acts]) => `${volumes[i].title}: act ${acts.join(', ')}`);
++            warn.setText(`Acts assigned to more than one volume (the first volume wins): ${parts.join('; ')}`);
++        }
++
++        // Defined acts not covered by any volume
++        const covered = new Set(volumes.flatMap(v => v.acts));
++        const free = definedActs.filter(a => !covered.has(a) && a !== 0 && a !== 99);
++        if (volumes.length > 0 && free.length > 0) {
++            warn.createDiv({ cls: 'sl-km-muted', text: `Acts without volume: ${free.join(', ')}` });
++        }
++    };
++
++    const addRow = container.createDiv('structure-add-row sl-km-volumes-add');
++    const addBtn = addRow.createEl('button', { cls: 'mod-cta', text: '+ Add volume' });
++    addBtn.addEventListener('click', () => {
++        const used = volumes.flatMap(v => v.acts);
++        const lastSize = volumes.length ? volumes[volumes.length - 1].acts.length : 4;
++        const start = used.length ? Math.max(...used) + 1 : (definedActs.filter(a => a > 0 && a !== 99)[0] ?? 1);
++        const ids = new Set(volumes.map(v => v.id));
++        let n = volumes.length + 1;
++        while (ids.has(`v${n}`)) n++;
++        volumes.push({ id: `v${n}`, title: `Volume ${volumes.length + 1}`, acts: toRange(start, start + Math.max(1, lastSize) - 1) });
++        scheduleSave();
++        render();
++    });
++
++    render();
++}
+diff --git a/main.ts b/main.ts
+index 86b622d..02cbff9 100644
+--- a/main.ts
++++ b/main.ts
+@@ -1,5 +1,6 @@
+ /* eslint-disable @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-return, @typescript-eslint/no-floating-promises, @typescript-eslint/no-misused-promises, @typescript-eslint/no-unnecessary-type-assertion, no-useless-escape -- Obsidian's API surface and several untyped third-party libraries force dynamic dispatch; floating promises are intentional in DOM/event handlers; matching enable at end of file */
+ import { addIcon, App, ButtonComponent, DropdownComponent, FuzzySuggestModal, ItemView, Modal, Notice, Platform, Plugin, Setting, TFile, TextComponent, ToggleComponent, WorkspaceLeaf, normalizePath, parseYaml, setIcon } from 'obsidian';
++import { registerForkCommands } from './services/ForkCommands';
+ import { SceneCardsSettings, SceneCardsSettingTab, DEFAULT_SETTINGS, migrateSectionStateKeys } from './settings';
+ import { asRecord, isRecord } from './utils/narrow';
+ import type { FilterPreset } from './models/Scene';
+@@ -385,6 +386,7 @@ export default class SceneCardsPlugin extends Plugin {
+         });
+ 
+         // Commands
++        registerForkCommands(this); // fork: Manage story structure / Manage volumes
+         this.addCommand({
+             id: 'open-board-view',
+             name: 'Open board view',            callback: () => this.activateView(BOARD_VIEW_TYPE),
+diff --git a/manifest.json b/manifest.json
+index b6dc4e2..0a92fd5 100644
+--- a/manifest.json
++++ b/manifest.json
+@@ -1,7 +1,7 @@
+ {
+-  "id": "storyline",
++  "id": "storyline-km",
+   "name": "StoryLine",
+-  "version": "1.11.8",
++  "version": "1.12.0-km.2",
+   "minAppVersion": "1.12.7",
+   "description": "Transform your vault into a powerful book planning and writing tool. Corkboard,KanbanBoard view, timeline, plotlines,character tracking, and more.",
+   "author": "Jan SandstrÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¶m",
+diff --git a/services/ExportService.ts b/services/ExportService.ts
+index 36aa7bb..d62ce7c 100644
+--- a/services/ExportService.ts
++++ b/services/ExportService.ts
+@@ -13,7 +13,7 @@ import { StoryLocation } from '../models/Location';
+ 
+ export type ExportFormat = 'md' | 'json' | 'html' | 'csv' | 'docx' | 'pdf';
+ export type ExportScope = 'manuscript' | 'outline';
+-export type ExportRangeField = 'sequence' | 'chapter';
++export type ExportRangeField = 'sequence' | 'chapter' | 'act';
+ 
+ export interface ExportRange {
+     field: ExportRangeField;
+@@ -150,7 +150,8 @@ export class ExportService {
+         if (this.exportRange) {
+             const selectedRanges = this.exportRange.sequenceRanges;
+             scenes = scenes.filter(scene => {
+-                const rawValue = this.exportRange!.field === 'sequence' ? scene.sequence : scene.chapter;
++                const field = this.exportRange!.field;
++                const rawValue = field === 'sequence' ? scene.sequence : field === 'act' ? scene.act : scene.chapter;
+                 if (rawValue === undefined) return false;
+                 const value = Number(rawValue);
+                 return Number.isFinite(value) && selectedRanges.some(range =>
+diff --git a/services/ForkCommands.ts b/services/ForkCommands.ts
+new file mode 100644
+index 0000000..026875d
+--- /dev/null
++++ b/services/ForkCommands.ts
+@@ -0,0 +1,42 @@
++// ═══════════════════════════════════════════════════════
++//  Commands added by the fork (storyline-km)
++// ═══════════════════════════════════════════════════════
++//
++// Registered with one call from main.ts onload: registerForkCommands(this).
++// Commands can get a hotkey in Settings → Hotkeys.
++
++import type SceneCardsPlugin from '../main';
++import { BOARD_VIEW_TYPE, TIMELINE_VIEW_TYPE } from '../constants';
++import { setNextStructureSection, type StructureSection } from '../components/StructureModalSections';
++
++interface HasStructureModal { openStructureModal(): void }
++
++/**
++ * Open the "Manage story structure" dialog from anywhere: uses an open Board
++ * or Timeline view, otherwise opens the Board first.
++ */
++export async function openStructureDialog(plugin: SceneCardsPlugin, section?: StructureSection): Promise<void> {
++    if (section) setNextStructureSection(plugin.app, section);
++    const { workspace } = plugin.app;
++    const find = () => workspace.getLeavesOfType(BOARD_VIEW_TYPE)[0] ?? workspace.getLeavesOfType(TIMELINE_VIEW_TYPE)[0];
++    let leaf = find();
++    if (!leaf) {
++        await plugin.activateView(BOARD_VIEW_TYPE);
++        leaf = find();
++    }
++    const view = leaf?.view as unknown as Partial<HasStructureModal> | undefined;
++    if (view && typeof view.openStructureModal === 'function') view.openStructureModal();
++}
++
++export function registerForkCommands(plugin: SceneCardsPlugin): void {
++    plugin.addCommand({
++        id: 'manage-story-structure',
++        name: 'Manage story structure',
++        callback: () => { void openStructureDialog(plugin); },
++    });
++    plugin.addCommand({
++        id: 'manage-volumes',
++        name: 'Manage volumes',
++        callback: () => { void openStructureDialog(plugin, 'volumes'); },
++    });
++}
+diff --git a/styles.css b/styles.css
+index 1894ec5..472e1d4 100644
+--- a/styles.css
++++ b/styles.css
+@@ -13873,3 +13873,210 @@ body.sl-focus-active-global.sl-focus-dim-text .markdown-source-view.mod-cm6 .cm-
+ .sl-series-delete:hover {
+     color: var(--text-error);
+ }
++
++/* ═══════════════════════════════════════════════════════
++   Fork storyline-km: own styles (volumes, arc points)
++   ═══════════════════════════════════════════════════════ */
++
++.sl-km-volume-divider {
++    display: flex;
++    align-items: center;
++    gap: 8px;
++    margin: 18px 0 6px;
++    padding: 6px 10px;
++    border-top: 3px solid var(--text-muted);
++    background: var(--background-secondary);
++    font-size: 1.05em;
++    font-weight: 700;
++    letter-spacing: 0.04em;
++    text-transform: uppercase;
++    color: var(--text-accent);
++}
++
++.plot-grid-canvas > .sl-km-volume-divider {
++    margin: 0;
++    position: sticky;
++    left: 0;
++    z-index: 8;
++}
++
++.sl-km-volume-stats {
++    margin: 8px 0 16px;
++    padding: 8px 12px;
++    border: 1px solid var(--background-modifier-border);
++    border-radius: 8px;
++}
++
++.sl-km-volume-stats > summary {
++    font-weight: 700;
++    cursor: pointer;
++}
++
++.sl-km-volume-stats-table {
++    width: 100%;
++    margin-top: 8px;
++    border-collapse: collapse;
++    font-size: 0.9em;
++}
++
++.sl-km-volume-stats-table th,
++.sl-km-volume-stats-table td {
++    padding: 4px 6px;
++    text-align: left;
++    border-bottom: 1px solid var(--background-modifier-border);
++}
++
++.sl-km-volume-progress {
++    display: inline-block;
++    width: 70px;
++    height: 6px;
++    vertical-align: middle;
++    border-radius: 3px;
++    background: var(--background-modifier-border);
++    overflow: hidden;
++}
++
++.sl-km-volume-progress-fill {
++    height: 100%;
++    background: var(--interactive-accent);
++}
++
++.sl-km-muted {
++    color: var(--text-muted);
++}
++
++.sl-km-overdue {
++    color: var(--text-error);
++}
++
++.sl-km-open-setups {
++    margin-top: 12px;
++}
++
++.sl-km-open-setups h4 {
++    margin: 4px 0;
++}
++
++.sl-km-open-setups summary {
++    cursor: pointer;
++}
++
++.sl-km-realized-by {
++    display: flex;
++    flex: 1 1 auto;
++    min-width: 0;
++    align-items: center;
++    gap: 8px;
++    margin-left: 12px;
++}
++
++.sl-km-realized-by-select {
++    flex: 1 1 auto;
++    min-width: 0;
++}
++
++.sl-km-realized-by-label {
++    flex: 0 0 auto;
++    font-weight: 600;
++    font-size: var(--font-ui-small);
++    white-space: nowrap;
++}
++
++/* Fork: "Manage story structure" as collapsible sections + volumes editor */
++.sl-km-structure-modal .modal {
++    width: min(960px, 92vw);
++    max-width: 92vw;
++    overflow-x: hidden;
++}
++
++.sl-km-structure-modal .modal-content {
++    overflow-x: hidden;
++}
++
++.sl-km-structure-modal .story-line-settings-section-body {
++    min-width: 0;
++}
++
++.sl-km-structure-sub {
++    margin-bottom: 8px;
++}
++
++.sl-km-volume-row {
++    display: grid;
++    grid-template-columns: minmax(120px, 2fr) 70px 70px 100px 140px 32px;
++    gap: 6px;
++    align-items: center;
++    margin-bottom: 6px;
++}
++
++.sl-km-volume-row input {
++    width: 100%;
++    min-width: 0;
++}
++
++.sl-km-volume-head {
++    font-size: var(--font-ui-smaller);
++    color: var(--text-muted);
++}
++
++.sl-km-volume-row.has-overlap input[type="number"] {
++    border-color: var(--text-error);
++}
++
++.sl-km-volumes-warning {
++    margin: 6px 0;
++    color: var(--text-error);
++    font-size: var(--font-ui-small);
++}
++
++.sl-km-volumes-add {
++    margin-top: 8px;
++}
++
++.sl-km-edit-volumes {
++    margin: 6px 0;
++}
++
++/* Fork: shared volume scope + volume visuals in Board, Corkboard, Manuscript, Navigator */
++.sl-km-volume-scope {
++    max-width: 160px;
++}
++
++.sl-km-volume-badge {
++    margin-left: auto;
++    padding: 0 6px;
++    border-radius: 8px;
++    background: var(--background-modifier-hover);
++    color: var(--text-muted);
++    font-size: var(--font-ui-smaller);
++    font-weight: 600;
++    line-height: 1.6;
++}
++
++.sl-km-volume-column {
++    flex: 0 0 28px;
++    align-self: stretch;
++    display: flex;
++    align-items: flex-start;
++    justify-content: center;
++    padding-top: 12px;
++    border-left: 3px solid var(--text-muted);
++    background: var(--background-secondary);
++    border-radius: 4px;
++}
++
++.sl-km-volume-column-label {
++    writing-mode: vertical-rl;
++    transform: rotate(180deg);
++    font-weight: 700;
++    letter-spacing: 0.06em;
++    text-transform: uppercase;
++    color: var(--text-accent);
++    white-space: nowrap;
++}
++
++.sl-nav-list .sl-km-volume-divider {
++    margin: 10px 0 2px;
++    padding: 3px 8px;
++    font-size: var(--font-ui-small);
++}
+diff --git a/utils/arcRealization.ts b/utils/arcRealization.ts
+new file mode 100644
+index 0000000..1af4c1f
+--- /dev/null
++++ b/utils/arcRealization.ts
+@@ -0,0 +1,179 @@
++// ═══════════════════════════════════════════════════════
++//  Arc Point "realizedBy" (fork: storyline-km)
++// ═══════════════════════════════════════════════════════
++//
++// An Arc Point is a stage a character goes through, not a scene. The stage
++// is often told in another scene (possibly another character's). The
++// optional frontmatter field on the Arc Point
++//
++//   realizedBy: "[[Funeral]]"
++//
++// links the two. The Subway map then draws the Arc Point's diamond on its
++// own lines AT THE STATION of the linked scene, so the existing interchange
++// connector joins both lines. No second zone, no second layout pass.
++//
++// The field is read straight from the metadata cache, so the scene parser
++// (MetadataParser whitelist) stays untouched.
++
++import type { App } from 'obsidian';
++import { TFile } from 'obsidian';
++import type { Scene } from '../models/Scene';
++
++export const REALIZED_BY_KEY = 'realizedBy';
++
++/** Raw link text of `realizedBy` (also accepts `realized_by`), or undefined. */
++export function readRealizedBy(app: App, scene: Scene): string | undefined {
++    const file = app.vault.getAbstractFileByPath(scene.filePath);
++    if (!(file instanceof TFile)) return undefined;
++    const fm = app.metadataCache.getFileCache(file)?.frontmatter;
++    const raw: unknown = fm?.[REALIZED_BY_KEY] ?? fm?.realized_by;
++    if (Array.isArray(raw)) return raw.length ? String(raw[0]) : undefined;
++    return typeof raw === 'string' && raw.trim() ? raw.trim() : undefined;
++}
++
++/** "[[Path/Title|Alias]]" → "Path/Title" */
++export function linkpathOf(raw: string): string {
++    let t = raw.trim();
++    const m = t.match(/^\[\[(.*)\]\]$/);
++    if (m) t = m[1];
++    return t.split('|')[0].split('#')[0].trim();
++}
++
++/** Resolve the realizing scene of an Arc Point among `candidates`. */
++export function resolveRealizingScene(app: App, arc: Scene, candidates: Scene[]): Scene | undefined {
++    const raw = readRealizedBy(app, arc);
++    if (!raw) return undefined;
++    const linkpath = linkpathOf(raw);
++    if (!linkpath) return undefined;
++    const dest = app.metadataCache.getFirstLinkpathDest(linkpath, arc.filePath);
++    if (dest) {
++        const byPath = candidates.find(s => s.filePath === dest.path);
++        if (byPath) return byPath;
++    }
++    const title = linkpath.split('/').pop()?.replace(/\.md$/i, '');
++    return candidates.find(s => s !== arc && (s.title === title || s.filePath.split('/').pop()?.replace(/\.md$/i, '') === title));
++}
++
++export interface Realization {
++    arc: Scene;
++    target: Scene;
++}
++
++/**
++ * Arc Points among `scenes` whose realizing scene is also in `scenes`
++ * (and is not itself an Arc Point). Keyed by the Arc Point's file path.
++ */
++export function resolveRealizations(app: App, scenes: Scene[]): Map<string, Realization> {
++    const result = new Map<string, Realization>();
++    const regular = scenes.filter(s => !s.arcAnchor);
++    for (const s of scenes) {
++        if (!s.arcAnchor) continue;
++        const target = resolveRealizingScene(app, s, regular);
++        if (target) result.set(s.filePath, { arc: s, target });
++    }
++    return result;
++}
++
++/**
++ * Subway helper. Call after the station order is final and before columns
++ * are assigned: removes realized Arc Points from the station list.
++ */
++export function removeRealizedStations(ordered: Scene[], realizations: Map<string, Realization>): void {
++    if (realizations.size === 0) return;
++    for (let i = ordered.length - 1; i >= 0; i--) {
++        if (realizations.has(ordered[i].filePath)) ordered.splice(i, 1);
++    }
++}
++
++/**
++ * Subway helper. Call after `colOf` is built: gives every realized Arc Point
++ * the column of its realizing scene. Returns a lookup "lane|col" → Arc Point
++ * so the node renderer can draw the diamond instead of the scene node on
++ * the Arc Point's own lanes.
++ */
++export function aliasRealizedColumns(
++    colOf: Map<string, number>,
++    realizations: Map<string, Realization>,
++): Map<string, Scene> {
++    const laneScene = new Map<string, Scene>();
++    for (const [arcPath, { arc, target }] of realizations) {
++        const col = colOf.get(target.filePath);
++        if (col === undefined) continue;
++        colOf.set(arcPath, col);
++        for (const tag of arc.tags ?? []) laneScene.set(`${tag}|${col}`, arc);
++    }
++    return laneScene;
++}
++
++/**
++ * Subway helper for the connector loop: splits the lanes at a station into
++ * regular lanes (solid interchange connector) and lanes that only carry a
++ * realized Arc Point (dashed link).
++ */
++export function splitRealizedLanes(
++    lanes: number[],
++    col: number,
++    plotlineKeys: string[],
++    laneScene: Map<string, Scene>,
++): { lanes: number[]; arcLanes: number[] } {
++    if (laneScene.size === 0) return { lanes, arcLanes: [] };
++    const regular: number[] = [];
++    const arcLanes: number[] = [];
++    for (const l of lanes) {
++        (laneScene.has(`${plotlineKeys[l]}|${col}`) ? arcLanes : regular).push(l);
++    }
++    return { lanes: regular, arcLanes };
++}
++
++/** Dashed link from every realized Arc Point lane to the nearest regular lane. */
++export function drawRealizedLinks(
++    svg: SVGSVGElement,
++    doc: Document,
++    opts: { x: number; lanes: number[]; arcLanes: number[]; laneY: (lane: number) => number; color: (lane: number) => string },
++): void {
++    if (opts.arcLanes.length === 0 || opts.lanes.length === 0) return;
++    const svgNS = 'http://www.w3.org/2000/svg';
++    for (const al of opts.arcLanes) {
++        const y1 = opts.laneY(al);
++        let nearest = opts.lanes[0];
++        for (const l of opts.lanes) {
++            if (Math.abs(opts.laneY(l) - y1) < Math.abs(opts.laneY(nearest) - y1)) nearest = l;
++        }
++        const y2 = opts.laneY(nearest);
++
++        // Colour blend from the Arc Point's line to the scene's line, like the solid connectors
++        const gradId = `sl-km-realized-grad-${Math.round(opts.x)}-${al}`;
++        const defs = svg.querySelector('defs') || (() => {
++            const d = doc.createElementNS(svgNS, 'defs');
++            svg.insertBefore(d, svg.firstChild);
++            return d;
++        })();
++        const grad = doc.createElementNS(svgNS, 'linearGradient');
++        grad.setAttribute('id', gradId);
++        grad.setAttribute('gradientUnits', 'userSpaceOnUse');
++        grad.setAttribute('x1', String(opts.x));
++        grad.setAttribute('y1', String(y1));
++        grad.setAttribute('x2', String(opts.x));
++        grad.setAttribute('y2', String(y2));
++        for (const [offset, color] of [['0%', opts.color(al)], ['100%', opts.color(nearest)]]) {
++            const stop = doc.createElementNS(svgNS, 'stop');
++            stop.setAttribute('offset', offset);
++            stop.setAttribute('stop-color', color);
++            grad.appendChild(stop);
++        }
++        defs.appendChild(grad);
++
++        const line = doc.createElementNS(svgNS, 'line');
++        line.setAttribute('x1', String(opts.x));
++        line.setAttribute('y1', String(y1));
++        line.setAttribute('x2', String(opts.x));
++        line.setAttribute('y2', String(y2));
++        line.setAttribute('stroke', `url(#${gradId})`);
++        line.setAttribute('stroke-width', '5');
++        line.setAttribute('stroke-dasharray', '12,4');
++        line.setAttribute('stroke-linecap', 'butt');
++        line.setAttribute('opacity', '0.65');
++        line.addClass('sl-km-realized-link');
++        svg.appendChild(line);
++    }
++}
+diff --git a/utils/volumeScope.ts b/utils/volumeScope.ts
+new file mode 100644
+index 0000000..b2a2cfe
+--- /dev/null
++++ b/utils/volumeScope.ts
+@@ -0,0 +1,104 @@
++// ═══════════════════════════════════════════════════════
++//  Shared volume scope (fork: storyline-km)
++// ═══════════════════════════════════════════════════════
++//
++// One "current volume" for all views: pick "Volume 2" in any toolbar and
++// Board, Corkboard, Plot Grid, Timeline, Subway, Manuscript and Navigator
++// all show only the acts of that volume. Stored per vault (local storage),
++// '' means "All volumes". Implemented as an act restriction merged into the
++// SceneFilter each view already passes to getFilteredScenes, so the query
++// service itself is unchanged.
++
++import type { App } from 'obsidian';
++import type SceneCardsPlugin from '../main';
++import type { Scene, SceneFilter } from '../models/Scene';
++import { getProjectVolumes, getVolumeForAct, type VolumeDef } from './volumes';
++
++const STORAGE_KEY = 'storyline-km:volumeScope';
++
++export function getVolumeScope(app: App): string {
++    const v: unknown = app.loadLocalStorage(STORAGE_KEY);
++    return typeof v === 'string' ? v : '';
++}
++
++export function setVolumeScope(plugin: SceneCardsPlugin, id: string): void {
++    plugin.app.saveLocalStorage(STORAGE_KEY, id);
++    plugin.refreshOpenViews();
++}
++
++/** The scoped volume, or undefined for "All volumes" / unknown id. */
++export function getScopedVolume(app: App, projectFilePath: string | undefined | null): VolumeDef | undefined {
++    const id = getVolumeScope(app);
++    if (!id) return undefined;
++    return getProjectVolumes(app, projectFilePath).find(v => v.id === id);
++}
++
++/**
++ * Merge the volume scope into a SceneFilter (intersection with an existing
++ * act filter). Returns the filter unchanged when no volume is scoped.
++ */
++export function scopeFilter<T extends SceneFilter | undefined>(
++    app: App,
++    projectFilePath: string | undefined | null,
++    filter: T,
++): T | SceneFilter {
++    const vol = getScopedVolume(app, projectFilePath);
++    if (!vol) return filter;
++    const volActs = vol.acts.map(String);
++    const base = filter?.act?.length ? filter.act.map(String).filter(a => volActs.includes(a)) : volActs;
++    // Empty intersection must match nothing, not everything
++    return { ...(filter ?? {}), act: base.length ? base : ['__none__'] };
++}
++
++/** True if the scene is inside the scoped volume (or no volume is scoped). */
++export function inVolumeScope(app: App, projectFilePath: string | undefined | null, scene: Scene): boolean {
++    const vol = getScopedVolume(app, projectFilePath);
++    if (!vol) return true;
++    return getVolumeForAct([vol], scene.act) !== undefined;
++}
++
++/** Restrict a list of act numbers to the scoped volume. */
++export function scopeActs(app: App, projectFilePath: string | undefined | null, acts: number[]): number[] {
++    const vol = getScopedVolume(app, projectFilePath);
++    return vol ? acts.filter(a => vol.acts.includes(a)) : acts;
++}
++
++/** Key fragment for view-level caches that must invalidate on scope change. */
++export function volumeScopeKey(app: App): string {
++    return `vol:${getVolumeScope(app)}`;
++}
++
++/**
++ * Toolbar dropdown "All volumes / Volume 1 / …". Rendered only when the
++ * project defines volumes. Changing it re-renders every open StoryLine view.
++ */
++export function renderVolumeScopeSelect(parent: HTMLElement, plugin: SceneCardsPlugin): void {
++    const volumes = getProjectVolumes(plugin.app, plugin.sceneManager?.activeProject?.filePath);
++    if (volumes.length === 0) return;
++    const select = parent.createEl('select', {
++        cls: 'dropdown sl-km-volume-scope',
++        attr: { 'aria-label': 'Volume' },
++    });
++    select.createEl('option', { text: 'All volumes', value: '' });
++    for (const v of volumes) select.createEl('option', { text: v.title, value: v.id });
++    const current = getVolumeScope(plugin.app);
++    select.value = volumes.some(v => v.id === current) ? current : '';
++    select.addEventListener('keydown', (e: KeyboardEvent) => e.stopPropagation());
++    select.addEventListener('change', () => setVolumeScope(plugin, select.value));
++}
++
++/** Short volume badge text, e.g. "V2" for the 2nd volume, from the title's number if present. */
++export function volumeBadgeText(volumes: VolumeDef[], vol: VolumeDef): string {
++    const num = vol.title.match(/(\d+)\s*$/)?.[1];
++    return num ? `V${num}` : `V${volumes.indexOf(vol) + 1}`;
++}
++
++/** Small "V2" badge in a scene card header (Kanban and Corkboard). No-op without volumes. */
++export function renderVolumeBadge(parent: HTMLElement, plugin: SceneCardsPlugin, scene: Scene): void {
++    if (scene.act === undefined) return;
++    const volumes = getProjectVolumes(plugin.app, plugin.sceneManager?.activeProject?.filePath);
++    if (volumes.length === 0) return;
++    const vol = getVolumeForAct(volumes, scene.act);
++    if (!vol) return;
++    parent.createSpan({ cls: 'sl-km-volume-badge', text: volumeBadgeText(volumes, vol), attr: { title: vol.title } });
++}
+diff --git a/utils/volumeSetups.ts b/utils/volumeSetups.ts
+new file mode 100644
+index 0000000..8a64ca4
+--- /dev/null
++++ b/utils/volumeSetups.ts
+@@ -0,0 +1,78 @@
++// ═══════════════════════════════════════════════════════
++//  Open setups at the end of each volume (fork: storyline-km)
++// ═══════════════════════════════════════════════════════
++//
++// A setup is "open at the end of volume N" if the setup scene lies in
++// volume N or earlier and none of its payoffs lies in volume N or earlier.
++// Links are read from both directions (payoff_scenes on the setup,
++// setup_scenes on the payoff), matched by scene title like the Validator.
++
++import type { Scene } from '../models/Scene';
++import { getVolumeForAct, type VolumeDef } from './volumes';
++
++export interface OpenSetup {
++    setup: Scene;
++    /** Titles of payoffs with their volume title, or "missing". */
++    payoffs: { title: string; where: string }[];
++}
++
++export interface VolumeOpenSetups {
++    volume: VolumeDef;
++    open: OpenSetup[];
++}
++
++/** Normalise a link value: strips [[ ]], alias and .md. */
++function linkTitle(raw: string): string {
++    let t = String(raw).trim();
++    const m = t.match(/^\[\[(.*)\]\]$/);
++    if (m) t = m[1];
++    t = t.split('|')[0];
++    t = t.split('/').pop() || t;
++    return t.replace(/\.md$/i, '').trim();
++}
++
++export function computeOpenSetups(volumes: VolumeDef[], scenes: Scene[]): VolumeOpenSetups[] {
++    if (volumes.length === 0) return [];
++    const volIndex = new Map(volumes.map((v, i) => [v.id, i]));
++    const byTitle = new Map<string, Scene>();
++    for (const s of scenes) if (s.title) byTitle.set(s.title, s);
++
++    // setup filePath → set of payoff titles
++    const links = new Map<string, Set<string>>();
++    const add = (setup: Scene, payoffTitle: string) => {
++        if (!links.has(setup.filePath)) links.set(setup.filePath, new Set());
++        links.get(setup.filePath)!.add(payoffTitle);
++    };
++    for (const s of scenes) {
++        for (const p of s.payoff_scenes ?? []) add(s, linkTitle(p));
++        for (const st of s.setup_scenes ?? []) {
++            const setup = byTitle.get(linkTitle(st));
++            if (setup && s.title) add(setup, s.title);
++        }
++    }
++
++    const sceneByPath = new Map(scenes.map(s => [s.filePath, s]));
++    const idxOf = (s: Scene | undefined): number | undefined => {
++        if (!s) return undefined;
++        const v = getVolumeForAct(volumes, s.act);
++        return v ? volIndex.get(v.id) : undefined;
++    };
++
++    return volumes.map((volume, n) => {
++        const open: OpenSetup[] = [];
++        for (const [path, payoffTitles] of links) {
++            const setup = sceneByPath.get(path);
++            const si = idxOf(setup);
++            if (!setup || si === undefined || si > n) continue;
++            const payoffs = [...payoffTitles].map(title => {
++                const target = byTitle.get(title);
++                const ti = idxOf(target);
++                return { title, idx: ti, where: target ? (ti !== undefined ? volumes[ti].title : 'no volume') : 'missing' };
++            });
++            const resolved = payoffs.some(p => p.idx !== undefined && p.idx <= n);
++            if (!resolved) open.push({ setup, payoffs: payoffs.map(({ title, where }) => ({ title, where })) });
++        }
++        open.sort((a, b) => (Number(a.setup.act) || 0) - (Number(b.setup.act) || 0) || (a.setup.sequence ?? 0) - (b.setup.sequence ?? 0));
++        return { volume, open };
++    });
++}
+diff --git a/utils/volumes.ts b/utils/volumes.ts
+new file mode 100644
+index 0000000..84bc478
+--- /dev/null
++++ b/utils/volumes.ts
+@@ -0,0 +1,192 @@
++// ═══════════════════════════════════════════════════════
++//  Volumes as act groups (fork: storyline-km)
++// ═══════════════════════════════════════════════════════
++//
++// A volume is NOT a new level above acts. It is a named group of acts,
++// defined optionally in the project file's frontmatter:
++//
++//   volumes:
++//     - id: b1
++//       title: "Volume 1"
++//       acts: [1, 2, 3, 4]        # or "1-4"
++//       wordGoal: 90000           # optional
++//       deadline: 2027-03-01      # optional
++//
++// Scenes, numbering, sorting and filenames are untouched; a scene's
++// volume is derived from its act. Without `volumes:` every helper here
++// returns "no volumes" and the plugin behaves exactly like upstream.
++
++import type { App } from 'obsidian';
++import { TFile } from 'obsidian';
++
++export interface VolumeDef {
++    id: string;
++    title: string;
++    acts: number[];
++    wordGoal?: number;
++    deadline?: string;
++}
++
++/** Parse `[1,2,3]`, `"1-4"`, `"1-4, 6"` or a single number into act numbers. */
++export function parseActList(raw: unknown): number[] {
++    const out: number[] = [];
++    const addToken = (token: string) => {
++        const t = token.trim();
++        if (!t) return;
++        const range = t.match(/^(\d+)\s*-\s*(\d+)$/);
++        if (range) {
++            const a = Number(range[1]);
++            const b = Number(range[2]);
++            for (let i = Math.min(a, b); i <= Math.max(a, b); i++) out.push(i);
++            return;
++        }
++        const n = Number(t);
++        if (Number.isFinite(n)) out.push(n);
++    };
++    if (Array.isArray(raw)) {
++        for (const item of raw) addToken(String(item));
++    } else if (typeof raw === 'number') {
++        out.push(raw);
++    } else if (typeof raw === 'string') {
++        raw.split(',').forEach(addToken);
++    }
++    return Array.from(new Set(out)).sort((a, b) => a - b);
++}
++
++/** Parse the raw `volumes:` frontmatter value. Invalid entries are skipped. */
++export function parseVolumes(raw: unknown): VolumeDef[] {
++    if (!Array.isArray(raw)) return [];
++    const volumes: VolumeDef[] = [];
++    raw.forEach((entry, idx) => {
++        if (!entry || typeof entry !== 'object') return;
++        const e = entry as Record<string, unknown>;
++        const acts = parseActList(e.acts);
++        if (acts.length === 0) return;
++        const title = typeof e.title === 'string' && e.title.trim() ? e.title.trim() : `Volume ${idx + 1}`;
++        const id = e.id !== undefined && String(e.id).trim() ? String(e.id).trim() : `v${idx + 1}`;
++        const goal = Number(e.wordGoal);
++        const deadline = e.deadline instanceof Date
++            ? e.deadline.toISOString().slice(0, 10)
++            : (e.deadline !== undefined && e.deadline !== null ? String(e.deadline) : undefined);
++        volumes.push({
++            id,
++            title,
++            acts,
++            wordGoal: Number.isFinite(goal) && goal > 0 ? goal : undefined,
++            deadline: deadline || undefined,
++        });
++    });
++    return volumes;
++}
++
++/** Read volumes from the project file of the active project (via metadata cache). */
++export function getProjectVolumes(app: App, projectFilePath: string | undefined | null): VolumeDef[] {
++    if (!projectFilePath) return [];
++    const file = app.vault.getAbstractFileByPath(projectFilePath);
++    if (!(file instanceof TFile)) return [];
++    const fm = app.metadataCache.getFileCache(file)?.frontmatter;
++    return parseVolumes(fm?.volumes);
++}
++
++/** Volume containing the given act, or undefined. */
++export function getVolumeForAct(volumes: VolumeDef[], act: number | string | undefined): VolumeDef | undefined {
++    if (act === undefined || act === null || volumes.length === 0) return undefined;
++    const n = Number(act);
++    if (!Number.isFinite(n)) return undefined;
++    return volumes.find(v => v.acts.includes(n));
++}
++
++/** Act numbers of a volume by id (empty if unknown). */
++export function getActsForVolume(volumes: VolumeDef[], id: string): number[] {
++    return volumes.find(v => v.id === id)?.acts ?? [];
++}
++
++/** Export range (field 'act') for one volume, undefined for '' / unknown id. */
++export function volumeExportRange(
++    volumes: VolumeDef[],
++    id: string,
++): { field: 'act'; sequenceRanges: Array<{ start: number; end: number }> } | undefined {
++    if (!id) return undefined;
++    const acts = getActsForVolume(volumes, id);
++    if (acts.length === 0) return undefined;
++    return { field: 'act', sequenceRanges: acts.map(a => ({ start: a, end: a })) };
++}
++
++/**
++ * Tracks the current volume while a view renders act dividers in order and
++ * emits a volume band whenever a new volume starts.
++ */
++export class VolumeDividerTracker {
++    private lastId: string | null = null;
++
++    constructor(private volumes: VolumeDef[]) {}
++
++    get active(): boolean {
++        return this.volumes.length > 0;
++    }
++
++    /** Returns the volume if `act` starts a new volume, else undefined. */
++    next(act: number | string | undefined): VolumeDef | undefined {
++        if (!this.active) return undefined;
++        const vol = getVolumeForAct(this.volumes, act);
++        if (!vol || vol.id === this.lastId) return undefined;
++        this.lastId = vol.id;
++        return vol;
++    }
++
++    /** Render an HTML volume band before the act divider if a new volume starts. */
++    renderBefore(parent: HTMLElement, act: number | string | undefined, gridColumn?: string): void {
++        const vol = this.next(act);
++        if (!vol) return;
++        const band = parent.createDiv('sl-km-volume-divider');
++        if (gridColumn) band.setCssStyles({ gridColumn });
++        band.createSpan({ cls: 'sl-km-volume-divider-label', text: vol.title });
++    }
++}
++
++/** SVG volume marker for the Subway map: solid line plus title above the act labels. */
++export function drawSubwayVolumeMarker(
++    svg: SVGSVGElement,
++    doc: Document,
++    opts: { x: number; labelX: number; labelY: number; y1: number; y2: number; title: string; drawLine: boolean },
++): void {
++    const svgNS = 'http://www.w3.org/2000/svg';
++    if (opts.drawLine) {
++        const line = doc.createElementNS(svgNS, 'line');
++        line.setAttribute('x1', String(opts.x));
++        line.setAttribute('y1', String(opts.y1));
++        line.setAttribute('x2', String(opts.x));
++        line.setAttribute('y2', String(opts.y2));
++        line.setAttribute('stroke', 'var(--text-muted)');
++        line.setAttribute('stroke-width', '4');
++        svg.appendChild(line);
++    }
++    const label = doc.createElementNS(svgNS, 'text');
++    label.setAttribute('x', String(opts.labelX));
++    label.setAttribute('y', String(opts.labelY));
++    label.setAttribute('text-anchor', 'start');
++    label.setAttribute('font-size', '13');
++    label.setAttribute('font-weight', '700');
++    label.setAttribute('fill', 'var(--text-accent)');
++    label.textContent = opts.title.toUpperCase();
++    svg.appendChild(label);
++}
++
++/**
++ * Kanban helper: a narrow vertical band with the volume title, inserted
++ * between act columns where a new volume starts.
++ */
++export function renderVolumeColumnDivider(parent: HTMLElement, vol: VolumeDef): void {
++    const band = parent.createDiv('sl-km-volume-column');
++    band.setAttribute('title', vol.title);
++    band.createSpan({ cls: 'sl-km-volume-column-label', text: vol.title });
++}
++
++/** Act number from a Kanban act column key ("Act 5", "Prologue", "Epilogue"). */
++export function actFromColumnKey(key: string): number | undefined {
++    const k = key.trim().toLowerCase();
++    if (k === 'prologue') return 0;
++    if (k === 'epilogue') return 99;
++    const m = k.match(/(\d+(?:\.\d+)?)/);
++    return m ? Number(m[1]) : undefined;
++}
+diff --git a/views/BoardView.ts b/views/BoardView.ts
+index 62b95df..1606334 100644
+--- a/views/BoardView.ts
++++ b/views/BoardView.ts
+@@ -1,5 +1,8 @@
+ /* eslint-disable @typescript-eslint/no-floating-promises, @typescript-eslint/no-misused-promises, @typescript-eslint/no-unnecessary-type-assertion -- Obsidian's API surface and several untyped third-party libraries force dynamic dispatch; floating promises are intentional in DOM/event handlers; matching enable at end of file */
+ import { ItemView, WorkspaceLeaf, Menu, Notice, TFile, Modal, Setting, MarkdownRenderer, normalizePath } from 'obsidian';
++import { enhanceStructureModal } from '../components/StructureModalSections';
++import { renderVolumeScopeSelect, scopeActs, scopeFilter } from '../utils/volumeScope';
++import { actFromColumnKey, getProjectVolumes, renderVolumeColumnDivider, VolumeDividerTracker } from '../utils/volumes';
+ import * as obsidian from 'obsidian';
+ import { Scene, SceneFilter, SortConfig, BoardGroupBy, SceneStatus, SceneTemplate, BeatSheetTemplate, BUILTIN_BEAT_SHEETS, getStatusOrder, getStatusConfig, resolveStatusCfg } from '../models/Scene';
+ import { openConfirmModal } from '../components/ConfirmModal';
+@@ -249,6 +252,7 @@ export class BoardView extends ItemView {
+         renderViewSwitcher(toolbar, BOARD_VIEW_TYPE, this.plugin, this.leaf);
+ 
+         const controls = toolbar.createDiv('story-line-toolbar-controls');
++        renderVolumeScopeSelect(controls, this.plugin); // fork: shared volume scope
+ 
+         const modeToggle = controls.createDiv('story-line-board-mode-toggle');
+         const corkboardBtn = modeToggle.createEl('button', {
+@@ -535,11 +539,12 @@ export class BoardView extends ItemView {
+         // Pass defined acts/chapters so empty containers still render as
+         // drop targets (issue #220 — newly inserted chapters were invisible
+         // until a scene was dragged into them).
+-        const definedActs = this.sceneManager.getDefinedActs();
++        const projectPath = this.sceneManager.activeProject?.filePath;
++        const definedActs = scopeActs(this.app, projectPath, this.sceneManager.getDefinedActs());
+         const definedChapters = this.sceneManager.getDefinedChapters();
+         const groups = this.sceneManager.queryService.getScenesGroupedByWithEmpty(
+             this.groupBy,
+-            this.currentFilter,
++            scopeFilter(this.app, projectPath, this.currentFilter),
+             this.currentSort,
+             definedActs,
+             definedChapters
+@@ -555,8 +560,11 @@ export class BoardView extends ItemView {
+             return;
+         }
+ 
++        const volumeTracker = new VolumeDividerTracker(this.groupBy === 'act' ? getProjectVolumes(this.app, projectPath) : []);
+         for (const key of sortedKeys) {
+             let scenes = groups.get(key) || [];
++            const startedVolume = volumeTracker.next(actFromColumnKey(key)); // fork: volume band between act columns
++            if (startedVolume) renderVolumeColumnDivider(this.boardEl, startedVolume);
+             if (!this.plugin.settings.showNotesInKanban) {
+                 scenes = scenes.filter(scene => !this.isCorkboardNoteScene(scene));
+                 const isNoActColumn = this.groupBy === 'act' && key.trim().toLowerCase() === 'no act';
+@@ -583,7 +591,7 @@ export class BoardView extends ItemView {
+         for (const vs of this.scrollers) vs.destroy();
+         this.scrollers = [];
+ 
+-        let scenes = this.sceneManager.queryService.getFilteredScenes(this.currentFilter, this.currentSort);
++        let scenes = this.sceneManager.queryService.getFilteredScenes(scopeFilter(this.app, this.sceneManager.activeProject?.filePath, this.currentFilter), this.currentSort);
+         if (!this.plugin.settings.showScenesInCorkboard) {
+             scenes = scenes.filter(scene => this.isCorkboardNoteScene(scene));
+         }
+@@ -3831,6 +3839,8 @@ export class BoardView extends ItemView {
+             this.refreshBoard();
+         });
+ 
++        // Fork: regroup into collapsible sections (Volumes, Acts, Chapters, Templates)
++        enhanceStructureModal(modal, { app: this.app, projectFilePath: this.sceneManager.activeProject?.filePath, definedActs: this.sceneManager.getDefinedActs() });
+         modal.open();
+ 
+         // Issue #214 — on iOS/iPadOS the modal opens scrolled past the top,
+diff --git a/views/ManuscriptView.ts b/views/ManuscriptView.ts
+index 1500e05..f37256a 100644
+--- a/views/ManuscriptView.ts
++++ b/views/ManuscriptView.ts
+@@ -1,5 +1,7 @@
+ /* eslint-disable @typescript-eslint/no-floating-promises, @typescript-eslint/no-misused-promises, @typescript-eslint/no-unnecessary-type-assertion, @typescript-eslint/no-unused-vars -- Obsidian's API surface and several untyped third-party libraries force dynamic dispatch; floating promises are intentional in DOM/event handlers; matching enable at end of file */
+ import { ItemView, WorkspaceLeaf, WorkspaceSplit, MarkdownRenderer, TFile, setIcon, Notice, Menu } from 'obsidian';
++import { renderVolumeScopeSelect, scopeFilter, volumeScopeKey } from '../utils/volumeScope';
++import { getProjectVolumes, VolumeDividerTracker } from '../utils/volumes';
+ import { EditorView, Decoration } from '@codemirror/view';
+ import { RangeSetBuilder, StateEffect, Compartment, EditorSelection } from '@codemirror/state';
+ import { syntaxTree } from '@codemirror/language';
+@@ -234,6 +236,7 @@ export class ManuscriptView extends ItemView {
+             this.currentFilter,
+             this.currentSort,
+         );
++        renderVolumeScopeSelect(filterContainer, this.plugin); // fork: shared volume scope
+         this.filtersComponent.render();
+ 
+         // Plain-text toggle (same style as Board view's Scenes on/off)
+@@ -358,7 +361,7 @@ export class ManuscriptView extends ItemView {
+ 
+     /** Build a cache key from the current filter + sort configuration */
+     private computeFilterKey(): string {
+-        return JSON.stringify(this.currentFilter) + '|' + JSON.stringify(this.currentSort);
++        return JSON.stringify(this.currentFilter) + '|' + JSON.stringify(this.currentSort) + '|' + volumeScopeKey(this.app);
+     }
+ 
+     private scheduleManuscriptViewStateSave(): void {
+@@ -398,7 +401,7 @@ export class ManuscriptView extends ItemView {
+         ) {
+             scenes = this._lastScenes;
+         } else {
+-            scenes = this.sceneManager.queryService.getFilteredScenes(this.currentFilter, this.currentSort)
++            scenes = this.sceneManager.queryService.getFilteredScenes(scopeFilter(this.app, this.sceneManager.activeProject?.filePath, this.currentFilter), this.currentSort)
+                 .filter(s => !s.corkboardNote);
+ 
+             // When user picks a non-structural sort (e.g. "title"), respect it
+@@ -458,12 +461,14 @@ export class ManuscriptView extends ItemView {
+ 
+         const editorContainers: { el: HTMLElement; path: string }[] = [];
+ 
++        const volumeTracker = new VolumeDividerTracker(getProjectVolumes(this.app, this.sceneManager.activeProject?.filePath));
+         for (const scene of scenes) {
+             // Act divider
+             if (scene.act !== undefined && scene.act !== lastAct) {
+                 lastAct = scene.act;
+                 lastChapter = undefined;
+                 if (prevBlock) prevBlock.classList.add('is-before-divider');
++                volumeTracker.renderBefore(this.scrollArea, scene.act); // fork: volume heading
+                 const actDiv = this.scrollArea.createDiv('sl-manuscript-act-divider');
+                 const actLabel = this.sceneManager.getActLabel(Number(scene.act));
+                 const actDisplay = getActDisplayLabel(scene.act);
+@@ -1074,7 +1079,7 @@ export class ManuscriptView extends ItemView {
+         const scenes = this._lastScenes.length > 0
+             ? this._lastScenes
+             : this.sceneManager.queryService
+-                .getFilteredScenes(this.currentFilter, this.currentSort)
++                .getFilteredScenes(scopeFilter(this.app, this.sceneManager.activeProject?.filePath, this.currentFilter), this.currentSort)
+                 .filter(s => !s.corkboardNote);
+ 
+         for (const scene of scenes) {
+@@ -1281,7 +1286,7 @@ export class ManuscriptView extends ItemView {
+         const key = this.computeFilterKey();
+         const scenes = (key === this._lastFilterKey && this._lastScenes.length > 0)
+             ? this._lastScenes
+-            : this.sceneManager.queryService.getFilteredScenes(this.currentFilter, this.currentSort)
++            : this.sceneManager.queryService.getFilteredScenes(scopeFilter(this.app, this.sceneManager.activeProject?.filePath, this.currentFilter), this.currentSort)
+                 .filter(s => !s.corkboardNote);
+         let totalWords = 0;
+         let totalChars = 0;
+diff --git a/views/NavigatorView.ts b/views/NavigatorView.ts
+index 535656d..4ff77d4 100644
+--- a/views/NavigatorView.ts
++++ b/views/NavigatorView.ts
+@@ -1,5 +1,7 @@
+ /* eslint-disable @typescript-eslint/no-floating-promises, @typescript-eslint/no-misused-promises, @typescript-eslint/no-unnecessary-type-assertion -- Obsidian's API surface and several untyped third-party libraries force dynamic dispatch; floating promises are intentional in DOM/event handlers; matching enable at end of file */
+ import { ItemView, WorkspaceLeaf, Menu, TFile, setIcon } from 'obsidian';
++import { inVolumeScope, renderVolumeScopeSelect } from '../utils/volumeScope';
++import { getProjectVolumes, VolumeDividerTracker } from '../utils/volumes';
+ import type SceneCardsPlugin from '../main';
+ import { ManuscriptView } from './ManuscriptView';
+ import { resolveTagColor, getPlotlineHSL } from '../settings';
+@@ -118,6 +120,7 @@ export class NavigatorView extends ItemView {
+             this.renderList();
+         });
+ 
++        renderVolumeScopeSelect(toolbar, this.plugin); // fork: shared volume scope
+         this.sortBtn = toolbar.createDiv('sl-nav-sort-btn');
+         setIcon(this.sortBtn, SORT_ICONS[this.sortMode]);
+         attachTooltip(this.sortBtn, 'Sort');
+@@ -327,6 +330,8 @@ export class NavigatorView extends ItemView {
+         this.listEl.empty();
+ 
+         let scenes = this.sceneManager.getAllScenes().filter(s => !s.corkboardNote && !s.inactive);
++        // fork: shared volume scope
++        scenes = scenes.filter(s => inVolumeScope(this.app, this.sceneManager.activeProject?.filePath, s));
+ 
+         // Plotline filter
+         if (this.plotlineFilter) {
+@@ -388,7 +393,9 @@ export class NavigatorView extends ItemView {
+             return;
+         }
+ 
++        const volumeTracker = new VolumeDividerTracker(getProjectVolumes(this.app, this.sceneManager.activeProject?.filePath));
+         for (const [act, actScenes] of groups) {
++            volumeTracker.renderBefore(this.listEl!, actScenes[0]?.act); // fork: volume heading
+             const isCollapsed = this.collapsedActs.has(act);
+ 
+             const header = this.listEl!.createDiv('sl-nav-act-header');
+diff --git a/views/PlotgridView.ts b/views/PlotgridView.ts
+index da3aa04..daa3208 100644
+--- a/views/PlotgridView.ts
++++ b/views/PlotgridView.ts
+@@ -2,6 +2,9 @@
+ import { App, ItemView, WorkspaceLeaf, Menu, Modal, TFile, Notice, MarkdownRenderer, Component } from 'obsidian';
+ import * as obsidian from 'obsidian';
+ import { CellData, ColumnMeta, RowMeta, PlotGridData } from '../models/PlotGridData';
++import { renderArcPointIcon } from '../components/ArcPointUI';
++import { getProjectVolumes, VolumeDividerTracker } from '../utils/volumes';
++import { renderVolumeScopeSelect, scopeFilter } from '../utils/volumeScope';
+ import { LocationManager } from '../services/LocationManager';
+ import type { SceneFilter, SortConfig } from '../models/Scene';
+ import { SceneManager } from '../services/SceneManager';
+@@ -580,6 +583,7 @@ export class PlotgridView extends ItemView {
+         // add a small left margin so there's a bit more space between the view switcher and action buttons
+         controls.setCssStyles({ marginLeft: '24px' });
+ 
++        if (this.plugin) renderVolumeScopeSelect(controls, this.plugin); // fork: shared volume scope
+         const left = controls.createDiv('plot-grid-toolbar-left');
+         left.setCssStyles({
+             display: 'flex',
+@@ -1024,9 +1028,11 @@ export class PlotgridView extends ItemView {
+             k => { const v = (this.currentFilter as unknown as Record<string, unknown>)[k]; return v !== undefined && v !== '' && !(Array.isArray(v) && v.length === 0); }
+         );
+         let filteredPaths: Set<string> | null = null;
+-        if (hasFilter && sceneManager) {
++        // fork: shared volume scope restricts rows like an act filter
++        const scopedFilter = sceneManager ? scopeFilter(this.app, sceneManager.activeProject?.filePath, this.currentFilter) : this.currentFilter;
++        if ((hasFilter || scopedFilter !== this.currentFilter) && sceneManager) {
+             filteredPaths = new Set(
+-                sceneManager.queryService.getFilteredScenes(this.currentFilter, undefined).map(s => s.filePath)
++                sceneManager.queryService.getFilteredScenes(scopedFilter, undefined).map(s => s.filePath)
+             );
+         }
+ 
+@@ -1371,6 +1377,7 @@ export class PlotgridView extends ItemView {
+             });
+         }
+ 
++        const volumeTracker = new VolumeDividerTracker(getProjectVolumes(this.app, this.plugin?.sceneManager?.activeProject?.filePath));
+         for (const ri of rowIndices) {
+             if (!visibleRows.has(ri)) continue; // skip filtered-out rows
+             // ── Act/chapter dividers ──
+@@ -1378,6 +1385,9 @@ export class PlotgridView extends ItemView {
+             if (divs) {
+                 const colCount = this.data.columns.length + 1;
+                 for (const d of divs) {
++                    if (d.type === 'act') {
++                        volumeTracker.renderBefore(this.canvasEl, d.key.slice(4), `1 / ${colCount + 1}`);
++                    }
+                     const divEl = this.canvasEl.createDiv(`plot-grid-divider plot-grid-divider-${d.type}`);
+                     const isCollapsed = this.data.collapsedSections?.[d.key] === true;
+                     divEl.setCssStyles({
+@@ -1436,6 +1446,7 @@ export class PlotgridView extends ItemView {
+                 if (rowScene) {
+                     const statusCfg = resolveStatusCfg(rowScene.status || 'idea');
+                     rowEl.setCssStyles({ borderLeft: `4px solid ${statusCfg.color}` });
++                    renderArcPointIcon(rowEl, rowScene);
+                 }
+             }
+ 
+@@ -1710,6 +1721,7 @@ export class PlotgridView extends ItemView {
+                         obsidian.setIcon(statusIcon, statusCfg.icon);
+                         statusIcon.title = statusCfg.label;
+                         titleRow.createSpan({ cls: 'pg-mini-title', text: scene.title || 'Untitled' });
++                        renderArcPointIcon(titleRow, scene);
+ 
+                         // Meta row: description snippet
+                         const metaRow = miniCard.createDiv('pg-mini-meta markdown-rendered');
+diff --git a/views/StatsView.ts b/views/StatsView.ts
+index cbd34ae..e4dd573 100644
+--- a/views/StatsView.ts
++++ b/views/StatsView.ts
+@@ -1,5 +1,8 @@
+ /* eslint-disable @typescript-eslint/no-floating-promises, @typescript-eslint/no-unused-vars, no-useless-escape -- Obsidian's API surface and several untyped third-party libraries force dynamic dispatch; floating promises are intentional in DOM/event handlers; matching enable at end of file */
+ import { SceneManager } from '../services/SceneManager';
++import { renderVolumeStatsSection } from '../components/VolumeStatsSection';
++import { getProjectVolumes } from '../utils/volumes';
++import { openStructureDialog } from '../services/ForkCommands';
+ import { renderViewSwitcher } from '../components/ViewSwitcher';
+ import * as obsidian from 'obsidian';
+ import type SceneCardsPlugin from '../main';
+@@ -104,6 +107,12 @@ export class StatsView extends ItemView {
+         const allScenes = this.sceneManager.getAllScenes()
+             .filter(scene => !scene.inactive && !scene.corkboardNote);
+ 
++        // Per-volume statistics and goals (fork) — only when `volumes:` is defined
++        renderVolumeStatsSection(content, getProjectVolumes(this.app, this.sceneManager.activeProject?.filePath),
++            allScenes, this.plugin.settings.excludeArcAnchorFromWordcount ?? true,
++            (scene) => { const f = this.app.vault.getFileByPath(scene.filePath); if (f) void this.app.workspace.getLeaf('tab').openFile(f); },
++            () => { void openStructureDialog(this.plugin, 'volumes'); });
++
+         if (redesigned) {
+             // Section order, icons, and default open states follow Scribe's
+             // redesigned Statistics view so both apps stay interchangeable.
+diff --git a/views/StorylineView.ts b/views/StorylineView.ts
+index f2088d1..2507f3a 100644
+--- a/views/StorylineView.ts
++++ b/views/StorylineView.ts
+@@ -1,5 +1,8 @@
+ /* eslint-disable @typescript-eslint/no-floating-promises, @typescript-eslint/no-misused-promises, @typescript-eslint/no-unnecessary-type-assertion -- Obsidian's API surface and several untyped third-party libraries force dynamic dispatch; floating promises are intentional in DOM/event handlers; matching enable at end of file */
+ import { ButtonComponent, ItemView, Menu, MenuItem, Modal, Notice, Setting, TFile, TextComponent, WorkspaceLeaf } from 'obsidian';
++import { aliasRealizedColumns, drawRealizedLinks, removeRealizedStations, resolveRealizations, splitRealizedLanes } from '../utils/arcRealization';
++import { renderVolumeScopeSelect, scopeFilter } from '../utils/volumeScope';
++import { drawSubwayVolumeMarker, getProjectVolumes, VolumeDividerTracker } from '../utils/volumes';
+ import * as obsidian from 'obsidian';
+ import { Scene } from '../models/Scene';
+ import { SceneManager } from '../services/SceneManager';
+@@ -142,6 +145,8 @@ export class StorylineView extends ItemView {
+             menu.showAtPosition({ x: e.clientX, y: e.clientY });
+         });
+ 
++        renderVolumeScopeSelect(controls, this.plugin); // fork: shared volume scope
++
+         // Arc Points filter toggle (All / Scenes / Arc Points)
+         const arcFilterContainer = controls.createDiv('story-line-arc-filter');
+         const arcModes: { value: 'all' | 'scenes' | 'arcPoints'; label: string }[] = [
+@@ -260,7 +265,7 @@ export class StorylineView extends ItemView {
+ 
+         const arcFilter = this.arcAnchorFilter === 'all' ? undefined : { arcAnchorFilter: this.arcAnchorFilter };
+         const allScenes = this.sceneManager.queryService.getFilteredScenes(
+-            arcFilter,
++            scopeFilter(this.app, this.sceneManager.activeProject?.filePath, arcFilter), // fork: volume scope
+             { field: 'sequence', direction: 'asc' }
+         );
+         // Corkboard sticky notes are not story scenes — exclude them from
+@@ -423,6 +428,9 @@ export class StorylineView extends ItemView {
+         // Sort by act → chapter → sequence so e.g. "01-01-02" comes before "01-02-01".
+         // Sorting by sequence alone caused chapter nesting to be ignored (issue #96).
+         orderedScenes.sort((a, b) => compareScenesByActChapter(a, b, (x, y) => (x.sequence ?? 0) - (y.sequence ?? 0)));
++        // Arc Points with `realizedBy` share the station of their realizing scene (fork)
++        const realizations = resolveRealizations(this.app, orderedScenes);
++        removeRealizedStations(orderedScenes, realizations);
+ 
+         if (orderedScenes.length === 0) {
+             this.renderListView(content, scenes, plotlines, plotlineKeys);
+@@ -431,13 +439,19 @@ export class StorylineView extends ItemView {
+ 
+         const colOf = new Map<string, number>();
+         orderedScenes.forEach((s, i) => colOf.set(s.filePath, i));
++        const realizedLaneScene = aliasRealizedColumns(colOf, realizations);
+ 
+         const numCols = orderedScenes.length;
+         const numLanes = plotlineKeys.length;
+ 
+         const hslAdj = getPlotlineHSL(this.plugin.settings);
+-        const laneColor = (idx: number, plotline: string): string =>
+-            resolveTagColor(plotline, idx, scheme, tagColors, hslAdj);
++        // Colour index comes from ALL tags (sorted), not from the currently
++        // visible lanes, so filtering (e.g. Arc Points) or hiding plotlines
++        // does not shift colours. Matches SceneCard / Plotgrid / Navigator.
++        const allTagsSorted = this.sceneManager.queryService.getAllTags();
++        const stableTagIdx = (tag: string): number => Math.max(0, allTagsSorted.indexOf(tag));
++        const laneColor = (_idx: number, plotline: string): string =>
++            resolveTagColor(plotline, stableTagIdx(plotline), scheme, tagColors, hslAdj);
+ 
+         // ── SVG dimensions ──
+         const svgWidth = TRACK_LEFT + numCols * SCENE_SPACING + 60;
+@@ -511,12 +525,27 @@ export class StorylineView extends ItemView {
+             acts.get(act)!.push(col);
+         });
+ 
++        const volumeTracker = new VolumeDividerTracker(getProjectVolumes(this.app, this.sceneManager.activeProject?.filePath));
+         const actEntries = [...acts.entries()].sort((a, b) => a[0] - b[0]);
+         for (let ai = 0; ai < actEntries.length; ai++) {
+             const [actNum, cols] = actEntries[ai];
+             const minCol = Math.min(...cols);
+             const maxCol = Math.max(...cols);
+ 
++            // Volume marker (fork): solid line + title when a new volume starts
++            const startedVolume = volumeTracker.next(actNum);
++            if (startedVolume) {
++                drawSubwayVolumeMarker(svg, activeDocument, {
++                    x: colX(minCol) - SCENE_SPACING / 2,
++                    labelX: colX(minCol) - SCENE_SPACING / 2 + 8,
++                    labelY: TOP_MARGIN - 40,
++                    y1: TOP_MARGIN - 50,
++                    y2: trackBottom,
++                    title: startedVolume.title,
++                    drawLine: ai > 0,
++                });
++            }
++
+             // Act label
+             const centerX = (colX(minCol) + colX(maxCol)) / 2;
+             const actLabel = activeDocument.createElementNS(svgNS, 'text');
+@@ -530,7 +559,7 @@ export class StorylineView extends ItemView {
+             svg.appendChild(actLabel);
+ 
+             // Vertical divider line before this act group (clear, visible)
+-            if (ai > 0) {
++            if (ai > 0 && !startedVolume) {
+                 const divX = colX(minCol) - SCENE_SPACING / 2;
+                 const line = activeDocument.createElementNS(svgNS, 'line');
+                 line.setAttribute('x1', String(divX));
+@@ -585,7 +614,10 @@ export class StorylineView extends ItemView {
+         }
+ 
+         // ── Shared-scene connectors ──
+-        for (const [col, lanes] of sceneToLanes) {
++        for (const [col, stationLanes] of sceneToLanes) {
++            // Realized Arc Points join with a dashed link, not the solid connector (fork)
++            const { lanes, arcLanes } = splitRealizedLanes(stationLanes, col, plotlineKeys, realizedLaneScene);
++            drawRealizedLinks(svg, activeDocument, { x: colX(col), lanes, arcLanes, laneY, color: l => laneColor(l, plotlineKeys[l]) });
+             if (lanes.length <= 1) continue;
+             const x = colX(col);
+             const sortedLanes = [...lanes].sort((a, b) => a - b);
+@@ -637,7 +669,7 @@ export class StorylineView extends ItemView {
+ 
+             for (const col of cols) {
+                 const x = colX(col);
+-                const scene = orderedScenes[col];
++                const scene = realizedLaneScene.get(`${pk}|${col}`) ?? orderedScenes[col];
+ 
+                 // Node shape: diamond for Arc Points, circle for regular scenes
+                 const isArcPoint = !!scene.arcAnchor;
+@@ -721,8 +753,7 @@ export class StorylineView extends ItemView {
+                     let px = x - totalWidth / 2;
+ 
+                     for (const { tag, width } of pillData) {
+-                        const pillIdx = plotlineKeys.indexOf(tag);
+-                        const pillColor = resolveTagColor(tag, Math.max(0, pillIdx), scheme, tagColors, hslAdj);
++                        const pillColor = resolveTagColor(tag, stableTagIdx(tag), scheme, tagColors, hslAdj);
+                         const rect = activeDocument.createElementNS(svgNS, 'rect');
+                         rect.setAttribute('x', String(px));
+                         rect.setAttribute('y', String(pillY - 8));
+@@ -775,10 +806,8 @@ export class StorylineView extends ItemView {
+         const section = container.createDiv('storyline-section');
+         const tagColors = this.plugin.settings.tagColors || {};
+         const scheme = this.plugin.settings.colorScheme;
+-        const plotlineIdx = allScenes.reduce((tags, s) => {
+-            (s.tags || []).forEach(t => { if (!tags.includes(t)) tags.push(t); });
+-            return tags;
+-        }, [] as string[]).sort().indexOf(plotline);
++        // Stable colour index across all tags (see subway laneColor).
++        const plotlineIdx = this.sceneManager.queryService.getAllTags().indexOf(plotline);
+         const plotlineColor = resolveTagColor(plotline, Math.max(0, plotlineIdx), scheme, tagColors, getPlotlineHSL(this.plugin.settings));
+ 
+         // Collapsible header
+diff --git a/views/TimelineView.ts b/views/TimelineView.ts
+index f077b9d..7db8907 100644
+--- a/views/TimelineView.ts
++++ b/views/TimelineView.ts
+@@ -1,7 +1,11 @@
+ /* eslint-disable @typescript-eslint/no-floating-promises, @typescript-eslint/no-misused-promises, @typescript-eslint/no-unnecessary-type-assertion, @typescript-eslint/no-unused-vars -- Obsidian's API surface and several untyped third-party libraries force dynamic dispatch; floating promises are intentional in DOM/event handlers; matching enable at end of file */
+ import { openConfirmModal } from '../components/ConfirmModal';
++import { enhanceStructureModal } from '../components/StructureModalSections';
+ import { SceneManager } from '../services/SceneManager';
+ import { SceneCardComponent } from '../components/SceneCard';
++import { getProjectVolumes, VolumeDividerTracker } from '../utils/volumes';
++import { renderVolumeScopeSelect, scopeFilter } from '../utils/volumeScope';
++import { ArcFilterMode, arcFilterQuery, loadArcFilter, renderArcFilterToggle, renderArcPointBadge, saveArcFilter } from '../components/ArcPointUI';
+ import { InspectorComponent } from '../components/Inspector';
+ import { QuickAddModal } from '../components/QuickAddModal';
+ import { openStructureLabelModal } from '../components/StructureLabelModal';
+@@ -47,6 +51,8 @@ export class TimelineView extends ItemView {
+     private rootContainer: HTMLElement | null = null;
+     private _pendingRefresh: number | null = null;
+     private cardComponent: SceneCardComponent;
++    /** Arc Point filter (fork): 'all' | 'scenes' | 'arcPoints' */
++    private arcFilter: ArcFilterMode = 'all';
+     private _lastCacheVersion = -1;
+     /** When true, display multi-lane swimlane view instead of single-column */
+     private swimlaneMode = false;
+@@ -60,6 +66,7 @@ export class TimelineView extends ItemView {
+         this.plugin = plugin;
+         this.sceneManager = sceneManager;
+         this.cardComponent = new SceneCardComponent(plugin);
++        this.arcFilter = loadArcFilter(plugin.app, 'timelineArcFilter');
+         // Restore persisted filter states from settings
+         this.timelineOrder = plugin.settings.timelineOrder === 'chronological' ? 'chronological' : 'reading';
+         this.swimlaneMode = plugin.settings.timelineSwimlaneMode ?? false;
+@@ -194,6 +201,15 @@ export class TimelineView extends ItemView {
+             });
+         }
+ 
++        renderVolumeScopeSelect(controls, this.plugin); // fork: shared volume scope
++
++        // Arc Points filter toggle (All / Scenes / Arc Points)
++        renderArcFilterToggle(controls, this.arcFilter, (mode) => {
++            this.arcFilter = mode;
++            saveArcFilter(this.app, 'timelineArcFilter', mode);
++            this.refresh();
++        });
++
+         // Zoom controls
+         const zoomOut = controls.createEl('button', {
+             cls: 'clickable-icon',
+@@ -268,7 +284,7 @@ export class TimelineView extends ItemView {
+         const timelineEl = container.createDiv('story-line-timeline');
+         const sortField = this.timelineOrder === 'chronological' ? 'chronologicalOrder' : 'chapter';
+         const scenes = this.sceneManager.queryService.getFilteredScenes(
+-            undefined,
++            scopeFilter(this.app, this.sceneManager.activeProject?.filePath, arcFilterQuery(this.arcFilter)),
+             { field: sortField, direction: 'asc' }
+         ).filter(scene => !this.isNoteScene(scene));
+ 
+@@ -507,8 +523,10 @@ export class TimelineView extends ItemView {
+             }
+         }
+ 
++        const volumeTracker = new VolumeDividerTracker(getProjectVolumes(this.app, this.sceneManager.activeProject?.filePath));
+         const renderTLItem = (item: TLItem) => {
+             if (item.kind === 'divider') {
++                volumeTracker.renderBefore(track, item.actNum);
+                 const divider = track.createDiv('timeline-act-divider');
+                 divider.createSpan({ cls: 'timeline-act-label', text: item.actLabel });
+                 if (item.actNum !== undefined) {
+@@ -618,7 +636,7 @@ export class TimelineView extends ItemView {
+         enableDragToPan(timelineEl);
+         const sortField = this.timelineOrder === 'chronological' ? 'chronologicalOrder' : 'chapter';
+         const scenes = this.sceneManager.queryService.getFilteredScenes(
+-            undefined,
++            scopeFilter(this.app, this.sceneManager.activeProject?.filePath, arcFilterQuery(this.arcFilter)),
+             { field: sortField, direction: 'asc' }
+         ).filter(scene => !this.isNoteScene(scene));
+ 
+@@ -684,8 +702,10 @@ export class TimelineView extends ItemView {
+         }
+ 
+         // 5. Render each row
++        const volumeTracker = new VolumeDividerTracker(getProjectVolumes(this.app, this.sceneManager.activeProject?.filePath));
+         for (const row of rows) {
+             if (row.type === 'act-divider') {
++                volumeTracker.renderBefore(grid, row.actNum, '1 / -1');
+                 // Act divider spans the full width
+                 const divider = grid.createDiv('swimlane-act-divider');
+                 divider.setCssStyles({ gridColumn: `1 / -1` });
+@@ -798,6 +818,7 @@ export class TimelineView extends ItemView {
+         card.dataset.path = scene.filePath;
+ 
+         card.createDiv({ cls: 'timeline-card-title', text: scene.title || 'Untitled' });
++        renderArcPointBadge(card, scene);
+ 
+         // Timeline mode badge (for non-linear scenes)
+         const slMode = scene.timeline_mode || 'linear';
+@@ -974,6 +995,7 @@ export class TimelineView extends ItemView {
+         }
+ 
+         card.createDiv({ cls: 'timeline-card-title', text: scene.title || 'Untitled' });
++        renderArcPointBadge(card, scene);
+ 
+         // Timeline mode badge (for non-linear scenes)
+         const tlMode = scene.timeline_mode || 'linear';
+@@ -1669,6 +1691,8 @@ export class TimelineView extends ItemView {
+             this.refresh();
+         });
+ 
++        // Fork: regroup into collapsible sections (Volumes, Acts, Chapters, Templates)
++        enhanceStructureModal(modal, { app: this.app, projectFilePath: this.sceneManager.activeProject?.filePath, definedActs: this.sceneManager.getDefinedActs() });
+         modal.open();
+     }
+ 

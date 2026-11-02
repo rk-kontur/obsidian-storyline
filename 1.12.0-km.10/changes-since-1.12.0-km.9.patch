@@ -1,0 +1,137 @@
+diff --git a/CHANGELOG-km.md b/CHANGELOG-km.md
+index 90f14f7..f8d329c 100644
+--- a/CHANGELOG-km.md
++++ b/CHANGELOG-km.md
+@@ -2,6 +2,31 @@
+ 
+ Changes of this fork compared to the original StoryLine plugin by Jan Sandström. Each `## <version>` section is used as the initial text of the matching GitHub release; texts edited on GitHub (e.g. with screenshots) are never overwritten. Every release also carries `storyline-km-source.zip` (all source files that are new or changed compared to the original, without `main.js`) and `storyline-km.patch` (the full diff against the original).
+ 
++## 1.12.0-km.10
++
++**The POV character counts as a character of the scene everywhere**
++
++Character View, Statistics, the Validator and the scene cards already treated the POV character as part of the scene. Two places did not, so a POV character had to be entered a second time under Characters:
++
++- **Character filter** (filter panel in Board, Manuscript, Plot Grid): filtering by a character now also finds the scenes where that character is only the POV.
++- **Timeline swimlanes "By Character":** a scene now also appears in the lane of its POV character.
++
++Names are compared without `[[ ]]`, alias and case, so `Yasemin` and `[[Yasemin]]` match. A character listed both as POV and under Characters is counted once.
++
++<!-- screenshot: Timeline swimlanes by character with a POV-only scene -->
++
++**How and where to use:**
++
++1. Give a scene a POV character (Inspector → **POV**); no need to add the same character under **Characters**.
++2. **Board / Manuscript / Plot Grid → filter panel → Characters:** choose the character; its POV scenes are included.
++3. **Timeline → swimlanes → Group by Character:** the scene shows up in the POV character's lane.
++
++**Files:**
++
++- `utils/sceneCharacters.ts` (new: characters of a scene incl. POV, name comparison)
++- `services/SceneQueryService.ts` (+2: character filter uses it)
++- `views/TimelineView.ts` (+2: swimlanes by character use it)
++
+ ## 1.12.0-km.9
+ 
+ **Off page plotlines in the Plotlines list, Timeline swimlanes and Plot Grid**
+diff --git a/manifest.json b/manifest.json
+index 295a1e6..e4f5dda 100644
+--- a/manifest.json
++++ b/manifest.json
+@@ -1,7 +1,7 @@
+ {
+   "id": "storyline-km",
+   "name": "StoryLine",
+-  "version": "1.12.0-km.9",
++  "version": "1.12.0-km.10",
+   "minAppVersion": "1.12.7",
+   "description": "Transform your vault into a powerful book planning and writing tool. Corkboard,KanbanBoard view, timeline, plotlines,character tracking, and more.",
+   "author": "Jan SandstrÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¶m",
+diff --git a/services/SceneQueryService.ts b/services/SceneQueryService.ts
+index f6a49ea..61996dd 100644
+--- a/services/SceneQueryService.ts
++++ b/services/SceneQueryService.ts
+@@ -1,5 +1,6 @@
+  
+ import { Scene, SceneFilter, SortConfig, getStatusOrder } from '../models/Scene';
++import { sceneHasAnyCharacter } from '../utils/sceneCharacters';
+ import { compareActChapter, getActDisplayLabel } from '../utils/actChapter';
+ import { parseSceneLocations } from './MetadataParser';
+ 
+@@ -372,7 +373,8 @@ export class SceneQueryService {
+             return false;
+         }
+         if (filter.characters?.length) {
+-            if (!scene.characters || !filter.characters.some(c => scene.characters!.includes(c))) {
++            // fork: the POV character counts as a character of the scene
++            if (!sceneHasAnyCharacter(scene, filter.characters)) {
+                 return false;
+             }
+         }
+diff --git a/utils/sceneCharacters.ts b/utils/sceneCharacters.ts
+new file mode 100644
+index 0000000..de8facb
+--- /dev/null
++++ b/utils/sceneCharacters.ts
+@@ -0,0 +1,39 @@
++// ═══════════════════════════════════════════════════════
++//  Characters of a scene, including the POV character (fork: storyline-km)
++// ═══════════════════════════════════════════════════════
++//
++// The POV character is part of the scene. Character View, Statistics, the
++// Validator and the scene cards already count `pov` together with
++// `characters`; this helper lets the remaining places (character filter,
++// Timeline swimlanes "By Character") do the same, so a POV character does
++// not have to be entered twice.
++
++import type { Scene } from '../models/Scene';
++
++/** "[[Path/Name|Alias]]" → "name" (for comparisons only). */
++export function characterKey(value: string): string {
++    let v = String(value || '').trim();
++    const m = v.match(/^\[\[(.*)\]\]$/);
++    if (m) v = m[1];
++    v = v.split('|')[0].split('/').pop() || v;
++    return v.replace(/\.md$/i, '').trim().toLowerCase();
++}
++
++/** `characters` plus `pov`, without duplicates (first spelling wins). */
++export function sceneCharacterNames(scene: Pick<Scene, 'characters' | 'pov'>): string[] {
++    const out: string[] = [];
++    const seen = new Set<string>();
++    for (const name of [...(scene.characters ?? []), ...(scene.pov ? [scene.pov] : [])]) {
++        const key = characterKey(name);
++        if (!key || seen.has(key)) continue;
++        seen.add(key);
++        out.push(String(name).trim());
++    }
++    return out;
++}
++
++/** True if any of `wanted` is a character of the scene (POV included). */
++export function sceneHasAnyCharacter(scene: Pick<Scene, 'characters' | 'pov'>, wanted: string[]): boolean {
++    const keys = new Set(sceneCharacterNames(scene).map(characterKey));
++    return wanted.some(w => keys.has(characterKey(w)));
++}
+diff --git a/views/TimelineView.ts b/views/TimelineView.ts
+index 68a48d4..aa62969 100644
+--- a/views/TimelineView.ts
++++ b/views/TimelineView.ts
+@@ -5,6 +5,7 @@ import { SceneManager } from '../services/SceneManager';
+ import { SceneCardComponent } from '../components/SceneCard';
+ import { getProjectVolumes, VolumeDividerTracker } from '../utils/volumes';
+ import { getOffPageLines, orderByZone } from '../utils/pageZones';
++import { sceneCharacterNames } from '../utils/sceneCharacters';
+ import { defaultActForScope, placeInFullList, renderVolumeScopeSelect, scopeActs, scopeFilter } from '../utils/volumeScope';
+ import { ArcFilterMode, arcFilterQuery, loadArcFilter, renderArcFilterToggle, renderArcPointBadge, saveArcFilter } from '../components/ArcPointUI';
+ import { InspectorComponent } from '../components/Inspector';
+@@ -788,7 +789,8 @@ export class TimelineView extends ItemView {
+             case 'pov':
+                 return [scene.pov || '(no POV)'];
+             case 'character':
+-                if (scene.characters && scene.characters.length > 0) return this.cleanLaneKeys(scene.characters);
++                // fork: the POV character gets the scene in its lane too
++                if (sceneCharacterNames(scene).length > 0) return this.cleanLaneKeys(sceneCharacterNames(scene));
+                 return ['(no character)'];
+             case 'location':
+                 return parseSceneLocations(scene.location).length > 0
