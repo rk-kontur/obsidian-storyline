@@ -3,7 +3,6 @@ import { ItemView, WorkspaceLeaf, Menu, Notice, TFile, Modal, Setting, MarkdownR
 import { enhanceStructureModal } from '../components/StructureModalSections';
 import { getScopedVolume, scopeActs, scopeFilter } from '../utils/volumeScope';
 import { boardQuickAddAct, scopeDefinedChapters } from '../utils/boardVolumes';
-import { applyCorkboardVolumeCamera, corkboardVolumePlacer, CorkboardVolumeCameras } from '../utils/corkboardVolume'; // fork: corkboard camera per volume
 import { actFromColumnKey, getProjectVolumes, VolumeDividerTracker } from '../utils/volumes';
 import * as obsidian from 'obsidian';
 import { Scene, SceneFilter, SortConfig, BoardGroupBy, SceneStatus, SceneTemplate, BeatSheetTemplate, BUILTIN_BEAT_SHEETS, getStatusOrder, getStatusConfig, resolveStatusCfg } from '../models/Scene';
@@ -62,7 +61,6 @@ export class BoardView extends ItemView {
     private dragToPanCleanup: (() => void) | null = null;
     private corkboardInteractionCleanup: (() => void) | null = null;
     private corkboardCamera = { x: 220, y: 140, zoom: 1 };
-    private kmVolumeCameras = new CorkboardVolumeCameras(); // fork: corkboard camera per volume (memory only)
     /** Inertia animation frame handle */
     private corkboardInertiaRaf: number | null = null;
     /** Smooth zoom animation frame handle */
@@ -624,16 +622,14 @@ export class BoardView extends ItemView {
         // ── Drag-and-drop images onto the corkboard ──
         this.attachCorkboardImageDrop(viewport);
 
-        const kmPlace = corkboardVolumePlacer(this.app, this.sceneManager.activeProject?.filePath, this.sceneManager.getAllScenes(), this.corkboardPositions.values(), p => this.getCorkboardPosition(p), s => this.isCorkboardNoteScene(s)); // fork: new scenes below the selected volume's cards
         scenes.forEach((scene, index) => {
           try {
             const existing = this.getCorkboardPosition(scene.filePath);
             const col = index % 4;
             const row = Math.floor(index / 4);
-            const kmCell = !existing && kmPlace ? kmPlace() : null; // fork: grid cell in the selected volume
             const pos = existing || {
-                x: kmCell ? kmCell.x : col * 320, // fork: kmCell
-                y: kmCell ? kmCell.y : row * 230, // fork: kmCell
+                x: col * 320,
+                y: row * 230,
                 z: currentMaxZ() + 1,
             };
             if (!existing) {
@@ -696,7 +692,6 @@ export class BoardView extends ItemView {
             console.error(`[StoryLine] Failed to render corkboard scene "${scene.filePath}":`, err);
           }
         });
-        if (applyCorkboardVolumeCamera(this.kmVolumeCameras, this.app, this.sceneManager.activeProject?.filePath, scenes, this.corkboardCamera, p => this.getCorkboardPosition(p), s => this.isCorkboardNoteScene(s))) this.applyCorkboardCamera(canvas); // fork: camera per volume
     }
 
     private attachCorkboardNoteEditor(cardEl: HTMLElement, scene: Scene): void {

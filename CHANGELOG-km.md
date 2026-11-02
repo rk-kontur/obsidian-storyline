@@ -2,6 +2,25 @@
 
 Changes of this fork compared to the original StoryLine plugin by Jan Sandström. Each `## <version>` section is used as the initial text of the matching GitHub release; texts edited on GitHub (e.g. with screenshots) are never overwritten. Every release also carries `storyline-km-source.zip` (all source files that are new or changed compared to the original, without `main.js`) and `storyline-km.patch` (the full diff against the original).
 
+## 1.11.8-km.28
+
+**Corkboard: back to upstream behaviour**
+
+- The Corkboard volume additions from 1.11.8-km.26 and 1.11.8-km.27 are removed again. The Corkboard behaves exactly as in upstream StoryLine, with and without a selected volume:
+    - The camera no longer moves to the selected volume and is no longer remembered per volume.
+    - Scenes without a stored position get upstream's initial grid position again.
+- Reason: the Corkboard is a free-form canvas where cards are placed by hand. Placing new cards "below the volume's cards" mixes them into the next volume when volumes are stacked, and moving other cards out of the way would change positions the user set. The volume filter itself still applies to the Corkboard as before (cards of other volumes are hidden).
+- The removed code is kept on branch `feature/corkboard-volume` and in the release `1.11.8-km.27`.
+
+**How and where to use:**
+
+1. **Board** → Corkboard mode: cards keep their positions; pan and zoom as in upstream.
+
+**Files:**
+
+- `views/BoardView.ts` (Corkboard volume hooks removed; identical to 1.11.8-km.25)
+- `utils/corkboardVolume.ts` (removed)
+
 ## 1.11.8-km.27
 
 **Review fixes: statistics links across volumes, volume selection at startup, volume chips, Corkboard for empty volumes, Pane Relief performance, safer Volumes editor, release workflow**
