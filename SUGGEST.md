@@ -9,8 +9,8 @@ When a plotline is renamed (Plotlines list view, pencil icon or right-click the 
 ## How it works
 `SceneManager.renameTag()` now passes the mapped tag list through a `Set` before writing it, so the first occurrence keeps its position and the duplicate is dropped. The rest of the rename flow is unchanged.
 
-- Compare: https://github.com/PixeroJan/obsidian-storyline/compare/main...rk-kontur:obsidian-storyline:_suggest-fix-rename-tag-duplicates
-- Code: [`SceneManager.renameTag()`](https://github.com/rk-kontur/obsidian-storyline/blob/_suggest-fix-rename-tag-duplicates/services/SceneManager.ts#L1874-L1885), caller [`StorylineView.openRenamePlotlineModal()`](https://github.com/rk-kontur/obsidian-storyline/blob/_suggest-fix-rename-tag-duplicates/views/StorylineView.ts#L1078-L1099)
+- Compare: https://github.com/PixeroJan/obsidian-storyline/compare/main...rk-kontur:obsidian-storyline:suggest-fix/rename-tag-duplicates
+- Code: [`SceneManager.renameTag()`](https://github.com/rk-kontur/obsidian-storyline/blob/suggest-fix/rename-tag-duplicates/services/SceneManager.ts#L1874-L1885), caller [`StorylineView.openRenamePlotlineModal()`](https://github.com/rk-kontur/obsidian-storyline/blob/suggest-fix/rename-tag-duplicates/views/StorylineView.ts#L1078-L1099)
 
 ## Needed addons
 None
