@@ -17,7 +17,7 @@ import { TFile } from 'obsidian';
 import type { App } from 'obsidian';
 import type { Scene } from '../models/Scene';
 
-export const REALIZED_BY_KEY = 'realizedBy';
+const REALIZED_BY_KEY = 'realizedBy';
 /** Alternative spelling, accepted on read and removed on write. */
 const REALIZED_BY_ALT_KEY = 'realized_by';
 

@@ -494,7 +494,7 @@ export class StorylineView extends ItemView {
             const cols = pScenes
                 .map(s => colOf.get(s.filePath))
                 .filter((c): c is number => c !== undefined)
-                .filter((c, i, arr) => arr.indexOf(c) === i) // a realized Arc Point shares its scene's column
+                .filter((c, i, arr) => realizations.size === 0 || arr.indexOf(c) === i) // a realized Arc Point shares its scene's column
                 .sort((a, b) => a - b);
             plotlineCols.set(pk, cols);
         }

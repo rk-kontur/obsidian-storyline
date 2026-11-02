@@ -15,7 +15,7 @@ In the Inspector, a ticked **Arc point** shows a **Realized** dropdown in the sa
   - Realizations and Subway helpers: https://github.com/rk-kontur/obsidian-storyline/blob/suggest-feature/realized/utils/arcRealization.ts#L98-L221
   - Inspector dropdown: https://github.com/rk-kontur/obsidian-storyline/blob/suggest-feature/realized/components/RealizedByControl.ts#L13-L63
   - Inspector hook: https://github.com/rk-kontur/obsidian-storyline/blob/suggest-feature/realized/components/Inspector.ts#L493-L501
-  - Subway map: https://github.com/rk-kontur/obsidian-storyline/blob/suggest-feature/realized/views/StorylineView.ts#L427-L438, https://github.com/rk-kontur/obsidian-storyline/blob/suggest-feature/realized/views/StorylineView.ts#L594-L597, https://github.com/rk-kontur/obsidian-storyline/blob/suggest-feature/realized/views/StorylineView.ts#L649
+  - Subway map: https://github.com/rk-kontur/obsidian-storyline/blob/suggest-feature/realized/views/StorylineView.ts#L427-L438, https://github.com/rk-kontur/obsidian-storyline/blob/suggest-feature/realized/views/StorylineView.ts#L497, https://github.com/rk-kontur/obsidian-storyline/blob/suggest-feature/realized/views/StorylineView.ts#L594-L597, https://github.com/rk-kontur/obsidian-storyline/blob/suggest-feature/realized/views/StorylineView.ts#L649
 
 ## Needed addons
 - Inspector of an Arc Point scene with **Arc point** ticked and the **Realized** dropdown set to a scene.
