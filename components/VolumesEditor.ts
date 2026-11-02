@@ -193,9 +193,14 @@ async function saveVolumes(
         // An entry without `id` is never written for a dialog volume (see below). If that is the
         // only entry left for one of its volumes (id line removed, sync reverted the id fix, …),
         // its edits cannot be saved: tell the user instead of dropping them silently.
+        const lostEntry = (id: string) => !raw.some(e => explicitId(e) === id)
+            && resolved.some((r, i) => r === id && !explicitId(raw[i]));
         for (const v of volumes) {
-            if (!original.has(v.id) || raw.some(e => explicitId(e) === v.id)) continue;
-            if (resolved.some((r, i) => r === v.id && !explicitId(raw[i]))) lostIds.push(v.title);
+            if (original.has(v.id) && lostEntry(v.id)) lostIds.push(v.title);
+        }
+        // Same for a delete (pickDeletions skips entries without explicit id)
+        for (const [id, fields] of pendingDeletes) {
+            if (fields && lostEntry(id)) lostIds.push(fields.title);
         }
         const written = new Set<string>();
         const out: unknown[] = [];

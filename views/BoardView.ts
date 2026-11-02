@@ -624,7 +624,7 @@ export class BoardView extends ItemView {
         // ── Drag-and-drop images onto the corkboard ──
         this.attachCorkboardImageDrop(viewport);
 
-        const kmPlace = corkboardVolumePlacer(this.app, this.sceneManager.activeProject?.filePath, this.sceneManager.getAllScenes(), this.corkboardPositions.values(), p => this.getCorkboardPosition(p), s => this.isCorkboardNoteScene(s), this.kmVolumeCameras, this.corkboardCamera); // fork: new scenes below the selected volume's cards (empty volume shown via its notes: in the camera's visible area)
+        const kmPlace = corkboardVolumePlacer(this.app, this.sceneManager.activeProject?.filePath, this.sceneManager.getAllScenes(), this.corkboardPositions.values(), p => this.getCorkboardPosition(p), s => this.isCorkboardNoteScene(s)); // fork: new scenes below the selected volume's cards
         scenes.forEach((scene, index) => {
           try {
             const existing = this.getCorkboardPosition(scene.filePath);
