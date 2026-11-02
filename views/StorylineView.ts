@@ -1123,7 +1123,7 @@ export class StorylineView extends ItemView {
                         return;
                     }
                     const count = await this.sceneManager.renameTag(plotline, slug);
-                    await transferOffPage(this.app, this.sceneManager.activeProject?.filePath, plotline, slug);
+                    await transferOffPage(this.app, this.sceneManager.activeProject?.filePath, plotline, slug, () => this.refresh());
                     // Carry over the description to the new tag name
                     const desc = this.plugin.settings.plotlineDescriptions?.[plotline];
                     if (desc) {
@@ -1195,7 +1195,7 @@ export class StorylineView extends ItemView {
             .addButton((btn: ButtonComponent) => {
                 btn.setButtonText('Delete').setClass('mod-warning').onClick(async () => {
                     const count = await this.sceneManager.deleteTag(plotline);
-                    await transferOffPage(this.app, this.sceneManager.activeProject?.filePath, plotline, null);
+                    await transferOffPage(this.app, this.sceneManager.activeProject?.filePath, plotline, null, () => this.refresh());
                     // Also remove any stored description for the deleted plotline
                     if (this.plugin.settings.plotlineDescriptions?.[plotline]) {
                         delete this.plugin.settings.plotlineDescriptions[plotline];

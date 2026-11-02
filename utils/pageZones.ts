@@ -55,33 +55,71 @@ export function isOffPage(offPage: Set<string>, tag: string): boolean {
     return offPage.size > 0 && offPage.has(normalizePlotlineTag(tag));
 }
 
-async function updateOffPage(app: App, projectFilePath: string | undefined | null, update: (current: string[]) => string[]): Promise<void> {
+/**
+ * Calls `onChanged` once the metadata cache has re-read `file` (fallback
+ * after 2 s). Returns a cancel function for when nothing was written.
+ */
+function onceCacheChanged(app: App, file: TFile, onChanged: () => void): () => void {
+    let done = false;
+    const stop = () => {
+        done = true;
+        app.metadataCache.offref(ref);
+        window.clearTimeout(timer);
+    };
+    const finish = () => {
+        if (done) return;
+        stop();
+        onChanged();
+    };
+    const ref = app.metadataCache.on('changed', changed => { if (changed.path === file.path) finish(); });
+    const timer = window.setTimeout(finish, 2000);
+    return stop;
+}
+
+async function updateOffPage(
+    app: App,
+    projectFilePath: string | undefined | null,
+    update: (current: string[]) => string[],
+    onChanged?: () => void,
+): Promise<void> {
     if (!projectFilePath) return;
     const file = app.vault.getAbstractFileByPath(projectFilePath);
     if (!(file instanceof TFile)) return;
-    await app.fileManager.processFrontMatter(file, (fm: Record<string, unknown>) => {
-        const current = parseOffPageValue(fm[OFF_PAGE_KEY]);
-        const next = update(current);
-        // Nothing changed: leave the value as written by hand
-        if (next.length === current.length && next.every((l, i) => l === current[i])) return;
-        if (next.length) fm[OFF_PAGE_KEY] = next; else delete fm[OFF_PAGE_KEY];
-    });
+    // Listen before writing, so the cache event cannot be missed
+    const cancel = onChanged ? onceCacheChanged(app, file, onChanged) : null;
+    let written = false;
+    try {
+        await app.fileManager.processFrontMatter(file, (fm: Record<string, unknown>) => {
+            const current = parseOffPageValue(fm[OFF_PAGE_KEY]);
+            const next = update(current);
+            // Nothing changed: leave the value as written by hand
+            if (next.length === current.length && next.every((l, i) => l === current[i])) return;
+            if (next.length) fm[OFF_PAGE_KEY] = next; else delete fm[OFF_PAGE_KEY];
+            written = true;
+        });
+    } finally {
+        if (!written) cancel?.();
+    }
 }
 
-/** Mark `line` off page (`off` true) or on page again. */
-export async function setOffPage(app: App, projectFilePath: string | undefined | null, line: string, off: boolean): Promise<void> {
+/**
+ * Mark `line` off page (`off` true) or on page again. `onChanged` runs once
+ * the metadata cache has the new value.
+ */
+export async function setOffPage(app: App, projectFilePath: string | undefined | null, line: string, off: boolean, onChanged?: () => void): Promise<void> {
     const tag = normalizePlotlineTag(line);
     if (!tag) return;
     await updateOffPage(app, projectFilePath, current =>
-        off ? Array.from(new Set([...current, tag])) : current.filter(l => l !== tag));
+        off ? Array.from(new Set([...current, tag])) : current.filter(l => l !== tag), onChanged);
 }
 
 /**
  * Keeps `offPageLines` in step when a plotline is renamed (`newTag` set)
  * or deleted (`newTag` null). Does not touch the project file for
- * plotlines that are not off page.
+ * plotlines that are not off page. `onChanged` runs once the metadata
+ * cache has the new value.
  */
-export async function transferOffPage(app: App, projectFilePath: string | undefined | null, oldTag: string, newTag: string | null): Promise<void> {
+export async function transferOffPage(app: App, projectFilePath: string | undefined | null, oldTag: string, newTag: string | null, onChanged?: () => void): Promise<void> {
     if (!isOffPage(getOffPageLines(app, projectFilePath), oldTag)) return;
     const from = normalizePlotlineTag(oldTag);
     const to = newTag ? normalizePlotlineTag(newTag) : '';
@@ -89,7 +127,7 @@ export async function transferOffPage(app: App, projectFilePath: string | undefi
         if (!current.includes(from)) return current;
         const next = current.filter(l => l !== from);
         return to && !next.includes(to) ? [...next, to] : next;
-    });
+    }, onChanged);
 }
 
 /**
@@ -144,11 +182,7 @@ export function addZoneMenuItem(
     menu.addItem(item => item
         .setTitle(isOff ? 'Move to on page' : 'Move to off page')
         .setIcon(isOff ? 'file-text' : 'cloud')
-        .onClick(async () => {
-            await setOffPage(app, projectFilePath, line, !isOff);
-            // Give the metadata cache time to pick up the frontmatter change
-            window.setTimeout(onChanged, 150);
-        }));
+        .onClick(() => setOffPage(app, projectFilePath, line, !isOff, onChanged)));
 }
 
 /** Right-click on a Subway line name: move it between the zones. */
@@ -160,6 +194,7 @@ export function attachZoneMenu(
     isOff: boolean,
     onChanged: () => void,
 ): void {
+    if (!projectFilePath) return;
     el.setCssStyles({ pointerEvents: 'auto' });
     el.addEventListener('contextmenu', (evt: MouseEvent) => {
         evt.preventDefault();
