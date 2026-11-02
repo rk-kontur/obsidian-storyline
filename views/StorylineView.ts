@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-floating-promises, @typescript-eslint/no-misused-promises, @typescript-eslint/no-unnecessary-type-assertion -- Obsidian's API surface and several untyped third-party libraries force dynamic dispatch; floating promises are intentional in DOM/event handlers; matching enable at end of file */
 import { ButtonComponent, ItemView, Menu, MenuItem, Modal, Notice, Setting, TFile, TextComponent, WorkspaceLeaf } from 'obsidian';
 import * as obsidian from 'obsidian';
+import { addZoneMenuItem, attachZoneMenu, drawOffPageBand, getOffPageLines, isOffPage, orderByZone, renderOffPageLabelBand, renderZoneHeader, renderZoneListHeading, transferOffPage, ZONE_GAP } from '../utils/pageZones';
 import { Scene } from '../models/Scene';
 import { SceneManager } from '../services/SceneManager';
 import { renderViewSwitcher } from '../components/ViewSwitcher';
@@ -332,11 +333,14 @@ export class StorylineView extends ItemView {
             helpSpan.appendText(' delete. Click any scene to assign/remove it from plotlines.');
         }
 
-        // Render each plotline
-        for (const plotline of plotlineKeys) {
+        // Render each plotline (on page first, off page below, each under a heading)
+        const zoned = orderByZone(plotlineKeys, getOffPageLines(this.app, this.sceneManager.activeProject?.filePath));
+        zoned.keys.forEach((plotline, i) => {
+            if (i === 0 && zoned.split > 0) renderZoneListHeading(content, false);
+            if (i === zoned.split) renderZoneListHeading(content, true);
             const plotScenes = plotlines.get(plotline) || [];
             this.renderPlotline(content, plotline, plotScenes, scenes);
-        }
+        });
 
         // Unassigned scenes
         const unassigned = scenes.filter(s => !s.tags || s.tags.length === 0);
@@ -394,6 +398,16 @@ export class StorylineView extends ItemView {
             return;
         }
 
+        // On page lines first, off page lines below in their own band.
+        // Lane colours keep the index of the unzoned order.
+        const colorOrder = plotlineKeys;
+        const projectPath = this.sceneManager.activeProject?.filePath;
+        const offPageLines = getOffPageLines(this.app, projectPath);
+        const zoned = orderByZone(plotlineKeys, offPageLines);
+        plotlineKeys = zoned.keys;
+        const zoneSplit = zoned.split;
+        const zoneGap = zoneSplit >= 0 ? ZONE_GAP : 0;
+
         const tagColors = this.plugin.settings.tagColors || {};
         const scheme = this.plugin.settings.colorScheme;
 
@@ -436,12 +450,12 @@ export class StorylineView extends ItemView {
         const numLanes = plotlineKeys.length;
 
         const hslAdj = getPlotlineHSL(this.plugin.settings);
-        const laneColor = (idx: number, plotline: string): string =>
-            resolveTagColor(plotline, idx, scheme, tagColors, hslAdj);
+        const laneColor = (_idx: number, plotline: string): string =>
+            resolveTagColor(plotline, colorOrder.indexOf(plotline), scheme, tagColors, hslAdj);
 
         // ── SVG dimensions ──
         const svgWidth = TRACK_LEFT + numCols * SCENE_SPACING + 60;
-        const trackBottom = TOP_MARGIN + numLanes * LANE_HEIGHT;
+        const trackBottom = TOP_MARGIN + numLanes * LANE_HEIGHT + zoneGap;
         const svgHeight = trackBottom + 30;
 
         const wrapper = content.createDiv('subway-map-wrapper');
@@ -480,7 +494,17 @@ export class StorylineView extends ItemView {
 
         const colX = (col: number) => TRACK_LEFT + col * SCENE_SPACING + SCENE_SPACING / 2;
         // Track Y sits in the upper portion of the lane
-        const laneY = (lane: number) => TOP_MARGIN + lane * LANE_HEIGHT + LANE_TRACK / 2;
+        const laneY = (lane: number) => TOP_MARGIN + lane * LANE_HEIGHT + LANE_TRACK / 2
+            + (zoneSplit >= 0 && lane >= zoneSplit ? zoneGap : 0);
+
+        // Tinted off page band and zone headers in the name column
+        if (zoneSplit >= 0) {
+            const bandTop = TOP_MARGIN + zoneSplit * LANE_HEIGHT + 4;
+            drawOffPageBand(svg, activeDocument, bandTop, trackBottom - bandTop + 10, svgWidth);
+            renderOffPageLabelBand(labelCol, bandTop, trackBottom - bandTop + 10);
+            if (zoneSplit > 0) renderZoneHeader(labelCol, TOP_MARGIN - 22, LABEL_LEFT, false);
+            renderZoneHeader(labelCol, bandTop + 10, LABEL_LEFT, true);
+        }
 
         // ── Build plotline → columns map ──
         const plotlineCols = new Map<string, number[]>();
@@ -565,6 +589,7 @@ export class StorylineView extends ItemView {
                 fontFamily: 'var(--font-interface)',
             });
             lblDiv.textContent = this.formatPlotlineName(pk);
+            attachZoneMenu(lblDiv, this.app, projectPath, pk, isOffPage(offPageLines, pk), () => this.refresh());
 
             if (cols.length === 0) continue;
 
@@ -721,7 +746,7 @@ export class StorylineView extends ItemView {
                     let px = x - totalWidth / 2;
 
                     for (const { tag, width } of pillData) {
-                        const pillIdx = plotlineKeys.indexOf(tag);
+                        const pillIdx = colorOrder.indexOf(tag);
                         const pillColor = resolveTagColor(tag, Math.max(0, pillIdx), scheme, tagColors, hslAdj);
                         const rect = activeDocument.createElementNS(svgNS, 'rect');
                         rect.setAttribute('x', String(px));
@@ -910,6 +935,7 @@ export class StorylineView extends ItemView {
                     .setIcon('plus')
                     .onClick(() => this.openAddSceneToPlotlineModal(plotline, scenes, allScenes));
             });
+            addZoneMenuItem(menu, this.app, this.sceneManager.activeProject?.filePath, plotline, () => this.refresh());
             menu.addSeparator();
             menu.addItem((item: MenuItem) => {
                 item.setTitle('Delete plotline')
@@ -1097,6 +1123,7 @@ export class StorylineView extends ItemView {
                         return;
                     }
                     const count = await this.sceneManager.renameTag(plotline, slug);
+                    await transferOffPage(this.app, this.sceneManager.activeProject?.filePath, plotline, slug);
                     // Carry over the description to the new tag name
                     const desc = this.plugin.settings.plotlineDescriptions?.[plotline];
                     if (desc) {
@@ -1168,6 +1195,7 @@ export class StorylineView extends ItemView {
             .addButton((btn: ButtonComponent) => {
                 btn.setButtonText('Delete').setClass('mod-warning').onClick(async () => {
                     const count = await this.sceneManager.deleteTag(plotline);
+                    await transferOffPage(this.app, this.sceneManager.activeProject?.filePath, plotline, null);
                     // Also remove any stored description for the deleted plotline
                     if (this.plugin.settings.plotlineDescriptions?.[plotline]) {
                         delete this.plugin.settings.plotlineDescriptions[plotline];

@@ -8,6 +8,7 @@ import { openStructureLabelModal } from '../components/StructureLabelModal';
 import { ShiftDatesModal } from '../components/ShiftDatesModal';
 import { renderViewSwitcher } from '../components/ViewSwitcher';
 import { enableDragToPan } from '../components/DragToPan';
+import { getOffPageLines, isOffPage, orderByZone } from '../utils/pageZones';
 import type SceneCardsPlugin from '../main';
 
 import { TIMELINE_VIEW_TYPE } from '../constants';
@@ -635,7 +636,10 @@ export class TimelineView extends ItemView {
             const keys = this.getSceneLaneKeys(scene);
             for (const k of keys) laneKeysSet.add(k);
         }
-        const laneKeys = Array.from(laneKeysSet).sort();
+        // Grouped by plotline or tag: off page lanes go last and are tinted
+        const laneOffPage = (this.swimlaneGroupBy === 'plotline' || this.swimlaneGroupBy === 'tag')
+            ? getOffPageLines(this.app, this.sceneManager.activeProject?.filePath) : new Set<string>();
+        const laneKeys = orderByZone(Array.from(laneKeysSet).sort(), laneOffPage).keys;
         if (laneKeys.length === 0) laneKeys.push('(none)');
 
         // 2. Build row definitions — one row per scene in sequence order,
@@ -679,6 +683,7 @@ export class TimelineView extends ItemView {
         // Lane headers
         for (const lane of laneKeys) {
             const header = grid.createDiv('swimlane-lane-header');
+            if (isOffPage(laneOffPage, lane)) header.addClass('is-off-page');
             header.textContent = lane;
             header.setAttribute('title', lane);
         }
@@ -738,6 +743,7 @@ export class TimelineView extends ItemView {
             for (let laneIdx = 0; laneIdx < laneKeys.length; laneIdx++) {
                 const lane = laneKeys[laneIdx];
                 const cell = grid.createDiv('swimlane-lane-cell');
+                if (isOffPage(laneOffPage, lane)) cell.addClass('is-off-page');
 
                 if (sceneKeySet.has(lane)) {
                     // Multi-value groups (characters / plotlines) render the scene in every matching lane.

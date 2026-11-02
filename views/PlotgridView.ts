@@ -2,6 +2,7 @@
 import { App, ItemView, WorkspaceLeaf, Menu, Modal, TFile, Notice, MarkdownRenderer, Component } from 'obsidian';
 import * as obsidian from 'obsidian';
 import { CellData, ColumnMeta, RowMeta, PlotGridData } from '../models/PlotGridData';
+import { getOffPageLines, isOffPage } from '../utils/pageZones';
 import { LocationManager } from '../services/LocationManager';
 import type { SceneFilter, SortConfig } from '../models/Scene';
 import { SceneManager } from '../services/SceneManager';
@@ -1077,6 +1078,11 @@ export class PlotgridView extends ItemView {
             if (filteredPaths.has(row.sourceId)) visibleRows.add(ri);
         }
 
+        // Plotline columns of off page lines are tinted
+        const offPage = getOffPageLines(this.app, this.getProjectKey());
+        const offPageCols = new Set<number>();
+        this.data.columns.forEach((c, ci) => { if (c.sourceKind === 'tags' && c.sourceId && isOffPage(offPage, c.sourceId)) offPageCols.add(ci); });
+
         // ── Build act/chapter divider positions (visible rows only) ──
         const dividersBefore = new Map<number, Array<{type: 'act'|'chapter', label: string, key: string}>>();
         {
@@ -1239,6 +1245,7 @@ export class PlotgridView extends ItemView {
         for (let ci = 0; ci < this.data.columns.length; ci++) {
             const col = this.data.columns[ci];
             const el = this.canvasEl.createDiv('plot-grid-col-header');
+            if (offPageCols.has(ci)) el.addClass('is-off-page');
             el.setCssStyles({
                 position: (this.data.stickyHeaders === false) ? 'relative' : 'sticky',
                 top: '0',
@@ -1585,6 +1592,7 @@ export class PlotgridView extends ItemView {
                 if (!cell.align) cell.align = 'center';
 
                 const cellEl = this.canvasEl.createDiv('plot-grid-cell');
+                if (offPageCols.has(ci)) cellEl.addClass('is-off-page');
                 // expose coordinates
                 cellEl.setAttr('data-row', String(ri));
                 cellEl.setAttr('data-col', String(ci));

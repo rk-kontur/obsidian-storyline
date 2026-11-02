@@ -13873,3 +13873,54 @@ body.sl-focus-active-global.sl-focus-dim-text .markdown-source-view.mod-cm6 .cm-
 .sl-series-delete:hover {
     color: var(--text-error);
 }
+
+/* ─── On page / off page plotlines (offPageLines) ──────────── */
+.subway-map-wrapper .subway-offpage-band {
+    fill: var(--background-modifier-hover);
+    opacity: 0.6;
+}
+
+.subway-label-col {
+    isolation: isolate;
+}
+
+.subway-label-col .subway-offpage-band-label {
+    z-index: -1;
+    background: var(--background-modifier-hover);
+    opacity: 0.6;
+}
+
+.subway-zone-header,
+.storyline-zone-heading {
+    font-family: var(--font-interface);
+    font-size: var(--font-ui-smaller);
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text-faint);
+    white-space: nowrap;
+}
+
+.storyline-zone-heading {
+    margin: 16px 0 6px;
+}
+
+.storyline-zone-heading.is-off-page ~ .storyline-section {
+    background: color-mix(in srgb, var(--background-modifier-hover) 60%, transparent);
+}
+
+/* Overlay tint: works on top of inline cell colours */
+.swimlane-lane-header.is-off-page,
+.swimlane-lane-cell.is-off-page,
+.plot-grid-col-header.is-off-page,
+.plot-grid-cell.is-off-page {
+    box-shadow: inset 0 0 0 9999px color-mix(in srgb, var(--background-modifier-hover) 60%, transparent);
+}
+
+.plot-grid-col-header.is-off-page.selected {
+    box-shadow: inset 0 4px 0 var(--interactive-accent), inset 0 0 0 9999px color-mix(in srgb, var(--background-modifier-hover) 60%, transparent);
+}
+
+.plot-grid-cell.is-off-page.selected {
+    box-shadow: inset 0 0 0 2px var(--interactive-accent), inset 0 0 0 9999px color-mix(in srgb, var(--background-modifier-hover) 60%, transparent);
+}
