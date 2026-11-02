@@ -3,6 +3,8 @@ import { Modal, App, Notice } from 'obsidian';
 import * as obsidian from 'obsidian';
 import { openConfirmModal } from './ConfirmModal';
 import { SplitSceneModal } from './SplitMergeModals';
+import { renderRealizedByControl } from './RealizedByControl';
+import { clearRealizedBy } from '../utils/arcRealization';
 import { isMobile } from './MobileAdapter';
 import { WikilinkSuggest } from './WikilinkSuggest';
 import { SceneManager } from '../services/SceneManager';
@@ -492,7 +494,11 @@ export class InspectorComponent {
             const val = arcCheckbox.checked;
             await this.sceneManager.updateScene(scene.filePath, { arcAnchor: val });
             scene.arcAnchor = val || undefined;
+            // No longer an Arc Point (the `arc_anchor` spelling stays one): drop its realizedBy link
+            const parsed = this.sceneManager.getScene(scene.filePath);
+            if (!val && parsed && !parsed.arcAnchor) await clearRealizedBy(this.plugin.app, scene);
         });
+        renderRealizedByControl(arcRow, this.plugin.app, scene, () => this.sceneManager.getAllScenes());
 
         // ── Story Date / Time ──
         const dtRow = this.container.createDiv('inspector-section');

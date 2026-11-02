@@ -13,6 +13,7 @@ import { enableDragToPan } from '../components/DragToPan';
 import { resolveTagColor, getPlotlineHSL, contrastTextColor } from '../settings';
 import { attachTooltip } from '../components/Tooltip';
 import { compareScenesByActChapter, getActDisplayLabel } from '../utils/actChapter';
+import { aliasRealizedColumns, drawRealizedLinks, removeRealizedStations, resolveRealizations, splitRealizedLanes } from '../utils/arcRealization';
 
 type SortMode = 'alpha' | 'scenes-desc' | 'scenes-asc' | 'reading-order';
 type PlotlineViewMode = 'list' | 'subway';
@@ -437,6 +438,9 @@ export class StorylineView extends ItemView {
         // Sort by act → chapter → sequence so e.g. "01-01-02" comes before "01-02-01".
         // Sorting by sequence alone caused chapter nesting to be ignored (issue #96).
         orderedScenes.sort((a, b) => compareScenesByActChapter(a, b, (x, y) => (x.sequence ?? 0) - (y.sequence ?? 0)));
+        // Arc Points with `realizedBy` share the station of their realizing scene
+        const realizations = resolveRealizations(this.app, orderedScenes);
+        removeRealizedStations(orderedScenes, realizations);
 
         if (orderedScenes.length === 0) {
             this.renderListView(content, scenes, plotlines, plotlineKeys);
@@ -445,6 +449,7 @@ export class StorylineView extends ItemView {
 
         const colOf = new Map<string, number>();
         orderedScenes.forEach((s, i) => colOf.set(s.filePath, i));
+        const realizedLaneScene = aliasRealizedColumns(colOf, realizations);
 
         const numCols = orderedScenes.length;
         const numLanes = plotlineKeys.length;
@@ -513,6 +518,7 @@ export class StorylineView extends ItemView {
             const cols = pScenes
                 .map(s => colOf.get(s.filePath))
                 .filter((c): c is number => c !== undefined)
+                .filter((c, i, arr) => realizations.size === 0 || arr.indexOf(c) === i) // a realized Arc Point shares its scene's column
                 .sort((a, b) => a - b);
             plotlineCols.set(pk, cols);
         }
@@ -610,7 +616,10 @@ export class StorylineView extends ItemView {
         }
 
         // ── Shared-scene connectors ──
-        for (const [col, lanes] of sceneToLanes) {
+        for (const [col, stationLanes] of sceneToLanes) {
+            // Realized Arc Points join with a dashed link, not the solid connector
+            const { lanes, arcLanes } = splitRealizedLanes(stationLanes, col, plotlineKeys, realizedLaneScene);
+            drawRealizedLinks(svg, activeDocument, { x: colX(col), lanes, arcLanes, laneY, color: l => laneColor(l, plotlineKeys[l]) });
             if (lanes.length <= 1) continue;
             const x = colX(col);
             const sortedLanes = [...lanes].sort((a, b) => a - b);
@@ -662,7 +671,7 @@ export class StorylineView extends ItemView {
 
             for (const col of cols) {
                 const x = colX(col);
-                const scene = orderedScenes[col];
+                const scene = realizedLaneScene.get(`${pk}|${col}`) ?? orderedScenes[col];
 
                 // Node shape: diamond for Arc Points, circle for regular scenes
                 const isArcPoint = !!scene.arcAnchor;
