@@ -11,7 +11,7 @@ New `components/ArcPointUI.ts` holds the toggle (same markup and CSS classes as 
 
 - Compare: https://github.com/PixeroJan/obsidian-storyline/compare/main...rk-kontur:obsidian-storyline:suggest-feature/arc-point-filter
 - Code:
-  - Helpers: https://github.com/rk-kontur/obsidian-storyline/blob/suggest-feature/arc-point-filter/components/ArcPointUI.ts#L19-L58
+  - Helpers: https://github.com/rk-kontur/obsidian-storyline/blob/suggest-feature/arc-point-filter/components/ArcPointUI.ts#L18-L60
   - Timeline toolbar toggle: https://github.com/rk-kontur/obsidian-storyline/blob/suggest-feature/arc-point-filter/views/TimelineView.ts#L234-L240
   - Timeline empty acts and filter hint: https://github.com/rk-kontur/obsidian-storyline/blob/suggest-feature/arc-point-filter/views/TimelineView.ts#L366-L379
   - Timeline chronological drag: https://github.com/rk-kontur/obsidian-storyline/blob/suggest-feature/arc-point-filter/views/TimelineView.ts#L453-L461 and https://github.com/rk-kontur/obsidian-storyline/blob/suggest-feature/arc-point-filter/views/TimelineView.ts#L101-L132
