@@ -1156,6 +1156,11 @@ export class PlotgridView extends ItemView {
             gridTrackIndex++;
         }
         let rowTemplate = [COL_HEADER_HEIGHT + 'px', ...rowHeightParts].join(' ');
+        // Drop a selection whose row is filtered out or collapsed
+        if (this.selectedRow !== null && !this.renderedRowTrackIndices.has(this.selectedRow)) {
+            this.selectedRow = null;
+            this.selectedCol = null;
+        }
 
         // If there are no columns/rows yet, use flexible templates so the empty-state message
         // can span the full available width instead of being constrained to the single header column.
@@ -1413,6 +1418,7 @@ export class PlotgridView extends ItemView {
 
             const row = this.data.rows[ri];
             const rowEl = this.canvasEl.createDiv('plot-grid-row-header');
+            rowEl.setAttr('data-row', String(ri));
             rowEl.setCssStyles({
                 position: (this.data.stickyHeaders === false) ? 'relative' : 'sticky',
                 left: '0',
@@ -1540,12 +1546,12 @@ export class PlotgridView extends ItemView {
                     const els: HTMLElement[] = [];
                     for (let ci = 0; ci < this.data.columns.length; ci++) { const e = this.getCellElement(ri, ci); if (e) els.push(e); }
                     const prevs = els.map(e => e.style.background);
-                    const header = this.canvasEl?.querySelectorAll('.plot-grid-row-header')[ri] as HTMLElement | undefined;
+                    const header = this.getRowHeaderElement(ri);
                     const prevHeaderBg = header ? header.style.background : null;
                     this.chooseColor(this.data.rows[ri].bgColor || this.defaultBgColor(), (c) => { if (c === null) { els.forEach((e,i) => e.setCssStyles({ background: prevs[i] })); if (header && prevHeaderBg !== null) header.setCssStyles({ background: prevHeaderBg }); return; } this.data.rows[ri].bgColor = c || ''; this.scheduleSave(); this.renderGrid(); for (let ci=0; ci<this.data.columns.length; ci++) this.flashElement(this.getCellElement(ri, ci)); }, (preview) => { if (preview === null) { els.forEach((e,i) => e.setCssStyles({ background: prevs[i] })); if (header && prevHeaderBg !== null) header.setCssStyles({ background: prevHeaderBg }); } else { els.forEach(e => e.setCssStyles({ background: preview })); if (header) header.setCssStyles({ background: preview }); } });
                 }));
                 menu.addItem((item) => item.setTitle('Set header colour???').onClick(() => {
-                    const header = this.canvasEl?.querySelectorAll('.plot-grid-row-header')[ri] as HTMLElement | undefined;
+                    const header = this.getRowHeaderElement(ri);
                     const prevHeaderBg = header ? header.style.background : null;
                     this.chooseColor(this.data.rows[ri].headerBgColor || this.data.rows[ri].bgColor || this.defaultBgColor(), (c) => {
                         if (c === null) { if (header && prevHeaderBg !== null) header.setCssStyles({ background: prevHeaderBg }); return; }
@@ -2133,7 +2139,7 @@ export class PlotgridView extends ItemView {
         }
 
         if (this.selectedRow !== null) {
-            const header = this.canvasEl.querySelectorAll('.plot-grid-row-header')[this.selectedRow] as HTMLElement | undefined;
+            const header = this.getRowHeaderElement(this.selectedRow);
             if (header) header.setCssStyles({ boxShadow: 'inset 4px 0 0 var(--interactive-accent)' });
         }
 
@@ -2171,13 +2177,34 @@ export class PlotgridView extends ItemView {
         return (this.canvasEl?.querySelector(`.plot-grid-cell[data-row="${row}"][data-col="${col}"]`) as HTMLElement) ?? null;
     }
 
+    /** Row header of data row `row`, or undefined if that row is not rendered. */
+    private getRowHeaderElement(row: number): HTMLElement | undefined {
+        return this.canvasEl?.querySelector<HTMLElement>(`.plot-grid-row-header[data-row="${row}"]`) ?? undefined;
+    }
+
+    /**
+     * Data row index `dy` rendered rows away from `row`, in display order
+     * (sorted, without filtered-out and collapsed rows), clamped at the first
+     * and last rendered row. A `row` that is not rendered gives the first
+     * rendered row. Null if no row is rendered.
+     */
+    private stepRenderedRow(row: number, dy: number): number | null {
+        const order = [...this.renderedRowTrackIndices.keys()];
+        if (order.length === 0) return null;
+        const idx = order.indexOf(row);
+        if (idx < 0) return order[0];
+        return order[Math.max(0, Math.min(order.length - 1, idx + dy))];
+    }
+
     private moveSelection(dx: number, dy: number) {
         if (this.selectedRow === null || this.selectedCol === null) {
-            if (this.data.rows.length > 0 && this.data.columns.length > 0) {
-                this.selectedRow = 0; this.selectedCol = 0;
+            const firstRow = this.stepRenderedRow(-1, 0);
+            if (firstRow !== null && this.data.columns.length > 0) {
+                this.selectedRow = firstRow; this.selectedCol = 0;
             } else return;
         }
-        const nr = Math.max(0, Math.min(this.data.rows.length - 1, this.selectedRow + dy));
+        const nr = this.stepRenderedRow(this.selectedRow, dy);
+        if (nr === null) return;
         const nc = Math.max(0, Math.min(this.data.columns.length - 1, this.selectedCol + dx));
         const el = this.getCellElement(nr, nc);
         if (el) this.selectCell(el);
@@ -2235,7 +2262,7 @@ export class PlotgridView extends ItemView {
         this.canvasEl?.querySelectorAll('.plot-grid-row-header.selected').forEach(n => n.classList.remove('selected'));
         const sel = this.canvasEl?.querySelectorAll('.plot-grid-cell') || [];
         sel.forEach((n: Element) => (n as HTMLElement).classList.remove('selected'));
-        const header = this.canvasEl?.querySelectorAll('.plot-grid-row-header')[index] as HTMLElement | undefined;
+        const header = this.getRowHeaderElement(index);
         if (header) header.classList.add('selected');
     }
 
@@ -2545,7 +2572,7 @@ export class PlotgridView extends ItemView {
             rowMeta.bold = !rowMeta.bold;
             // Do not change per-cell bold flags here; header formatting only affects the header text.
             // Still flash the row header to indicate change.
-            const headerEl = this.canvasEl?.querySelectorAll('.plot-grid-row-header')[selRow] as HTMLElement | undefined;
+            const headerEl = this.getRowHeaderElement(selRow);
             if (headerEl) this.flashElement(headerEl);
         } else if (selCol !== null) {
             // toggle header bold
@@ -2572,7 +2599,7 @@ export class PlotgridView extends ItemView {
             const rowMeta = this.data.rows[selRow];
             rowMeta.italic = !rowMeta.italic;
             // Do not change per-cell italic flags here; header formatting only affects the header text.
-            const headerEl = this.canvasEl?.querySelectorAll('.plot-grid-row-header')[selRow] as HTMLElement | undefined;
+            const headerEl = this.getRowHeaderElement(selRow);
             if (headerEl) this.flashElement(headerEl);
         } else if (selCol !== null) {
             const colMeta = this.data.columns[selCol];
@@ -2635,7 +2662,7 @@ export class PlotgridView extends ItemView {
             const els: HTMLElement[] = [];
             for (let ci = 0; ci < this.data.columns.length; ci++) { const el = this.getCellElement(selRow, ci); if (el) els.push(el); }
             const prevs = els.map(e => e.style.background);
-            const header = this.canvasEl?.querySelectorAll('.plot-grid-row-header')[selRow] as HTMLElement | undefined;
+            const header = this.getRowHeaderElement(selRow);
             const prevHeaderBg = header ? header.style.background : null;
             this.chooseColor(this.data.rows[selRow].bgColor || this.defaultBgColor(), (c) => {
                 if (c === null) {
@@ -2702,7 +2729,7 @@ export class PlotgridView extends ItemView {
                 if (freshEl) this.flashElement(freshEl);
             }, (preview) => { if (preview === null) el.setCssStyles({ color: prev }); else el.setCssStyles({ color: preview }); });
         } else if (selRow !== null) {
-            const header = this.canvasEl?.querySelectorAll('.plot-grid-row-header')[selRow] as HTMLElement | undefined;
+            const header = this.getRowHeaderElement(selRow);
             const prevHeaderColor = header ? header.style.color : null;
             this.chooseColor(this.data.rows[selRow].textColor || this.defaultTextColor(), (c) => {
                 if (c === null) {
@@ -2902,8 +2929,8 @@ export class PlotgridView extends ItemView {
                 const curC = Number(cellEl.getAttribute('data-col'));
                 let nr = curR;
                 let nc = curC + (e.shiftKey ? -1 : 1);
-                if (nc >= this.data.columns.length) { nc = 0; nr = Math.min(this.data.rows.length - 1, curR + 1); }
-                if (nc < 0) { nc = Math.max(0, this.data.columns.length - 1); nr = Math.max(0, curR - 1); }
+                if (nc >= this.data.columns.length) { nc = 0; nr = this.stepRenderedRow(curR, 1) ?? curR; }
+                if (nc < 0) { nc = Math.max(0, this.data.columns.length - 1); nr = this.stepRenderedRow(curR, -1) ?? curR; }
                 window.setTimeout(() => {
                     const newEl = this.getCellElement(nr, nc);
                     const key = `${this.data.rows[nr].id}-${this.data.columns[nc].id}`;
