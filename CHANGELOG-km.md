@@ -19,7 +19,7 @@ Changes of this fork compared to the original StoryLine plugin by Jan Sandström
 - The first arrow key press without a selection starts at the first shown row and the first visible column. If every column is hidden, nothing is selected. **Enter** never opens the editor in a cell that is not shown.
 - **↑** / **↓** move through the rows as they are shown: in the shown order (also when the grid is sorted), skipping rows of other volumes, rows hidden by a filter and rows of collapsed acts or chapters. Before, the selection got stuck on a row that was not shown, or jumped in the order of the data instead of the shown order. At the first and last shown row the selection stays, as before.
 - A selected cell whose column becomes hidden, or whose row is no longer shown (switching the volume, collapsing an act or chapter, a filter), is deselected. Before, the arrow keys and Tab did nothing until you clicked a cell again.
-- The highlighted row header is the one of the selected row. Before, under a volume selection, a filter, a sort or a collapsed section, another row header could be highlighted (also the header that flashes after **Bold**, **Italic**, alignment or colour changes, and the header coloured by **Set row colour** / **Set header colour**).
+- The highlighted row header is the one of the selected row. Before, under a volume selection, a filter, a sort or a collapsed section, another row header could be highlighted (also the header that flashes after **Bold**, **Italic** or colour changes, and the header coloured by **Set row colour** / **Set header colour**).
 - **Dragging a column border** (or the border of the label column) keeps the hidden columns collapsed. Before, all of them opened up as empty gaps while dragging.
 - **Zooming** keeps the grid as wide as the visible columns. Before, the canvas became too wide after zooming.
 
@@ -43,7 +43,7 @@ Changes of this fork compared to the original StoryLine plugin by Jan Sandström
 
 **Files:**
 
-- `views/PlotgridView.ts` (`renderGrid`: volume scope keeps inactive scenes, deselects a hidden column or a row that is not shown, sticky volume band, `data-km-row` on row headers; `kmRowHeader` (new) used by `applySelectionVisuals`, `selectRowHeader`, the row colour menu and the bold, italic, alignment and colour actions; `computeTotalWidth`; `moveSelection` (columns and rows); Enter in `onKeyDown`; Tab in `enterEditMode`; `startColResize`; `startLabelColumnResize`)
+- `views/PlotgridView.ts` (`renderGrid`: volume scope keeps inactive scenes, deselects a hidden column or a row that is not shown, sticky volume band, `data-km-row` on row headers; `kmRowHeader` (new) used by `applySelectionVisuals`, `selectRowHeader`, the row colour menu and the bold, italic and colour actions; `computeTotalWidth`; `moveSelection` (columns and rows); Enter in `onKeyDown`; Tab in `enterEditMode`; `startColResize`; `startLabelColumnResize`)
 - `utils/plotgridVolume.ts` (`hiddenColumnsHintText`, `updateHiddenColumnsHint`, `firstVisibleColumn`, `stepVisibleColumn`, `stepRenderedRow`, `tabTarget`)
 - `utils/volumes.ts` (`VolumeDividerTracker.renderBefore` returns the band)
 - `styles.css` (fork section: `.plot-grid-canvas > .sl-km-volume-divider` without fixed `position: sticky`)
