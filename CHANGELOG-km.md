@@ -24,6 +24,8 @@ Changes of this fork compared to the original StoryLine plugin by Jan Sandström
 
 - The volume selection is read once per render of the Navigator, not once per scene, also while typing in **Filter scenes…**.
 
+- The Navigator's progress keeps upstream's rule: it measures against the scenes' word targets and counts Arc Point scenes. Statistics uses the volume's word goal and may leave Arc Points out, so the two can show different numbers for the same volume.
+
 **How and where to use:**
 
 1. Open the **Navigator** (compass icon, or command "Open navigator") in a project with volumes, e.g. Volume 1 = acts 1–2, Volume 2 = acts 3–4.
