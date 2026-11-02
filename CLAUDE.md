@@ -29,6 +29,13 @@ Fork of PixeroJan/obsidian-storyline (MIT). Obsidian plugin in TypeScript, built
 - **Release only when the owner asks for it.** Collect fixes on `km/base` in between; BRAT only updates when the version number increases. Standing order for the code review fixes: release each feature on its own as soon as all its findings are fixed and an independent review passes.
 - Test via BRAT with `rk-kontur/obsidian-storyline`.
 
+## Scope (owner's rule)
+- **Do not build by default.** Only two kinds of changes go into the fork:
+	1. Fixes for problems that are noticeable and relevant.
+	2. Extensions the owner explicitly wants that upstream (Jan) declined or did not take up.
+- Everything else (side findings, nice-to-haves, workarounds for upstream design decisions) is only reported and proposed, never built without the owner's GO.
+- Every change gets a very careful independent review, because the goal is to get all fork changes merged into StoryLine main. Prefer the smallest change to upstream code.
+
 ## Development
 - Keep changes to existing files small, especially `main.ts`, `settings.ts` and `styles.css` (frequent conflict spots). New features go into new files under `views/`, `services/`, `components/`, `models/`, `utils/`. Own styles go into the clearly marked fork section at the end of `styles.css`.
 - Build: `npm install`, `npm run build`. `main.js` in the repo is upstream's build and is never committed from the fork (run `git checkout main.js` after a local build); the release workflow builds `main.js` fresh. On merge conflicts in `main.js` take upstream's side.
