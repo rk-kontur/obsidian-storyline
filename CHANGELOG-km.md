@@ -2,6 +2,43 @@
 
 Changes of this fork compared to the original StoryLine plugin by Jan Sandström. Each `## <version>` section is used as the initial text of the matching GitHub release; texts edited on GitHub (e.g. with screenshots) are never overwritten. Every release also carries `storyline-km-source.zip` (all source files that are new or changed compared to the original, without `main.js`) and `storyline-km.patch` (the full diff against the original).
 
+## 1.11.8-km.23
+
+**Navigator with volumes: progress, plotline and chapter lists of the selected volume, volume band ends before Prologue / Epilogue / "No Act"**
+
+### Progress bar shows the selected volume
+
+- With a volume selected in the shared volume dropdown, the progress bar at the bottom of the Navigator showed the progress of the whole project. It now shows the selected volume: the same computation as before (words or characters, depending on the setting **Count unit for scene lengths**, against the sum of the scenes' word targets, or the word count and number of scenes when no targets are set), over the volume's own scenes. Like the **Statistics** view, scenes without an act are not counted for a volume.
+- The label starts with the volume title, e.g. "Volume 2 · 12.3k / 40.0k (31%)", and hovering the bar shows "Progress of Volume 2". With **All volumes** (or without volumes) the progress bar is unchanged.
+
+### Plotline and chapter lists follow the volume
+
+- **Plotlines** and **Chapters** above the scene list listed every plotline and chapter of the project, with project-wide counts. With a volume selected, they now list only the plotlines and chapters that occur in the volume's scenes (scenes of the volume's acts plus scenes without an act, the same scenes the list shows), and the counts are the counts in the volume. Plotline colours stay the same as with **All volumes**.
+- An active plotline or chapter filter is kept when the volume changes, also if that plotline or chapter does not occur in the new volume. It then stays in the list, marked "not in Volume 2" (click it to clear the filter), and the scene list says why it is empty, e.g. "No matching scenes: plotline "Love" does not occur in Volume 2", instead of an unexplained empty list. Upstream keeps such a filter as well; without a volume the behaviour is unchanged.
+
+### Volume bands end before scenes outside every volume
+
+- In **Reading order (by act)**, the Prologue, Epilogue, "Ungrouped" scenes (no act), non-numeric acts and acts that belong to no volume were shown inside the band of the preceding volume. A thin unlabelled separator now ends the volume band before them; a later act of a volume starts its labelled band again (same rule as the Timeline, Board and Manuscript). The other sort modes show no volume bands, as before.
+
+### Performance
+
+- The volume selection is read once per render of the Navigator, not once per scene, also while typing in **Filter scenes…**.
+
+**How and where to use:**
+
+1. Open the **Navigator** (compass icon, or command "Open navigator") in a project with volumes, e.g. Volume 1 = acts 1–2, Volume 2 = acts 3–4.
+2. Select **Volume 2** in the volume dropdown in the Navigator's toolbar (next to the search field), or in the **Filter by** dropdown of any other view.
+3. Look at the progress bar at the bottom: the label starts with "Volume 2" and shows only that volume's words and targets. Select **All volumes**: the project-wide progress is shown again, without a volume title.
+4. Expand **Plotlines** and **Chapters**: only the plotlines and chapters of Volume 2 are listed, with their counts in Volume 2.
+5. Select a plotline that occurs only in Volume 1 while **All volumes** is selected, then switch to **Volume 2**: the plotline stays selected and is listed as "not in Volume 2", and the scene list explains why it is empty. Click the plotline (or **All**) to clear the filter.
+6. With **All volumes** and sort **Reading order (by act)**, scroll to the Epilogue or the "Ungrouped" scenes: a thin line ends the last volume band before them.
+
+**Files:**
+
+- `views/NavigatorView.ts` (`refresh`: volume scope resolved once and passed on; `renderChips` / `renderChapterFilter`: volume lists and counts, row for an active filter outside the volume (`kmRenderOutsideRow`, new); `renderList`: scope passed in, empty-list message (`kmEmptyMessage`, new); `renderGroupedByAct`: `VolumeDividerTracker` with `{ bandEnd: true }`; `renderProgress`: statistics over the volume's scenes, volume label and tooltip)
+- `utils/navigatorVolume.ts` (new: `resolveNavigatorScope`, `collectTagChips`, `collectChapterChips`, `filterOutsideVolume`, `outsideVolumeHint`, `emptyListMessage`, `volumeProgressLabel`, `volumeProgressTooltip`)
+- `CHANGELOG-km.md`
+
 ## 1.11.8-km.22
 
 **Arc Points and export: orphaned `realizedBy` removed, export preselects the current volume and names the file after it, new "Include arc points" option**

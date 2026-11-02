@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-floating-promises, @typescript-eslint/no-misused-promises, @typescript-eslint/no-unnecessary-type-assertion -- Obsidian's API surface and several untyped third-party libraries force dynamic dispatch; floating promises are intentional in DOM/event handlers; matching enable at end of file */
 import { ItemView, WorkspaceLeaf, Menu, TFile, setIcon } from 'obsidian';
-import { renderVolumeScopeSelect, volumeScopePredicate } from '../utils/volumeScope'; // fork: shared volume scope
+import { renderVolumeScopeSelect } from '../utils/volumeScope'; // fork: shared volume scope
+import { collectChapterChips, collectTagChips, emptyListMessage, filterOutsideVolume, outsideVolumeHint, resolveNavigatorScope, volumeProgressLabel, volumeProgressTooltip, type NavigatorScope } from '../utils/navigatorVolume'; // fork: navigator with volumes
 import { getProjectVolumes, VolumeDividerTracker } from '../utils/volumes';
 import type SceneCardsPlugin from '../main';
 import { ManuscriptView } from './ManuscriptView';
@@ -199,24 +200,34 @@ export class NavigatorView extends ItemView {
      * Called by refreshOpenViews() to re-render the navigator.
      */
     refresh(): void {
-        this.renderChips();
-        this.renderChapterFilter();
-        this.renderList();
-        this.renderProgress();
+        const kmScope = this.kmResolveScope(); // fork: volume scope resolved once per render
+        this.renderChips(kmScope);
+        this.renderChapterFilter(kmScope);
+        this.renderList(kmScope);
+        this.renderProgress(kmScope);
+    }
+
+    // fork: shared volume scope (local storage + project `volumes:`), read once per render, never per scene
+    private kmResolveScope(): NavigatorScope {
+        return resolveNavigatorScope(this.app, this.sceneManager.activeProject?.filePath);
     }
 
     // ────────────────────────────────────────────────────────
     // Plotline filter chips
     // ────────────────────────────────────────────────────────
 
-    private renderChips(): void {
+    private renderChips(kmScope: NavigatorScope = this.kmResolveScope()): void {
         if (!this.chipRow || !this.chipSection || !this.chipToggle) return;
         this.chipRow.empty();
 
-        const tags = this.sceneManager.queryService.getAllTags().sort();
+        // fork: with a volume selected, only the plotlines of the volume's scenes
+        const kmChips = kmScope.volume ? collectTagChips(this.sceneManager.getAllScenes().filter(kmScope.inList)) : null;
+        const kmProjectTags = kmChips ? this.sceneManager.queryService.getAllTags() : null; // colours by project index
+        const tags = kmChips ? kmChips.values : this.sceneManager.queryService.getAllTags().sort();
+        const kmOutside = kmChips !== null && filterOutsideVolume(this.plotlineFilter, tags);
 
         // Hide entire section if no tags
-        if (tags.length === 0) {
+        if (tags.length === 0 && !kmOutside) { // fork: keep an active filter outside the volume visible
             this.chipSection.setCssStyles({ display: 'none' });
             return;
         }
@@ -255,7 +266,7 @@ export class NavigatorView extends ItemView {
 
         for (let i = 0; i < tags.length; i++) {
             const tag = tags[i];
-            const color = resolveTagColor(tag, i, scheme, tagColors, hslAdj);
+            const color = resolveTagColor(tag, kmProjectTags ? kmProjectTags.indexOf(tag) : i, scheme, tagColors, hslAdj); // fork: project index
 
             const row = this.chipRow.createDiv('sl-nav-plotline-item');
             if (this.plotlineFilter === tag) row.addClass('is-active');
@@ -266,7 +277,7 @@ export class NavigatorView extends ItemView {
             row.createSpan({ text: tag, cls: 'sl-nav-plotline-name' });
 
             // Scene count for this plotline
-            const count = this.sceneManager.getAllScenes()
+            const count = kmChips ? (kmChips.counts.get(tag) ?? 0) : this.sceneManager.getAllScenes() // fork: volume counts
                 .filter(s => !s.corkboardNote && !s.inactive && s.tags?.includes(tag)).length;
             row.createSpan({ text: String(count), cls: 'sl-nav-plotline-count' });
 
@@ -276,14 +287,33 @@ export class NavigatorView extends ItemView {
                 this.renderList();
             });
         }
+        if (kmOutside && kmScope.volume && this.plotlineFilter) this.kmRenderOutsideRow(this.chipRow, this.plotlineFilter, kmScope, () => { // fork
+            this.plotlineFilter = null;
+            this.renderChips();
+            this.renderList();
+        });
     }
 
-    private renderChapterFilter(): void {
+    /** fork: active chip filter whose value does not occur in the selected volume; click clears it. */
+    private kmRenderOutsideRow(parent: HTMLElement, name: string, kmScope: NavigatorScope, clear: () => void): void {
+        if (!kmScope.volume) return;
+        const hint = outsideVolumeHint(kmScope.volume);
+        const row = parent.createDiv('sl-nav-plotline-item is-active');
+        row.setAttribute('title', hint);
+        row.createSpan({ text: name, cls: 'sl-nav-plotline-name' });
+        row.createSpan({ text: hint, cls: 'sl-nav-plotline-count' });
+        row.addEventListener('click', clear);
+    }
+
+    private renderChapterFilter(kmScope: NavigatorScope = this.kmResolveScope()): void {
         if (!this.chapterRow || !this.chapterSection || !this.chapterToggle) return;
         this.chapterRow.empty();
 
-        const chapters = this.sceneManager.queryService.getUniqueValues('chapter');
-        if (chapters.length === 0) {
+        // fork: with a volume selected, only the chapters of the volume's scenes
+        const kmChips = kmScope.volume ? collectChapterChips(this.sceneManager.getAllScenes().filter(kmScope.inList)) : null;
+        const chapters = kmChips ? kmChips.values : this.sceneManager.queryService.getUniqueValues('chapter');
+        const kmOutside = kmChips !== null && filterOutsideVolume(this.chapterFilter, chapters);
+        if (chapters.length === 0 && !kmOutside) { // fork: keep an active filter outside the volume visible
             this.chapterSection.setCssStyles({ display: 'none' });
             return;
         }
@@ -310,7 +340,7 @@ export class NavigatorView extends ItemView {
             const row = this.chapterRow.createDiv('sl-nav-plotline-item');
             if (this.chapterFilter === chapter) row.addClass('is-active');
             row.createSpan({ cls: 'sl-nav-plotline-name', text: `Chapter ${chapter}` });
-            const count = this.sceneManager.getAllScenes()
+            const count = kmChips ? (kmChips.counts.get(chapter) ?? 0) : this.sceneManager.getAllScenes() // fork: volume counts
                 .filter(s => !s.corkboardNote && !s.inactive && String(s.chapter) === chapter).length;
             row.createSpan({ text: String(count), cls: 'sl-nav-plotline-count' });
             row.addEventListener('click', () => {
@@ -319,19 +349,24 @@ export class NavigatorView extends ItemView {
                 this.renderList();
             });
         }
+        if (kmOutside && this.chapterFilter) this.kmRenderOutsideRow(this.chapterRow, `Chapter ${this.chapterFilter}`, kmScope, () => { // fork
+            this.chapterFilter = null;
+            this.renderChapterFilter();
+            this.renderList();
+        });
     }
 
     // ────────────────────────────────────────────────────────
     // Scene list
     // ────────────────────────────────────────────────────────
 
-    private renderList(): void {
+    private renderList(kmScope: NavigatorScope = this.kmResolveScope()): void {
         if (!this.listEl) return;
         this.listEl.empty();
 
         let scenes = this.sceneManager.getAllScenes().filter(s => !s.corkboardNote && !s.inactive);
-        // fork: shared volume scope
-        scenes = scenes.filter(volumeScopePredicate(this.app, this.sceneManager.activeProject?.filePath));
+        // fork: shared volume scope (resolved once per render)
+        if (kmScope.volume) scenes = scenes.filter(kmScope.inList);
 
         // Plotline filter
         if (this.plotlineFilter) {
@@ -357,9 +392,9 @@ export class NavigatorView extends ItemView {
 
         if (scenes.length === 0) {
             const empty = this.listEl.createDiv('sl-nav-empty');
-            empty.textContent = this.filterText || this.plotlineFilter || this.chapterFilter
+            empty.textContent = this.kmEmptyMessage(kmScope) ?? (this.filterText || this.plotlineFilter || this.chapterFilter // fork: say why
                 ? 'No matching scenes'
-                : 'No scenes yet';
+                : 'No scenes yet');
             return;
         }
 
@@ -373,6 +408,15 @@ export class NavigatorView extends ItemView {
                 this.renderSceneRow(this.listEl!, scene);
             }
         }
+    }
+
+    /** fork: empty list because an active chip filter does not occur in the selected volume. */
+    private kmEmptyMessage(kmScope: NavigatorScope): string | undefined {
+        if (!kmScope.volume || (!this.plotlineFilter && !this.chapterFilter)) return undefined;
+        const inVol = this.sceneManager.getAllScenes().filter(kmScope.inList);
+        return emptyListMessage(kmScope.volume,
+            this.plotlineFilter, this.plotlineFilter !== null && filterOutsideVolume(this.plotlineFilter, collectTagChips(inVol).values),
+            this.chapterFilter, this.chapterFilter !== null && filterOutsideVolume(this.chapterFilter, collectChapterChips(inVol).values));
     }
 
     private renderGroupedByAct(scenes: Scene[]): void {
@@ -393,7 +437,7 @@ export class NavigatorView extends ItemView {
             return;
         }
 
-        const volumeTracker = new VolumeDividerTracker(getProjectVolumes(this.app, this.sceneManager.activeProject?.filePath));
+        const volumeTracker = new VolumeDividerTracker(getProjectVolumes(this.app, this.sceneManager.activeProject?.filePath), { bandEnd: true }); // fork: band end
         for (const [act, actScenes] of groups) {
             volumeTracker.renderBefore(this.listEl!, actScenes[0]?.act); // fork: volume heading
             const isCollapsed = this.collapsedActs.has(act);
@@ -678,10 +722,16 @@ export class NavigatorView extends ItemView {
     // Progress bar
     // ────────────────────────────────────────────────────────
 
-    private renderProgress(): void {
+    private renderProgress(kmScope: NavigatorScope = this.kmResolveScope()): void {
         if (!this.progressBar || !this.progressLabel) return;
 
-        const stats = this.sceneManager.queryService.getStatistics();
+        // fork: with a volume selected, the same statistics over the volume's own scenes
+        const kmVol = kmScope.volume;
+        const stats = kmVol
+            ? this.sceneManager.queryService.getStatistics(false, this.sceneManager.getAllScenes().filter(kmScope.inOwn))
+            : this.sceneManager.queryService.getStatistics();
+        this.progressBar.parentElement?.removeAttribute('title');
+        if (kmVol) this.progressBar.parentElement?.setAttribute('title', volumeProgressTooltip(kmVol));
         const useChars = this.plugin.settings.countUnit === 'chars';
         const totalCount = useChars ? stats.totalChars : stats.totalWords;
         const targetCount = useChars ? stats.totalTargetChars : stats.totalTargetWords;
@@ -691,12 +741,12 @@ export class NavigatorView extends ItemView {
             const pct = Math.min(100, Math.round((totalCount / targetCount) * 100));
             const fill = this.progressBar.querySelector('.sl-nav-progress-fill') as HTMLElement;
             if (fill) fill.setCssStyles({ width: `${pct}%` });
-            this.progressLabel.textContent = `${this.formatWords(totalCount)} / ${this.formatWords(targetCount)} (${pct}%)`;
+            this.progressLabel.textContent = volumeProgressLabel(kmVol, `${this.formatWords(totalCount)} / ${this.formatWords(targetCount)} (${pct}%)`); // fork
         } else {
             const fill = this.progressBar.querySelector('.sl-nav-progress-fill') as HTMLElement;
             if (fill) fill.setCssStyles({ width: '0%' });
-            const totalScenes = this.sceneManager.getAllScenes().filter(s => !s.corkboardNote && !s.inactive).length;
-            this.progressLabel.textContent = `${this.formatWords(totalCount)} ${unit} · ${totalScenes} scenes`;
+            const totalScenes = kmVol ? stats.totalScenes : this.sceneManager.getAllScenes().filter(s => !s.corkboardNote && !s.inactive).length; // fork
+            this.progressLabel.textContent = volumeProgressLabel(kmVol, `${this.formatWords(totalCount)} ${unit} · ${totalScenes} scenes`); // fork
         }
     }
 
