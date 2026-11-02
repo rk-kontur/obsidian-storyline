@@ -303,6 +303,20 @@ export class VolumeDividerTracker {
     renderBefore(parent: HTMLElement, act: number | string | undefined, gridColumn?: string): HTMLElement | undefined {
         const vol = this.next(act);
         if (!vol) return undefined;
+        return this.renderBand(parent, vol, gridColumn);
+    }
+
+    /**
+     * Render the band of a given volume (e.g. a volume without scenes, which
+     * has no act divider) unless it is the current one; returns the band.
+     */
+    renderVolume(parent: HTMLElement, vol: VolumeDef, gridColumn?: string): HTMLElement | undefined {
+        if (!this.active || vol.id === this.lastId) return undefined;
+        this.lastId = vol.id;
+        return this.renderBand(parent, vol, gridColumn);
+    }
+
+    private renderBand(parent: HTMLElement, vol: VolumeDef, gridColumn?: string): HTMLElement {
         const band = parent.createDiv('sl-km-volume-divider');
         if (gridColumn) band.setCssStyles({ gridColumn });
         band.createSpan({ cls: 'sl-km-volume-divider-label', text: vol.title });

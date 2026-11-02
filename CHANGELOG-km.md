@@ -2,6 +2,50 @@
 
 Changes of this fork compared to the original StoryLine plugin by Jan Sandström. Each `## <version>` section is used as the initial text of the matching GitHub release; texts edited on GitHub (e.g. with screenshots) are never overwritten. Every release also carries `storyline-km-source.zip` (all source files that are new or changed compared to the original, without `main.js`) and `storyline-km.patch` (the full diff against the original).
 
+## 1.11.8-km.19
+
+**Timeline with volumes: empty acts in their volume, empty volumes visible, bands only in Reading order**
+
+### The Arc Point filter no longer turns acts into "empty" acts
+
+- With **Arc Points** or **Scenes only** selected in the Arc Point filter, every act without a matching scene appeared at the end as "No scenes in Act 3 · Click + to add a scene", although the act has scenes.
+- An act now counts as empty only when it has no scene at all in the selected volume, exactly as the Timeline decides it without the fork (active scenes, corkboard notes not counted). The Arc Point filter only hides scenes; acts whose scenes are all hidden by it are left out.
+- If the filter hides every scene, the Timeline says "No scenes match the current filter." instead of showing an empty track.
+
+### Empty acts sit in their place, inside their volume band
+
+- In **Reading order**, a defined act without scenes is shown between its neighbouring acts, inside the band of its volume, instead of after the last volume. Text and **+** button are unchanged.
+- In **Chronological order** empty acts stay at the end, as before.
+
+### Volumes without scenes are visible
+
+- In **Reading order** with **All volumes**, a volume without any scene gets its band at its place among the acts. If it has defined acts, they are shown as empty acts below the band; otherwise a card "No scenes in Volume 3" follows. Clicking the card adds a scene to the volume's first act.
+- With a volume selected that has no scenes, the Timeline shows that card (with the volume band in Reading order) instead of "No scenes found.". The same applies in **Swimlane** mode.
+
+<!-- screenshot: Timeline, Reading order, All volumes, band "Volume 3" with the card "No scenes in Volume 3" -->
+<!-- screenshot: Timeline, Arc Points filter, an empty act inside the Volume 2 band -->
+
+### Volume bands only in Reading order
+
+- Volume bands only make sense when the acts follow each other. In **Chronological order** scenes of different acts and volumes interleave, so the Timeline (single column and **Swimlane**) no longer shows volume bands there; before, a band was repeated every time the volume changed. In **Reading order** both modes show the bands as before.
+- In Swimlane mode empty acts are not shown (as without the fork), so a volume without scenes only appears when it is selected.
+
+**How and where to use:**
+
+1. Open the **Timeline** of a project with volumes (e.g. Volume 1 = acts 1–2, Volume 2 = acts 3–4, Volume 3 = acts 5–6) and select **Reading order**.
+2. Set the Arc Point filter in the toolbar to **Arc Points**: only acts with Arc Points are shown, no "No scenes in Act …" placeholders for acts that have scenes. Set it to **Scenes only** and back to **All**.
+3. Define an act without scenes (structure button, e.g. act 4): its "No scenes in Act 4" placeholder appears after act 3, inside the **Volume 2** band. Click **+** or the card to add a scene to act 4.
+4. With **All volumes** selected and no scenes in acts 5–6, the **Volume 3** band appears after Volume 2 with the card "No scenes in Volume 3". Click the card to add a scene to act 5.
+5. Select **Volume 3** in the volume dropdown: the band and the card are shown instead of an empty view. Switch on **Swimlane**: the same card is shown.
+6. Switch to **Chronological order**: no volume bands are shown, empty acts are listed at the end.
+
+**Files:**
+
+- `views/TimelineView.ts` (`renderTimeline`: empty acts from the unfiltered, volume-scoped list, empty volumes, placement in act order, empty state for a fully filtered list, bands only in Reading order, drop indicators skip placeholders; `renderSwimlaneTimeline`: bands only in Reading order, empty selected volume; `kmBaseSceneActs`, `kmRenderEmptyScopedVolume` (new))
+- `utils/timelineVolumes.ts` (new: `emptyTimelineActs`, `emptyTimelineVolumes`, `firstVolumeAct`, `mergeByAct`, `renderEmptyVolumeEntry`)
+- `utils/volumes.ts` (`VolumeDividerTracker.renderVolume`, new)
+- `CHANGELOG-km.md`
+
 ## 1.11.8-km.18
 
 **Plot Grid with volumes: inactive scenes stay, keyboard skips hidden rows and columns, sticky band follows the setting**
