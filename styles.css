@@ -13895,7 +13895,7 @@ body.sl-focus-active-global.sl-focus-dim-text .markdown-source-view.mod-cm6 .cm-
 
 .plot-grid-canvas > .sl-km-volume-divider {
     margin: 0;
-    position: sticky;
+    /* position (sticky or relative) is set inline, following "Sticky headers" */
     left: 0;
     z-index: 8;
 }

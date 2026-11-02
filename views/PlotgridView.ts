@@ -6,7 +6,7 @@ import { renderArcPointIcon } from '../components/ArcPointUI';
 import { getProjectVolumes, VolumeDividerTracker } from '../utils/volumes';
 import { scopeFilter, volumeScopeKey } from '../utils/volumeScope'; // fork: shared volume scope
 import { getOffPageLines, isOffPage } from '../utils/pageZones';
-import { columnTemplate, findEmptyAutoColumns, hiddenColumnsWidth, renderHiddenColumnsHint, updateHiddenColumnsHint } from '../utils/plotgridVolume';
+import { columnTemplate, findEmptyAutoColumns, firstVisibleColumn, hiddenColumnsWidth, renderHiddenColumnsHint, stepVisibleColumn, tabTarget, updateHiddenColumnsHint } from '../utils/plotgridVolume';
 import { LocationManager } from '../services/LocationManager';
 import type { SceneFilter, SortConfig } from '../models/Scene';
 import { SceneManager } from '../services/SceneManager';
@@ -526,7 +526,7 @@ export class PlotgridView extends ItemView {
                 },
                 this.plugin
             );
-            // fork: hint "N empty plotlines hidden · show" at the right of the filter bar
+            // fork: hint "N empty columns hidden · show" at the right of the filter bar
             this.filtersComponent.extraBarRight = (bar) => {
                 this.kmHiddenColsHint = renderHiddenColumnsHint(bar, () => { this.kmShowEmptyCols = !this.kmShowEmptyCols; this.renderGrid(); });
             };
@@ -910,7 +910,7 @@ export class PlotgridView extends ItemView {
     }
 
     private computeTotalWidth() {
-        return this.getLabelColumnWidth() + this.data.columns.reduce((s, c) => s + c.width, 0);
+        return this.getLabelColumnWidth() + this.data.columns.reduce((s, c) => s + c.width, 0) - hiddenColumnsWidth(this.data, this.kmHiddenCols); // fork: hidden empty columns take no width
     }
 
     private getLabelColumnWidth(): number {
@@ -1040,7 +1040,9 @@ export class PlotgridView extends ItemView {
         );
         let filteredPaths: Set<string> | null = null;
         // fork: shared volume scope restricts rows like an act filter
-        const scopedFilter = sceneManager ? scopeFilter(this.app, sceneManager.activeProject?.filePath, this.currentFilter) : this.currentFilter;
+        let scopedFilter = sceneManager ? scopeFilter(this.app, sceneManager.activeProject?.filePath, this.currentFilter) : this.currentFilter;
+        // fork: a pure volume scope hides only rows of other volumes, inactive scenes stay as without a scope
+        if (!hasFilter && scopedFilter && scopedFilter !== this.currentFilter && scopedFilter.activeState === undefined) scopedFilter = { ...scopedFilter, activeState: 'all' };
         if ((hasFilter || scopedFilter !== this.currentFilter) && sceneManager) {
             filteredPaths = new Set(
                 sceneManager.queryService.getFilteredScenes(scopedFilter, undefined).map(s => s.filePath)
@@ -1102,7 +1104,8 @@ export class PlotgridView extends ItemView {
         // fork: with a volume selected, hide auto columns that are empty in the visible rows
         const kmScoped = scopedFilter !== this.currentFilter;
         this.kmHiddenCols = kmScoped && !this.kmShowEmptyCols ? findEmptyAutoColumns(this.data, visibleRows) : new Set();
-        updateHiddenColumnsHint(this.kmHiddenColsHint, this.kmHiddenCols.size, this.kmShowEmptyCols, kmScoped);
+        updateHiddenColumnsHint(this.kmHiddenColsHint, this.data, this.kmHiddenCols, this.kmShowEmptyCols, kmScoped);
+        if (this.selectedCol !== null && this.kmHiddenCols.has(this.selectedCol)) { this.selectedCol = null; this.selectedRow = null; } // fork: no selection in a hidden column
         if (this.kmHiddenCols.size > 0) colTemplate = columnTemplate(this.getLabelColumnWidth(), this.data, this.kmHiddenCols);
 
         // ── Build act/chapter divider positions (visible rows only) ──
@@ -1203,7 +1206,7 @@ export class PlotgridView extends ItemView {
         });
         // If there are no columns, allow the canvas to stretch to the container width.
         if (this.data.columns.length === 0) this.canvasEl.setCssStyles({ width: '100%' });
-        else this.canvasEl.setCssStyles({ width: (this.computeTotalWidth() - hiddenColumnsWidth(this.data, this.kmHiddenCols)) + 'px' });
+        else this.canvasEl.setCssStyles({ width: this.computeTotalWidth() + 'px' });
 
         const corner = this.canvasEl.createDiv('plot-grid-corner');
         corner.setAttr('data-type', 'corner');
@@ -1416,7 +1419,8 @@ export class PlotgridView extends ItemView {
                 const colCount = this.data.columns.length + 1;
                 for (const d of divs) {
                     if (d.type === 'act') {
-                        volumeTracker.renderBefore(this.canvasEl, d.key.slice(4), `1 / ${colCount + 1}`);
+                        volumeTracker.renderBefore(this.canvasEl, d.key.slice(4), `1 / ${colCount + 1}`)
+                            ?.setCssStyles({ position: (this.data.stickyHeaders === false) ? 'relative' : 'sticky' }); // fork: sticky like the headers
                     }
                     const divEl = this.canvasEl.createDiv(`plot-grid-divider plot-grid-divider-${d.type}`);
                     const isCollapsed = this.data.collapsedSections?.[d.key] === true;
@@ -2218,11 +2222,12 @@ export class PlotgridView extends ItemView {
     private moveSelection(dx: number, dy: number) {
         if (this.selectedRow === null || this.selectedCol === null) {
             if (this.data.rows.length > 0 && this.data.columns.length > 0) {
-                this.selectedRow = 0; this.selectedCol = 0;
+                this.selectedRow = 0; this.selectedCol = firstVisibleColumn(this.data.columns.length, this.kmHiddenCols) ?? 0; // fork
             } else return;
         }
         const nr = Math.max(0, Math.min(this.data.rows.length - 1, this.selectedRow + dy));
-        const nc = Math.max(0, Math.min(this.data.columns.length - 1, this.selectedCol + dx));
+        const nc = stepVisibleColumn(this.selectedCol, dx, this.data.columns.length, this.kmHiddenCols); // fork: skip hidden empty columns
+        if (nc === null) return;
         const el = this.getCellElement(nr, nc);
         if (el) this.selectCell(el);
     }
@@ -2944,10 +2949,9 @@ export class PlotgridView extends ItemView {
                 commit();
                 const curR = Number(cellEl.getAttribute('data-row'));
                 const curC = Number(cellEl.getAttribute('data-col'));
-                let nr = curR;
-                let nc = curC + (e.shiftKey ? -1 : 1);
-                if (nc >= this.data.columns.length) { nc = 0; nr = Math.min(this.data.rows.length - 1, curR + 1); }
-                if (nc < 0) { nc = Math.max(0, this.data.columns.length - 1); nr = Math.max(0, curR - 1); }
+                const target = tabTarget(curR, curC, e.shiftKey, this.data.rows.length, this.data.columns.length, this.kmHiddenCols); // fork: skip hidden empty columns
+                if (!target) return;
+                const { row: nr, col: nc } = target;
                 window.setTimeout(() => {
                     const newEl = this.getCellElement(nr, nc);
                     const key = `${this.data.rows[nr].id}-${this.data.columns[nc].id}`;
@@ -3528,7 +3532,7 @@ export class PlotgridView extends ItemView {
             this.data.columns[colIndex].width = newW;
             // update grid template for live feedback
             if (this.canvasEl) {
-                const colTemplate = [this.getLabelColumnWidth() + 'px', ...this.data.columns.map((c) => c.width + 'px')].join(' ');
+                const colTemplate = columnTemplate(this.getLabelColumnWidth(), this.data, this.kmHiddenCols); // fork: keep hidden columns collapsed
                 this.canvasEl.setCssStyles({ gridTemplateColumns: colTemplate });
                 const totalWidth = this.computeTotalWidth();
                 this.canvasEl.setCssStyles({ width: totalWidth / this.data.zoom + 'px' });
@@ -3558,7 +3562,7 @@ export class PlotgridView extends ItemView {
             const newWidth = Math.max(MIN_LABEL_COLUMN_WIDTH, Math.round(origWidth + delta));
             this.data.labelColumnWidth = newWidth;
             if (this.canvasEl) {
-                const colTemplate = [newWidth + 'px', ...this.data.columns.map((c) => c.width + 'px')].join(' ');
+                const colTemplate = columnTemplate(newWidth, this.data, this.kmHiddenCols); // fork: keep hidden columns collapsed
                 this.canvasEl.setCssStyles({ gridTemplateColumns: colTemplate });
                 this.canvasEl.setCssStyles({ width: this.computeTotalWidth() / this.data.zoom + 'px' });
             }

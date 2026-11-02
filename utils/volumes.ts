@@ -299,13 +299,14 @@ export class VolumeDividerTracker {
         return vol;
     }
 
-    /** Render an HTML volume band before the act divider if a new volume starts. */
-    renderBefore(parent: HTMLElement, act: number | string | undefined, gridColumn?: string): void {
+    /** Render an HTML volume band before the act divider if a new volume starts; returns the band. */
+    renderBefore(parent: HTMLElement, act: number | string | undefined, gridColumn?: string): HTMLElement | undefined {
         const vol = this.next(act);
-        if (!vol) return;
+        if (!vol) return undefined;
         const band = parent.createDiv('sl-km-volume-divider');
         if (gridColumn) band.setCssStyles({ gridColumn });
         band.createSpan({ cls: 'sl-km-volume-divider-label', text: vol.title });
+        return band;
     }
 }
 
