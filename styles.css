@@ -14335,6 +14335,6 @@ body.sl-focus-active-global.sl-focus-dim-text .markdown-source-view.mod-cm6 .cm-
     display: flex;
 }
 
-.workspace.should-maximize .workspace-split.mod-root .sl-manuscript-embedded-split.sl-manuscript-embedded-split .view-header {
+.workspace.should-maximize .workspace-split.mod-root .sl-manuscript-embedded-split.sl-manuscript-embedded-split.sl-manuscript-embedded-split .view-header {
     display: none;
 }

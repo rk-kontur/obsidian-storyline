@@ -7,13 +7,13 @@ Changes of this fork compared to the original StoryLine plugin by Jan Sandström
 **Manuscript with Pane Relief "Maximize active tab": no blank page, no scroll jump**
 
 - With Pane Relief's **Maximize active tab** on, clicking into a scene in the **Manuscript** could blank the page, and scrolling jumped back to the top after a short way.
-- Cause: the Manuscript shows each scene in a real Obsidian editor (a workspace split and leaf inside the view). Pane Relief treats those like tabs: its maximize rules hide every leaf and split that is not the maximized one. So the scene editors could be hidden, and when a scene editor became the active leaf (a click into it, or an editor loading while you scroll), Pane Relief hid the Manuscript itself. Hiding the scroll area resets its scroll position.
+- Cause: the Manuscript shows each scene in a real Obsidian editor (a workspace split and leaf inside the view). Pane Relief treats those like tabs: its maximize rules hide every leaf and split that is not the maximized one. So the scene editors could be hidden, and when a scene editor became the active leaf (a click into it, or an editor loading while you scroll), Pane Relief hid the Manuscript itself. Hiding and re-showing the view made the page and its scroll position jump.
 - The earlier workaround (1.12.0-km.12) handed the maximized state back to the Manuscript after each such switch. That hid and showed the view again every time, which caused the scroll jump, and it took the active editor away from the scene you clicked.
 - Now a few CSS rules keep the Manuscript and all of its scene editors visible while Pane Relief maximizes, and hide the scene editors' file header bar there as usual. The hand-back is removed, so the scene you click stays the active editor and editor commands and the formatting toolbar work on it. Without Pane Relief, or with maximize off, the rules do not apply.
 
 **How and where to use:**
 
-1. With Pane Relief installed, turn on **Maximize active tab** (Pane Relief command "Maximize active pane").
+1. With Pane Relief installed, turn on **Maximize active tab** (Pane Relief command "Maximize active tab (Toggle)").
 2. Open the **Manuscript**, scroll down, click into a scene and type: the page and the scroll position stay.
 3. Scroll through a long manuscript: it no longer jumps back to the top while scenes load.
 
