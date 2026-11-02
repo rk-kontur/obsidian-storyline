@@ -7,11 +7,13 @@ Changes of this fork compared to the original StoryLine plugin by Jan Sandström
 **Corkboard follows the selected volume: camera per volume, new scenes placed next to their volume**
 
 - When you select a volume, the **Corkboard** hides the cards of the other volumes, but the camera stayed where it was. Later volumes sat far away and you had to pan a long way to find them.
-- Now the camera moves to the volume: at the current zoom, the top-left card of the volume sits just inside the top-left corner of the board. Only scenes whose act belongs to the volume count; corkboard notes and scenes without an act (they are shown in every volume) do not. If the volume has no placed scenes yet, all visible cards are used.
-- The camera is remembered per volume while the board is open: switching back to a volume, or to **All volumes**, returns to where you were there. Without a remembered camera, **All volumes** keeps the current camera as before.
+- Now the camera moves to the volume: at the current zoom, the top-left corner of the area around the volume's cards sits just inside the top-left corner of the board. Only scenes whose act belongs to the volume count; corkboard notes and scenes without an act (they are shown in every volume) do not. If the volume has no placed scenes yet, all visible cards are used.
+- The camera is remembered per volume for the current project while the board is open: switching back to a volume, or to **All volumes**, returns to where you were there. Without a remembered camera, **All volumes** keeps the current camera as before.
 - Only the camera moves. No card position is changed or saved, and the **All volumes** layout stays as it is.
 - New scenes that have no corkboard position yet used to land near the top-left of the whole board when a volume was selected, on top of Volume 1's cards in **All volumes**. With a volume selected they are now placed in a grid one row below the volume's lowest card (below all cards if the volume has none yet).
-- Projects without volumes, and **All volumes**, behave exactly as before.
+- Projects without volumes behave exactly as before, and **All volumes** places new scenes exactly as before.
+
+- New cards never land on a stored card: cells that overlap any card (of another volume, a note or a scene without an act) or a cell handed out before are skipped.
 
 **How and where to use:**
 

@@ -31,7 +31,7 @@ import { getProjectVolumes, type VolumeDef } from './volumes';
 import { actInVolumeScope, getScopedVolume } from './volumeScope';
 
 export interface CorkboardCamera { x: number; y: number; zoom: number }
-interface WorldPos { x: number; y: number }
+export interface WorldPos { x: number; y: number }
 /** Box over card top-left positions (world coordinates). */
 export interface PosBox { left: number; top: number; right: number; bottom: number }
 
@@ -78,8 +78,9 @@ export function panToTopLeft(box: PosBox, zoom: number, padding = VOLUME_PAN_PAD
 }
 
 /**
- * Camera memory of one view: the camera per scope key ("project|volumeId",
- * '' = All volumes) and the key of the last corkboard render. In memory only.
+ * Camera memory of one view: the camera per volume id ('' = All volumes) of
+ * the current project, and the key of the last corkboard render. In memory
+ * only; cleared when the project changes.
  */
 export class CorkboardVolumeCameras {
     private cameras = new Map<string, CorkboardCamera>();
@@ -159,8 +160,10 @@ export function applyCorkboardVolumeCamera(
  * is selected: a 4-column grid that continues one row below the volume's
  * lowest card, starting at its leftmost card. Without positioned volume
  * cards: one row below the lowest card of the whole board, at x = 0 (the
- * origin if the board is empty). Returns null without a selected volume,
- * then upstream's index grid applies. Each call returns the next cell.
+ * origin if the board is empty). Cells that overlap a stored card (of any
+ * volume, note or scene without an act) or a cell handed out before are
+ * skipped. Returns null without a selected volume, then upstream's index
+ * grid applies. Each call returns the next free cell.
  */
 export function corkboardVolumePlacer(
     app: App,
@@ -172,16 +175,24 @@ export function corkboardVolumePlacer(
 ): (() => { x: number; y: number }) | null {
     const vol = getScopedVolume(app, projectFilePath);
     if (!vol) return null;
-    return gridPlacer(volumeBox(vol, allScenes, getPos, isNote), positionsBox(allPositions));
+    const taken = Array.from(allPositions);
+    return gridPlacer(volumeBox(vol, allScenes, getPos, isNote), positionsBox(taken), taken);
 }
 
 /** Pure part of corkboardVolumePlacer. */
-export function gridPlacer(volBox: PosBox | null, boardBox: PosBox | null): () => { x: number; y: number } {
+export function gridPlacer(volBox: PosBox | null, boardBox: PosBox | null, taken: WorldPos[] = []): () => { x: number; y: number } {
     const originX = volBox ? volBox.left : 0;
     const originY = volBox ? volBox.bottom + GRID_DY : boardBox ? boardBox.bottom + GRID_DY : 0;
+    const used: WorldPos[] = [...taken];
+    const free = (x: number, y: number) => !used.some(p => Math.abs(p.x - x) < GRID_DX && Math.abs(p.y - y) < GRID_DY);
     let n = 0;
     return () => {
-        const i = n++;
-        return { x: originX + (i % GRID_COLS) * GRID_DX, y: originY + Math.floor(i / GRID_COLS) * GRID_DY };
+        let cell: { x: number; y: number };
+        do {
+            const i = n++;
+            cell = { x: originX + (i % GRID_COLS) * GRID_DX, y: originY + Math.floor(i / GRID_COLS) * GRID_DY };
+        } while (!free(cell.x, cell.y) && n < 100000);
+        used.push(cell);
+        return cell;
     };
 }
