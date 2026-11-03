@@ -1100,7 +1100,10 @@ export class StorylineView extends ItemView {
                     // Carry over the description to the new tag name
                     const desc = this.plugin.settings.plotlineDescriptions?.[plotline];
                     if (desc) {
-                        this.plugin.settings.plotlineDescriptions[slug] = desc;
+                        // Keep the target's own description when merging into an existing plotline
+                        if (!this.plugin.settings.plotlineDescriptions[slug]) {
+                            this.plugin.settings.plotlineDescriptions[slug] = desc;
+                        }
                         delete this.plugin.settings.plotlineDescriptions[plotline];
                         await this.plugin.saveSettings();
                     }
