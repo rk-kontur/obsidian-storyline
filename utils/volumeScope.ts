@@ -363,9 +363,10 @@ function createScopeSelect(parent: HTMLElement, plugin: SceneCardsPlugin, host?:
 /**
  * Toolbar dropdown "All volumes / Volume 1 / …". Hidden while the project
  * defines no volumes; it shows up by itself as soon as volumes exist.
+ * Pass `host` to hide and show a wrapper together with the dropdown.
  */
-export function renderVolumeScopeSelect(parent: HTMLElement, plugin: SceneCardsPlugin): void {
-    createScopeSelect(parent, plugin);
+export function renderVolumeScopeSelect(parent: HTMLElement, plugin: SceneCardsPlugin, host?: HTMLElement): void {
+    createScopeSelect(parent, plugin, host);
 }
 
 /**
