@@ -3,8 +3,8 @@ import type { Scene, SceneFilter } from '../models/Scene';
 
 /**
  * Arc Point UI helpers for the views that did not show Arc Points yet
- * (Timeline, Plot Grid). Same markup and CSS classes as the Board and
- * Subway views.
+ * (Timeline, Plot Grid). The toggle and the badge use the same markup and
+ * CSS classes as the Board and Plotlines views.
  */
 
 export type ArcFilterMode = 'all' | 'scenes' | 'arcPoints';
