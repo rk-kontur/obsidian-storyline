@@ -13903,6 +13903,22 @@ body.sl-focus-active-global.sl-focus-dim-text .markdown-source-view.mod-cm6 .cm-
     width: auto;
 }
 
+/*
+ * Fallback for engines without subgrid (before Chromium 117 / iOS 16):
+ * every row is its own grid with the same tracks. The content-sized
+ * columns get fixed widths so header and rows still line up.
+ */
+@supports not (grid-template-columns: subgrid) {
+    .story-line-volumes-list,
+    .story-line-volume-row {
+        grid-template-columns: minmax(80px, 2fr) minmax(48px, 0.6fr) minmax(48px, 0.6fr) minmax(64px, 1fr) 140px 56px 32px;
+    }
+
+    .story-line-volume-row input[type="date"] {
+        width: 100%;
+    }
+}
+
 /* Phones: the rows keep their layout and the list scrolls sideways */
 .is-phone .story-line-volumes-list {
     overflow-x: auto;
