@@ -780,6 +780,13 @@ export class TimelineView extends ItemView {
         return Array.from(seen);
     }
 
+    /** Scene characters without the POV character, which the card already shows as "POV: …". */
+    private charactersWithoutPov(scene: Scene): string[] {
+        const pov = (scene.pov || '').trim().toLowerCase();
+        const characters = scene.characters || [];
+        return pov ? characters.filter(c => c.trim().toLowerCase() !== pov) : characters;
+    }
+
     /**
      * Render a compact scene card inside a swimlane cell.
      * Uses the same visual language as the linear timeline cards.
@@ -813,11 +820,13 @@ export class TimelineView extends ItemView {
 
         const meta = card.createDiv('timeline-card-meta');
         // Show the field that is NOT the grouping field (avoid redundancy)
-        if (this.swimlaneGroupBy !== 'pov' && scene.pov) {
+        const showPov = this.swimlaneGroupBy !== 'pov' && !!scene.pov;
+        if (showPov) {
             meta.createSpan({ cls: 'timeline-card-pov', text: `POV: ${scene.pov}` });
         }
-        if (this.swimlaneGroupBy !== 'character' && scene.characters?.length) {
-            meta.createSpan({ cls: 'timeline-card-pov', text: scene.characters.join(', ') });
+        const metaChars = showPov ? this.charactersWithoutPov(scene) : (scene.characters || []);
+        if (this.swimlaneGroupBy !== 'character' && metaChars.length) {
+            meta.createSpan({ cls: 'timeline-card-pov', text: metaChars.join(', ') });
         }
         const sceneLocations = parseSceneLocations(scene.location);
         if (this.swimlaneGroupBy !== 'location' && sceneLocations.length > 0) {
@@ -1043,10 +1052,11 @@ export class TimelineView extends ItemView {
             });
         }
 
-        // Characters
-        if (scene.characters?.length) {
+        // Characters (the POV character is already shown above)
+        const cardChars = this.charactersWithoutPov(scene);
+        if (cardChars.length) {
             const chars = card.createDiv('timeline-card-chars');
-            scene.characters.forEach(c => {
+            cardChars.forEach(c => {
                 chars.createSpan({ cls: 'timeline-char-tag', text: c });
             });
         }
