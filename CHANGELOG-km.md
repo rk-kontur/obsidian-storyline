@@ -2,6 +2,57 @@
 
 Changes of this fork compared to the original StoryLine plugin by Jan Sandström. Each `## <version>` section is used as the initial text of the matching GitHub release; texts edited on GitHub (e.g. with screenshots) are never overwritten. Every release also carries `storyline-km-source.zip` (all source files that are new or changed compared to the original, without `main.js`) and `storyline-km.patch` (the full diff against the original).
 
+## 1.11.8-km.30
+
+**Arc point links survive unticking, all chapters under a volume, plotline descriptions kept on rename, POV shown once on swimlane cards, Volumes editor on older devices**
+
+- **Inspector, "Arc point":** unticking no longer deletes the `realizedBy` link (this reverses 1.11.8-km.22). The link stays in the frontmatter and is ignored while the scene is not an Arc Point: no dropdown, no Subway placement, not counted in off page statistics. Ticking "Arc point" again, or undoing the untick, brings the link back.
+- **Board grouped by chapter, with a volume selected:** every defined chapter keeps its column, like in upstream StoryLine without volumes (this reverses the "only the chapters of the selected volume" rule of 1.11.8-km.20). A chapter has no act, so it cannot belong to a volume; a chapter whose scenes are all in other volumes shows as an empty column. "+" in such a column creates the scene in the volume's first act. Act columns still follow the volume.
+- **Rename plotline onto an existing plotline:** the target plotline keeps its own description (shown in italics under the plotline header in the Plotlines list view). The renamed plotline's description is only carried over when the target has none. This bug is in upstream StoryLine too.
+- **Timeline swimlane cards:** the POV character is no longer listed twice ("POV: Anna" and again among the characters), like on linear cards since 1.11.8-km.11. In "By POV" lanes the card has no "POV:" line and keeps the full character list.
+- **Volumes editor on older devices:** on engines without CSS subgrid (before Chromium 117 / iOS 16), the volume rows stay on one line and the columns line up with the header. Newer devices are not affected.
+
+**How and where to use:**
+
+1. **Inspector** of an Arc Point scene → untick **Arc point** → tick it again (or undo): the **Realized** dropdown shows the previous scene again.
+2. **Board** → Group by **Chapter** → pick a volume: all defined chapters are columns, also empty ones.
+3. **Plotlines** (list view) → plotline header → right-click → **Rename plotline** → enter the name of an existing plotline: that plotline keeps its description.
+4. **Timeline** → swimlanes, grouped by Location, Plotline or Tag: a card shows "POV: Anna" and then only the other characters.
+5. **Manage story structure** → **Volumes** on an older iPad/iPhone or Android WebView: one line per volume.
+
+**Suggestion branches for upstream:**
+
+All changes of this fork are prepared as clean branches on top of upstream's `main`, each reviewed independently. Numbered branches build on each other. New since 1.11.8-km.29: `suggest-fix/timeline-pov-duplicate` and `suggest-fix/rename-plotline-description`; the changes above are also in `suggest-feature/realized`, `suggest-feature/volumes-01-core` and `suggest-feature/volumes-02-views`.
+
+- [`suggest-fix/rename-tag-duplicates`](https://github.com/rk-kontur/obsidian-storyline/tree/suggest-fix/rename-tag-duplicates): Renaming a plotline onto an existing tag no longer leaves the tag twice ([compare with upstream](https://github.com/PixeroJan/obsidian-storyline/compare/main...rk-kontur:obsidian-storyline:suggest-fix/rename-tag-duplicates))
+- [`suggest-fix/timeline-pov-duplicate`](https://github.com/rk-kontur/obsidian-storyline/tree/suggest-fix/timeline-pov-duplicate): Timeline cards no longer show the POV character twice ([compare with upstream](https://github.com/PixeroJan/obsidian-storyline/compare/main...rk-kontur:obsidian-storyline:suggest-fix/timeline-pov-duplicate))
+- [`suggest-fix/rename-plotline-description`](https://github.com/rk-kontur/obsidian-storyline/tree/suggest-fix/rename-plotline-description): Renaming a plotline onto an existing one keeps the target description ([compare with upstream](https://github.com/PixeroJan/obsidian-storyline/compare/main...rk-kontur:obsidian-storyline:suggest-fix/rename-plotline-description))
+- [`suggest-fix/delete-plotline-count`](https://github.com/rk-kontur/obsidian-storyline/tree/suggest-fix/delete-plotline-count): "Delete plotline" counts every scene that loses the tag ([compare with upstream](https://github.com/PixeroJan/obsidian-storyline/compare/main...rk-kontur:obsidian-storyline:suggest-fix/delete-plotline-count))
+- [`suggest-fix/manuscript-pane-relief`](https://github.com/rk-kontur/obsidian-storyline/tree/suggest-fix/manuscript-pane-relief): Manuscript stays visible with Pane Relief "Maximize active tab" ([compare with upstream](https://github.com/PixeroJan/obsidian-storyline/compare/main...rk-kontur:obsidian-storyline:suggest-fix/manuscript-pane-relief))
+- [`suggest-fix/plotgrid-keyboard-selection`](https://github.com/rk-kontur/obsidian-storyline/tree/suggest-fix/plotgrid-keyboard-selection): Plot Grid keyboard selection follows the displayed rows ([compare with upstream](https://github.com/PixeroJan/obsidian-storyline/compare/main...rk-kontur:obsidian-storyline:suggest-fix/plotgrid-keyboard-selection))
+- [`suggest-feature/export-include-arc-points`](https://github.com/rk-kontur/obsidian-storyline/tree/suggest-feature/export-include-arc-points): Export option "Include arc points" ([compare with upstream](https://github.com/PixeroJan/obsidian-storyline/compare/main...rk-kontur:obsidian-storyline:suggest-feature/export-include-arc-points))
+- [`suggest-feature/structure-command`](https://github.com/rk-kontur/obsidian-storyline/tree/suggest-feature/structure-command): "Manage story structure" command ([compare with upstream](https://github.com/PixeroJan/obsidian-storyline/compare/main...rk-kontur:obsidian-storyline:suggest-feature/structure-command))
+- [`suggest-feature/structure-collapsible-sections`](https://github.com/rk-kontur/obsidian-storyline/tree/suggest-feature/structure-collapsible-sections): Collapsible sections in "Manage story structure" ([compare with upstream](https://github.com/PixeroJan/obsidian-storyline/compare/main...rk-kontur:obsidian-storyline:suggest-feature/structure-collapsible-sections))
+- [`suggest-feature/arc-point-filter`](https://github.com/rk-kontur/obsidian-storyline/tree/suggest-feature/arc-point-filter): Arc Point filter and badges in Timeline and Plot Grid ([compare with upstream](https://github.com/PixeroJan/obsidian-storyline/compare/main...rk-kontur:obsidian-storyline:suggest-feature/arc-point-filter))
+- [`suggest-feature/pov-as-character`](https://github.com/rk-kontur/obsidian-storyline/tree/suggest-feature/pov-as-character): POV character counts as a scene character ([compare with upstream](https://github.com/PixeroJan/obsidian-storyline/compare/main...rk-kontur:obsidian-storyline:suggest-feature/pov-as-character))
+- [`suggest-feature/realized`](https://github.com/rk-kontur/obsidian-storyline/tree/suggest-feature/realized): Arc Point linked to its scene (realizedBy) ([compare with upstream](https://github.com/PixeroJan/obsidian-storyline/compare/main...rk-kontur:obsidian-storyline:suggest-feature/realized))
+- [`suggest-feature/offpage-01-zones`](https://github.com/rk-kontur/obsidian-storyline/tree/suggest-feature/offpage-01-zones): On page / off page plotlines ([compare with upstream](https://github.com/PixeroJan/obsidian-storyline/compare/main...rk-kontur:obsidian-storyline:suggest-feature/offpage-01-zones))
+- [`suggest-feature/offpage-02-stats`](https://github.com/rk-kontur/obsidian-storyline/tree/suggest-feature/offpage-02-stats): Off page coverage in Statistics ([compare with upstream](https://github.com/PixeroJan/obsidian-storyline/compare/main...rk-kontur:obsidian-storyline:suggest-feature/offpage-02-stats))
+- [`suggest-feature/volumes-01-core`](https://github.com/rk-kontur/obsidian-storyline/tree/suggest-feature/volumes-01-core): Volumes model and Volumes editor ([compare with upstream](https://github.com/PixeroJan/obsidian-storyline/compare/main...rk-kontur:obsidian-storyline:suggest-feature/volumes-01-core))
+- [`suggest-feature/volumes-02-views`](https://github.com/rk-kontur/obsidian-storyline/tree/suggest-feature/volumes-02-views): One volume selection for all views ([compare with upstream](https://github.com/PixeroJan/obsidian-storyline/compare/main...rk-kontur:obsidian-storyline:suggest-feature/volumes-02-views))
+- [`suggest-feature/volumes-03-bands`](https://github.com/rk-kontur/obsidian-storyline/tree/suggest-feature/volumes-03-bands): Volume bands in the views ([compare with upstream](https://github.com/PixeroJan/obsidian-storyline/compare/main...rk-kontur:obsidian-storyline:suggest-feature/volumes-03-bands))
+- [`suggest-feature/volumes-04-stats`](https://github.com/rk-kontur/obsidian-storyline/tree/suggest-feature/volumes-04-stats): Statistics per volume ([compare with upstream](https://github.com/PixeroJan/obsidian-storyline/compare/main...rk-kontur:obsidian-storyline:suggest-feature/volumes-04-stats))
+- [`suggest-feature/volumes-05-export`](https://github.com/rk-kontur/obsidian-storyline/tree/suggest-feature/volumes-05-export): Export a single volume ([compare with upstream](https://github.com/PixeroJan/obsidian-storyline/compare/main...rk-kontur:obsidian-storyline:suggest-feature/volumes-05-export))
+- [`suggest-feature/plotgrid-hide-empty-columns`](https://github.com/rk-kontur/obsidian-storyline/tree/suggest-feature/plotgrid-hide-empty-columns): Plot Grid hides empty columns of a volume ([compare with upstream](https://github.com/PixeroJan/obsidian-storyline/compare/main...rk-kontur:obsidian-storyline:suggest-feature/plotgrid-hide-empty-columns))
+
+**Files:**
+
+- `components/Inspector.ts`, `components/RealizedByControl.ts`, `utils/arcRealization.ts` (realizedBy kept on untick)
+- `views/BoardView.ts`, `utils/boardVolumes.ts` (all defined chapters under a volume)
+- `views/StorylineView.ts` (rename keeps the target description)
+- `views/TimelineView.ts` (POV once on swimlane cards)
+- `styles.css` (Volumes editor fallback without subgrid)
+
 ## 1.11.8-km.29
 
 **Volumes editor and volume statistics: layout fixes; list of the suggestion branches for upstream**
