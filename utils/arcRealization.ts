@@ -11,7 +11,9 @@
  * lines at the station of the linked scene, joined by a dashed link.
  *
  * The field is read straight from the metadata cache, so the scene parser
- * and the Scene model stay untouched.
+ * and the Scene model stay untouched. Unticking "Arc point" keeps the field;
+ * it is ignored while the scene is not an Arc Point and counts again once
+ * the scene is one again (e.g. after an undo).
  */
 import { TFile } from 'obsidian';
 import type { App } from 'obsidian';
@@ -47,6 +49,7 @@ export function readRealizedBy(app: App, scene: Scene): string | undefined {
 
 /**
  * The realizing scene of an Arc Point among `candidates`, or undefined.
+ * Does not check `arc.arcAnchor`; callers only pass Arc Points.
  * Resolves the link like Obsidian does; falls back to an equal scene title
  * or file name (e.g. a renamed file whose links were not updated).
  */
@@ -79,22 +82,6 @@ export async function writeRealizedBy(app: App, arc: Scene, target: Scene | unde
     });
 }
 
-/**
- * Removes `realizedBy` (both spellings) from a scene that is no longer an
- * Arc Point, so no orphaned link stays behind. Does nothing when neither
- * key is set.
- */
-export async function clearRealizedBy(app: App, scene: Scene): Promise<void> {
-    const file = app.vault.getAbstractFileByPath(scene.filePath);
-    if (!(file instanceof TFile)) return;
-    const fm = app.metadataCache.getFileCache(file)?.frontmatter;
-    if (fm && !(REALIZED_BY_KEY in fm) && !(REALIZED_BY_ALT_KEY in fm)) return;
-    await app.fileManager.processFrontMatter(file, (front: Record<string, unknown>) => {
-        delete front[REALIZED_BY_KEY];
-        delete front[REALIZED_BY_ALT_KEY];
-    });
-}
-
 export interface Realization {
     arc: Scene;
     target: Scene;
@@ -103,6 +90,7 @@ export interface Realization {
 /**
  * Arc Points among `scenes` whose realizing scene is also in `scenes`
  * (and is not itself an Arc Point), keyed by the Arc Point's file path.
+ * A `realizedBy` on a scene that is not an Arc Point is ignored.
  */
 export function resolveRealizations(app: App, scenes: Scene[]): Map<string, Realization> {
     const result = new Map<string, Realization>();
