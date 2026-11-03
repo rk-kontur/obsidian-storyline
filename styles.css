@@ -13901,10 +13901,16 @@ body.sl-focus-active-global.sl-focus-dim-text .markdown-source-view.mod-cm6 .cm-
 }
 
 .sl-km-volume-stats {
+    min-width: 0;
+    max-width: 100%;
     margin: 8px 0 16px;
     padding: 8px 12px;
     border: 1px solid var(--background-modifier-border);
     border-radius: 8px;
+}
+
+.sl-km-volume-stats-scroll {
+    overflow-x: auto;
 }
 
 .sl-km-volume-stats > summary {

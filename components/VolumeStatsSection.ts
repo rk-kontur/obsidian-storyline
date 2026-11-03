@@ -153,7 +153,8 @@ export function renderVolumeStatsSection(
         edit.addEventListener('click', onEditVolumes);
     }
 
-    const table = details.createEl('table', { cls: 'sl-km-volume-stats-table' });
+    // Wide tables scroll inside the frame, like the character × chapter heatmap
+    const table = details.createDiv('sl-km-volume-stats-scroll').createEl('table', { cls: 'sl-km-volume-stats-table' });
     const head = table.createEl('thead').createEl('tr');
     ['Volume', 'Acts', 'Scenes', 'Arc Points', 'Words', 'Goal', 'Progress', 'Deadline', 'Words/day'].forEach(h => head.createEl('th', { text: h }));
 
