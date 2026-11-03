@@ -14003,7 +14003,7 @@ body.sl-focus-active-global.sl-focus-dim-text .markdown-source-view.mod-cm6 .cm-
 
 .sl-km-volume-row {
     display: grid;
-    grid-template-columns: minmax(120px, 2fr) 70px 70px 100px 140px 56px 32px;
+    grid-template-columns: minmax(120px, 2fr) 70px 70px 100px max-content 56px 32px;
     gap: 6px;
     align-items: center;
     margin-bottom: 6px;
@@ -14012,6 +14012,21 @@ body.sl-focus-active-global.sl-focus-dim-text .markdown-source-view.mod-cm6 .cm-
 .sl-km-volume-row input {
     width: 100%;
     min-width: 0;
+}
+
+/* The deadline column is only as wide as the date needs */
+.sl-km-volume-row input[type="date"] {
+    width: auto;
+}
+
+/* Phones: the rows keep their layout and the list scrolls sideways */
+.is-phone .sl-km-volumes-list {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+.is-phone .sl-km-volume-row {
+    min-width: max-content;
 }
 
 .sl-km-volume-head {
