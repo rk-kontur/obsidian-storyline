@@ -15,6 +15,8 @@ export interface PlotWarning {
     message: string;
     /** File paths of scenes involved (for navigation) */
     scenePaths?: string[];
+    /** Plotline tag of a per-plotline warning */
+    plotline?: string;
 }
 
 /** Set of timeline modes that are exempt from date-order and continuity checks */
@@ -274,6 +276,7 @@ export class Validator {
                         warnings.push({
                             severity: 'warning',
                             category: 'Plotlines',
+                            plotline: tag,
                             message: `Plotline "${tag}" has no scenes in Act ${act} (present in Acts ${firstAct}–${lastAct})`,
                         });
                     }
@@ -284,6 +287,7 @@ export class Validator {
                     warnings.push({
                         severity: 'info',
                         category: 'Plotlines',
+                        plotline: tag,
                         message: `Plotline "${tag}" was last seen in Act ${lastAct} but story continues to Act ${sortedActs[sortedActs.length - 1]}`,
                     });
                 }

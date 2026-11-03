@@ -77,8 +77,8 @@ const MAX_WARNING_TITLES = 5;
  */
 export function adjustOffPageWarnings(warnings: PlotWarning[], coverage: OffPageLineCoverage[]): PlotWarning[] {
     if (coverage.length === 0) return warnings;
-    const prefixes = coverage.flatMap(c => c.names.map(n => `Plotline "${n}"`));
-    const kept = warnings.filter(w => !(w.category === 'Plotlines' && prefixes.some(p => w.message.startsWith(p))));
+    const lines = new Set(coverage.flatMap(c => c.names));
+    const kept = warnings.filter(w => w.plotline === undefined || !lines.has(w.plotline));
     for (const c of coverage) {
         if (c.open.length === 0) continue;
         const titles = c.open.slice(0, MAX_WARNING_TITLES).map(s => s.title || s.filePath);
@@ -93,11 +93,15 @@ export function adjustOffPageWarnings(warnings: PlotWarning[], coverage: OffPage
     return kept;
 }
 
-/** Body of the "Off page coverage" section. */
+/**
+ * Body of the "Off Page Coverage" section. `openLines` keeps the open state
+ * of each line across refreshes (keyed by the normalized line tag).
+ */
 export function renderOffPageCoverage(
     body: HTMLElement,
     coverage: OffPageLineCoverage[],
     openScene: (scene: Scene) => void,
+    openLines: Map<string, boolean>,
 ): void {
     body.createEl('p', {
         cls: 'stats-hint',
@@ -109,7 +113,9 @@ export function renderOffPageCoverage(
     };
     for (const c of coverage) {
         const block = body.createEl('details', { cls: 'stats-offpage-line' });
-        block.open = c.open.length > 0 && c.open.length <= 8;
+        const key = normalizePlotlineTag(c.line);
+        block.open = openLines.get(key) ?? (c.open.length > 0 && c.open.length <= 8);
+        block.addEventListener('toggle', () => openLines.set(key, block.open));
         const summary = block.createEl('summary');
         summary.createSpan({ cls: 'stats-offpage-line-name', text: c.line });
         const total = c.stages.length;

@@ -13969,6 +13969,10 @@ body.sl-focus-active-global.sl-focus-dim-text .markdown-source-view.mod-cm6 .cm-
     margin-top: 0;
 }
 
+.stats-offpage-line .stats-bar-fill {
+    display: block;
+}
+
 .stats-offpage-line-count {
     color: var(--text-muted);
 }

@@ -44,6 +44,8 @@ export class StatsView extends ItemView {
     private sectionStateOverrides = new Map<string, boolean>();
     /** Coverage of off page plotlines for the current render (empty without `offPageLines`) */
     private offPageCoverage: OffPageLineCoverage[] = [];
+    /** Open state of each line in the off page coverage section */
+    private offPageLineOverrides = new Map<string, boolean>();
 
     constructor(leaf: WorkspaceLeaf, plugin: SceneCardsPlugin, sceneManager: SceneManager) {
         super(leaf);
@@ -202,11 +204,11 @@ export class StatsView extends ItemView {
             this.renderWarnings(body, allScenes));
     }
 
-    /** "Off page coverage" section, only when the project has off page plotlines. */
+    /** "Off Page Coverage" section, only when the project has off page plotlines. */
     private renderOffPageSection(content: HTMLElement): void {
         if (!this.offPageCoverage.length) return;
-        this.renderCollapsible(content, 'cloud', 'Off page coverage', true, body =>
-            renderOffPageCoverage(body, this.offPageCoverage, scene => { void this.app.workspace.openLinkText(scene.filePath, '', true); }));
+        this.renderCollapsible(content, 'cloud', 'Off Page Coverage', true, body =>
+            renderOffPageCoverage(body, this.offPageCoverage, scene => { void this.app.workspace.openLinkText(scene.filePath, '', true); }, this.offPageLineOverrides));
     }
 
     /** True when the Statistics view renders in Scribe-compatible redesigned mode. */
@@ -384,7 +386,7 @@ export class StatsView extends ItemView {
         const readM = readMinutes % 60;
         this.createStatCard(row, 'book-open', 'Read Time',
             readH > 0 ? `${readH}h ${readM}m` : `${readMinutes}m`);
-        if (this.offPageCoverage.length) this.createStatCard(row, 'cloud', 'Off page stages told', offPageCardValue(this.offPageCoverage));
+        if (this.offPageCoverage.length) this.createStatCard(row, 'cloud', 'Off Page Stages Told', offPageCardValue(this.offPageCoverage));
 
         const renderProjectOverview = (section: HTMLElement): void => {
             const totalTarget = this.plugin.settings.projectWordGoal || stats.totalTargetWords || 80000;
