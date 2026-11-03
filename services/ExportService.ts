@@ -2,6 +2,7 @@
 import { StoryLineProject } from '../models/StoryLineProject';
 import { SceneManager } from './SceneManager';
 import { compareActChapter, getActDisplayLabel, getChapterDisplayLabel } from '../utils/actChapter';
+import { actNumber } from '../utils/volumes';
 import { CharacterManager } from './CharacterManager';
 import { LocationManager } from './LocationManager';
 import { SLMarkdownToDocxConverter, SLDocxSettings, SLObsidianFontSettings } from './DocxConverter';
@@ -13,11 +14,13 @@ import { StoryLocation } from '../models/Location';
 
 export type ExportFormat = 'md' | 'json' | 'html' | 'csv' | 'docx' | 'pdf';
 export type ExportScope = 'manuscript' | 'outline';
-export type ExportRangeField = 'sequence' | 'chapter';
+export type ExportRangeField = 'sequence' | 'chapter' | 'act';
 
 export interface ExportRange {
     field: ExportRangeField;
     sequenceRanges: Array<{ start: number; end: number }>;
+    /** Used in the file name instead of the range list (e.g. a volume title). */
+    label?: string;
 }
 
 /** Per-export options chosen by the user in the Export dialog. */
@@ -150,9 +153,10 @@ export class ExportService {
         if (this.exportRange) {
             const selectedRanges = this.exportRange.sequenceRanges;
             scenes = scenes.filter(scene => {
-                const rawValue = this.exportRange!.field === 'sequence' ? scene.sequence : scene.chapter;
+                const field = this.exportRange!.field;
+                const rawValue = field === 'sequence' ? scene.sequence : field === 'act' ? scene.act : scene.chapter;
                 if (rawValue === undefined) return false;
-                const value = Number(rawValue);
+                const value = field === 'act' ? (actNumber(rawValue) ?? NaN) : Number(rawValue);
                 return Number.isFinite(value) && selectedRanges.some(range =>
                     value >= range.start && value <= range.end
                 );
@@ -175,10 +179,11 @@ export class ExportService {
     private getExportLabel(scope: ExportScope): string {
         const base = scope === 'manuscript' ? 'Manuscript' : 'Outline';
         if (!this.exportRange) return base;
+        if (this.exportRange.label) return `${base} - ${this.exportRange.label}`;
         const rangeText = this.exportRange.sequenceRanges
             .map(range => range.start === range.end ? String(range.start) : `${range.start}-${range.end}`)
             .join(',');
-        const rangeLabel = this.exportRange.field === 'sequence' ? 'Scenes' : 'Chapters';
+        const rangeLabel = this.exportRange.field === 'sequence' ? 'Scenes' : this.exportRange.field === 'act' ? 'Acts' : 'Chapters';
         return `${base} - ${rangeLabel} ${rangeText}`;
     }
 

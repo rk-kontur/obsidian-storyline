@@ -1,6 +1,8 @@
 /* eslint-disable @typescript-eslint/no-misused-promises -- Obsidian's API surface and several untyped third-party libraries force dynamic dispatch; floating promises are intentional in DOM/event handlers; matching enable at end of file */
 import { Modal, Setting, Notice, DropdownComponent, ToggleComponent } from 'obsidian';
 import { ExportService, ExportFormat, ExportRange, ExportScope } from '../services/ExportService';
+import { getProjectVolumes, volumeExportRange } from '../utils/volumes';
+import { getScopedVolume } from '../utils/volumeScope';
 import type SceneCardsPlugin from '../main';
 
 type ExportContent = ExportScope | 'scenes' | 'chapters';
@@ -17,6 +19,8 @@ export class ExportModal extends Modal {
     private exportScope: ExportScope = 'manuscript';
     private exportContent: ExportContent = 'manuscript';
     private exportRangeText = '';
+    /** Volume to export ('' = all scenes). */
+    private exportVolumeId = '';
 
     // Per-export options (issues #85 / #87)
     private includeSceneTitles = true;
@@ -55,6 +59,9 @@ export class ExportModal extends Modal {
             contentEl.createEl('p', { text: 'No active project. Open a project first.' });
             return;
         }
+        const volumes = getProjectVolumes(this.app, project.filePath);
+        // Start with the volume selected in the views
+        this.exportVolumeId = getScopedVolume(this.app, project.filePath)?.id ?? '';
 
         contentEl.createEl('p', {
             text: `Project: ${project.title}`,
@@ -108,6 +115,9 @@ export class ExportModal extends Modal {
                 });
             });
 
+        // Volume selection, only when the project defines volumes
+        const volumeOptions = volumes.length > 0 ? contentEl.createDiv() : null;
+
         // Actions
         const actions = contentEl.createDiv({ cls: 'storyline-export-actions' });
 
@@ -126,6 +136,19 @@ export class ExportModal extends Modal {
                         .setPlaceholder('1-5, 8, 9, 11, 13-18')
                         .setValue(this.exportRangeText)
                         .onChange(v => { this.exportRangeText = v; }));
+            }
+
+            volumeOptions?.empty();
+            if (volumeOptions && this.exportContent !== 'scenes' && this.exportContent !== 'chapters') {
+                new Setting(volumeOptions)
+                    .setName('Volume')
+                    .setDesc('Export a single volume (its acts) or the whole project.')
+                    .addDropdown(dd => {
+                        dd.addOption('', 'All volumes');
+                        volumes.forEach(v => dd.addOption(v.id, v.title));
+                        dd.setValue(this.exportVolumeId);
+                        dd.onChange(v => { this.exportVolumeId = v; });
+                    });
             }
 
             new Setting(manuscriptOptions)
@@ -218,7 +241,7 @@ export class ExportModal extends Modal {
         exportBtn.addEventListener('click', async () => {
             const exportRange = this.exportContent === 'scenes' || this.exportContent === 'chapters'
                 ? this.parseExportRange(this.exportRangeText)
-                : undefined;
+                : volumeExportRange(volumes, this.exportVolumeId);
             if ((this.exportContent === 'scenes' || this.exportContent === 'chapters') && !exportRange) {
                 const valueLabel = this.exportContent === 'scenes' ? 'scene' : 'chapter';
                 new Notice(`Enter ${valueLabel} numbers like 1-4, 6, 8.`);

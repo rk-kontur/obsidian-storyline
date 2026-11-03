@@ -15,7 +15,7 @@
 
 import type { App } from 'obsidian';
 import { TFile } from 'obsidian';
-import { EPILOGUE_ACT, PROLOGUE_ACT } from './actChapter';
+import { EPILOGUE_ACT, PROLOGUE_ACT, sanitizeActChapterForPath } from './actChapter';
 
 export interface VolumeDef {
     id: string;
@@ -271,4 +271,26 @@ export function getVolumeForAct(volumes: VolumeDef[], act: number | string | und
 /** Act numbers of a volume by id (empty if unknown). */
 export function getActsForVolume(volumes: VolumeDef[], id: string): number[] {
     return volumes.find(v => v.id === id)?.acts ?? [];
+}
+
+/**
+ * Export range of one volume: its acts, labelled with the volume title for
+ * the file name ("Manuscript - Volume 2"). If another volume has the same
+ * title in a file name (ignoring case), the id is added ("Part 1 (v2)"), so
+ * two exports of the same day do not overwrite each other. Undefined for ''
+ * or an unknown id.
+ */
+export function volumeExportRange(
+    volumes: VolumeDef[],
+    id: string,
+): { field: 'act'; sequenceRanges: Array<{ start: number; end: number }>; label: string } | undefined {
+    const vol = id ? volumes.find(v => v.id === id) : undefined;
+    if (!vol || vol.acts.length === 0) return undefined;
+    const key = (title: string) => sanitizeActChapterForPath(title).toLowerCase();
+    const clash = volumes.some(v => v.id !== vol.id && key(v.title) === key(vol.title));
+    return {
+        field: 'act',
+        sequenceRanges: vol.acts.map(a => ({ start: a, end: a })),
+        label: sanitizeActChapterForPath(clash ? `${vol.title} (${vol.id})` : vol.title),
+    };
 }
