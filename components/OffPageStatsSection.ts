@@ -115,8 +115,9 @@ export function renderOffPageCoverage(
         const block = body.createEl('details', { cls: 'stats-offpage-line' });
         const key = normalizePlotlineTag(c.line);
         block.open = openLines.get(key) ?? (c.open.length > 0 && c.open.length <= 8);
-        block.addEventListener('toggle', () => openLines.set(key, block.open));
         const summary = block.createEl('summary');
+        // Only a click by the user is kept; setting `open` above fires a toggle event too
+        summary.addEventListener('click', () => openLines.set(key, !block.open));
         summary.createSpan({ cls: 'stats-offpage-line-name', text: c.line });
         const total = c.stages.length;
         const pct = total ? Math.round((c.told.length / total) * 100) : 0;
