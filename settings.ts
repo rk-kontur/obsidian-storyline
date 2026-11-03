@@ -591,6 +591,10 @@ export function getPlotlineHSL(settings: { plotlineHue: number; plotlineSaturati
     return { hue: settings.plotlineHue, sat: settings.plotlineSaturation, light: settings.plotlineLightness };
 }
 
+/** Views that can show plotline colours (Settings → Colors → "Transfer plotline colors to").
+ *  Fork: no 'plotlines' entry — Subway map and plotline list always use these colours (see CHANGELOG-km.md). */
+export type PlotlineColorView = 'plotgrid' | 'timeline' | 'inspector' | 'filters' | 'navigator';
+
 /**
  * Plugin settings interface
  */
@@ -684,6 +688,9 @@ export interface SceneCardsSettings {
     plotlineHue: number;
     plotlineSaturation: number;
     plotlineLightness: number;
+
+    /** Views that show plotline colours (all off by default) */
+    plotlineColorViews: Partial<Record<PlotlineColorView, boolean>>;
 
     // Manual tag-type overrides (tag name lowercased → 'prop' | 'location' | 'character' | 'other')
     tagTypeOverrides: Record<string, string>;
@@ -1059,6 +1066,8 @@ export const DEFAULT_SETTINGS: SceneCardsSettings = {
     plotlineHue: 0,
     plotlineSaturation: 0,
     plotlineLightness: 0,
+
+    plotlineColorViews: {},
 
     tagTypeOverrides: {},
 
@@ -2429,6 +2438,39 @@ export class SceneCardsSettingTab extends PluginSettingTab {
             this.plugin.refreshOpenViews();
             this.refreshSettingsView();
         });
+
+        // ── Plotline colours in other views ──
+        const viewsLabel = colorBody.createDiv();
+        viewsLabel.setCssStyles({
+            fontSize: '11px',
+            fontWeight: '600',
+            color: 'var(--text-muted)',
+            textTransform: 'uppercase',
+            letterSpacing: '0.05em',
+            marginTop: '12px',
+            marginBottom: '6px',
+        });
+        viewsLabel.textContent = 'Transfer plotline colors to';
+        const plotlineColorViews: Array<[PlotlineColorView, string, string]> = [
+            ['plotgrid', 'Plot grid', 'Headers of columns synced from plotlines, and tag chips in the cell inspector.'],
+            ['timeline', 'Timeline', 'Lane headers when swimlanes are grouped by plotline or tag.'],
+            ['inspector', 'Inspector', 'Plotline pills in the scene inspector.'],
+            ['filters', 'Filters', 'Tag chips in the filter panel.'],
+            ['navigator', 'Navigator', 'Stripe at the left edge of each scene, one segment per plotline.'],
+        ];
+        for (const [view, name, desc] of plotlineColorViews) {
+            new Setting(colorBody)
+                .setName(name)
+                .setDesc(desc)
+                .addToggle(toggle => toggle
+                    .setValue(ps.plotlineColorViews?.[view] ?? false)
+                    .onChange(async (value) => {
+                        ps.plotlineColorViews = { ...ps.plotlineColorViews, [view]: value };
+                        await this.plugin.saveSettings();
+                        this.plugin.refreshOpenViews();
+                    })
+                );
+        }
 
         // Per-tag overrides summary (compact — only show if there ARE overrides)
         const overrides = Object.entries(this.plugin.settings.tagColors || {});
