@@ -2,6 +2,50 @@
 
 Changes of this fork compared to the original StoryLine plugin by Jan Sandström. Each `## <version>` section is used as the initial text of the matching GitHub release; texts edited on GitHub (e.g. with screenshots) are never overwritten. Every release also carries `storyline-km-source.zip` (all source files that are new or changed compared to the original, without `main.js`) and `storyline-km.patch` (the full diff against the original).
 
+## 1.11.8-km.29
+
+**Volumes editor and volume statistics: layout fixes; list of the suggestion branches for upstream**
+
+- **Volumes editor (Manage story structure → Volumes):**
+    - The **Deadline** field is only as wide as the date needs; there is no empty space right of the year any more.
+    - Header and rows share one grid, so the column titles (Title, From act, To act, Word goal, Deadline) always sit above their fields.
+    - On phones the rows keep their layout and the list scrolls sideways. This was a rule in the owner's Style Settings snippet before; the plugin now does it itself.
+    - Without volumes, "No volumes defined yet." uses the full width again.
+- **Statistics, Volumes table:** on narrow panes the table no longer runs out of its frame. It scrolls sideways inside the frame, like the Character × Chapter heatmap of upstream.
+
+**How and where to use:**
+
+1. **Board** or **Timeline** → structure button → **Manage story structure** → section **Volumes**: the Deadline column fits the date; on a phone, swipe the volume rows sideways.
+2. **Statistics** with volumes defined → **Volumes** table: in a narrow pane, scroll the table sideways inside its frame.
+
+**Suggestion branches for upstream:**
+
+Each change of this fork is prepared as a clean branch on top of upstream's `main` (no fork names, no fork files), reviewed independently, so Jan can merge it as is. Numbered branches build on each other.
+
+- [`suggest-fix/rename-tag-duplicates`](https://github.com/rk-kontur/obsidian-storyline/tree/suggest-fix/rename-tag-duplicates): Renaming a plotline onto an existing tag no longer leaves the tag twice ([compare with upstream](https://github.com/PixeroJan/obsidian-storyline/compare/main...rk-kontur:obsidian-storyline:suggest-fix/rename-tag-duplicates))
+- [`suggest-fix/delete-plotline-count`](https://github.com/rk-kontur/obsidian-storyline/tree/suggest-fix/delete-plotline-count): "Delete plotline" counts every scene that loses the tag ([compare with upstream](https://github.com/PixeroJan/obsidian-storyline/compare/main...rk-kontur:obsidian-storyline:suggest-fix/delete-plotline-count))
+- [`suggest-fix/plotgrid-keyboard-selection`](https://github.com/rk-kontur/obsidian-storyline/tree/suggest-fix/plotgrid-keyboard-selection): Plot Grid keyboard selection follows the displayed rows ([compare with upstream](https://github.com/PixeroJan/obsidian-storyline/compare/main...rk-kontur:obsidian-storyline:suggest-fix/plotgrid-keyboard-selection))
+- [`suggest-fix/manuscript-pane-relief`](https://github.com/rk-kontur/obsidian-storyline/tree/suggest-fix/manuscript-pane-relief): Manuscript stays visible with Pane Relief "Maximize active tab" ([compare with upstream](https://github.com/PixeroJan/obsidian-storyline/compare/main...rk-kontur:obsidian-storyline:suggest-fix/manuscript-pane-relief))
+- [`suggest-feature/volumes-01-core`](https://github.com/rk-kontur/obsidian-storyline/tree/suggest-feature/volumes-01-core): Volumes model and Volumes editor ([compare with upstream](https://github.com/PixeroJan/obsidian-storyline/compare/main...rk-kontur:obsidian-storyline:suggest-feature/volumes-01-core))
+- [`suggest-feature/volumes-02-views`](https://github.com/rk-kontur/obsidian-storyline/tree/suggest-feature/volumes-02-views): Shared volume selection in all views ([compare with upstream](https://github.com/PixeroJan/obsidian-storyline/compare/main...rk-kontur:obsidian-storyline:suggest-feature/volumes-02-views))
+- [`suggest-feature/volumes-03-bands`](https://github.com/rk-kontur/obsidian-storyline/tree/suggest-feature/volumes-03-bands): Volume bands in the views and volume badges ([compare with upstream](https://github.com/PixeroJan/obsidian-storyline/compare/main...rk-kontur:obsidian-storyline:suggest-feature/volumes-03-bands))
+- [`suggest-feature/volumes-04-stats`](https://github.com/rk-kontur/obsidian-storyline/tree/suggest-feature/volumes-04-stats): Statistics per volume ([compare with upstream](https://github.com/PixeroJan/obsidian-storyline/compare/main...rk-kontur:obsidian-storyline:suggest-feature/volumes-04-stats)) (in review)
+- `suggest-feature/volumes-05-export`: Export of a single volume (planned, not built yet)
+- [`suggest-feature/plotgrid-hide-empty-columns`](https://github.com/rk-kontur/obsidian-storyline/tree/suggest-feature/plotgrid-hide-empty-columns): Plot Grid hides empty auto columns under a volume selection ([compare with upstream](https://github.com/PixeroJan/obsidian-storyline/compare/main...rk-kontur:obsidian-storyline:suggest-feature/plotgrid-hide-empty-columns))
+- [`suggest-feature/arc-point-filter`](https://github.com/rk-kontur/obsidian-storyline/tree/suggest-feature/arc-point-filter): Arc Point filter and badges in Timeline and Plot Grid ([compare with upstream](https://github.com/PixeroJan/obsidian-storyline/compare/main...rk-kontur:obsidian-storyline:suggest-feature/arc-point-filter))
+- [`suggest-feature/realized`](https://github.com/rk-kontur/obsidian-storyline/tree/suggest-feature/realized): Arc Point "realized by" link ([compare with upstream](https://github.com/PixeroJan/obsidian-storyline/compare/main...rk-kontur:obsidian-storyline:suggest-feature/realized))
+- [`suggest-feature/offpage-01-zones`](https://github.com/rk-kontur/obsidian-storyline/tree/suggest-feature/offpage-01-zones): On page / off page plotlines ([compare with upstream](https://github.com/PixeroJan/obsidian-storyline/compare/main...rk-kontur:obsidian-storyline:suggest-feature/offpage-01-zones))
+- [`suggest-feature/offpage-02-stats`](https://github.com/rk-kontur/obsidian-storyline/tree/suggest-feature/offpage-02-stats): Off page coverage in Statistics ([compare with upstream](https://github.com/PixeroJan/obsidian-storyline/compare/main...rk-kontur:obsidian-storyline:suggest-feature/offpage-02-stats))
+- [`suggest-feature/pov-as-character`](https://github.com/rk-kontur/obsidian-storyline/tree/suggest-feature/pov-as-character): POV character counts as a scene character ([compare with upstream](https://github.com/PixeroJan/obsidian-storyline/compare/main...rk-kontur:obsidian-storyline:suggest-feature/pov-as-character))
+- [`suggest-feature/export-include-arc-points`](https://github.com/rk-kontur/obsidian-storyline/tree/suggest-feature/export-include-arc-points): Export option "Include arc points" ([compare with upstream](https://github.com/PixeroJan/obsidian-storyline/compare/main...rk-kontur:obsidian-storyline:suggest-feature/export-include-arc-points))
+- [`suggest-feature/structure-collapsible-sections`](https://github.com/rk-kontur/obsidian-storyline/tree/suggest-feature/structure-collapsible-sections): Collapsible sections in "Manage story structure" ([compare with upstream](https://github.com/PixeroJan/obsidian-storyline/compare/main...rk-kontur:obsidian-storyline:suggest-feature/structure-collapsible-sections))
+- [`suggest-feature/structure-command`](https://github.com/rk-kontur/obsidian-storyline/tree/suggest-feature/structure-command): "Manage story structure" command ([compare with upstream](https://github.com/PixeroJan/obsidian-storyline/compare/main...rk-kontur:obsidian-storyline:suggest-feature/structure-command))
+
+**Files:**
+
+- `styles.css` (Volumes editor grid and phone scrolling, Volumes table scroll container)
+- `components/VolumeStatsSection.ts` (Volumes table wrapped in a scroll container)
+
 ## 1.11.8-km.28
 
 **Corkboard: back to upstream behaviour**

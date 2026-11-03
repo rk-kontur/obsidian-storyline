@@ -14019,6 +14019,11 @@ body.sl-focus-active-global.sl-focus-dim-text .markdown-source-view.mod-cm6 .cm-
     grid-column: 1 / -1;
 }
 
+/* Without volumes the list only holds the empty note: plain block */
+.sl-km-volumes-list:has(> .structure-empty) {
+    display: block;
+}
+
 .sl-km-volume-row {
     display: grid;
     grid-template-columns: subgrid;
