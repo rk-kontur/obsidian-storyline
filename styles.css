@@ -13912,6 +13912,7 @@ body.sl-focus-active-global.sl-focus-dim-text .markdown-source-view.mod-cm6 .cm-
     .story-line-volumes-list,
     .story-line-volume-row {
         grid-template-columns: minmax(80px, 2fr) minmax(48px, 0.6fr) minmax(48px, 0.6fr) minmax(64px, 1fr) 140px 56px 32px;
+        column-gap: 6px;
     }
 
     .story-line-volume-row input[type="date"] {
