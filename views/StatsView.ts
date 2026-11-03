@@ -94,7 +94,9 @@ export class StatsView extends ItemView {
         titleRow.createEl('h3', { cls: 'story-line-view-title', text: 'StoryLine' });
 
         renderViewSwitcher(toolbar, STATS_VIEW_TYPE, this.plugin, this.leaf);
-        renderVolumeScopeSelect(toolbar, this.plugin);
+        // Right-aligned like the other views; the container hides with the dropdown
+        const controls = toolbar.createDiv('story-line-toolbar-controls');
+        renderVolumeScopeSelect(controls, this.plugin, controls);
 
         // With a volume selected, every section counts only that volume
         const scope = this.statsScope = getStatsScope(this.app, this.sceneManager.activeProject?.filePath,
