@@ -102,18 +102,3 @@ export function stepVisibleColumn(from: number, dx: number, count: number, hidde
     }
     return null;
 }
-
-/**
- * Tab / Shift+Tab target while editing: the next visible column in the row,
- * else the first (last) visible column of the next (previous) row, clamped
- * at the first and last row. Null if every column is hidden.
- */
-export function tabTarget(row: number, col: number, back: boolean, rowCount: number, colCount: number, hidden: Set<number>): { row: number; col: number } | null {
-    const dir = back ? -1 : 1;
-    for (let c = col + dir; c >= 0 && c < colCount; c += dir) {
-        if (!hidden.has(c)) return { row, col: c };
-    }
-    const nc = firstVisibleColumn(colCount, hidden, back);
-    if (nc === null) return null;
-    return { row: Math.max(0, Math.min(rowCount - 1, row + dir)), col: nc };
-}

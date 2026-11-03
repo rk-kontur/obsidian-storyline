@@ -3,7 +3,7 @@ import { App, ItemView, WorkspaceLeaf, Menu, Modal, TFile, Notice, MarkdownRende
 import * as obsidian from 'obsidian';
 import { CellData, ColumnMeta, RowMeta, PlotGridData } from '../models/PlotGridData';
 import { scopedVolumeId, scopeFilter } from '../utils/volumeScope';
-import { columnTemplate, findEmptyAutoColumns, firstVisibleColumn, hiddenColumnsHintText, hiddenColumnsWidth, stepVisibleColumn, tabTarget } from '../utils/plotgridHiddenColumns';
+import { columnTemplate, findEmptyAutoColumns, firstVisibleColumn, hiddenColumnsHintText, hiddenColumnsWidth, stepVisibleColumn } from '../utils/plotgridHiddenColumns';
 import { LocationManager } from '../services/LocationManager';
 import type { SceneFilter, SortConfig } from '../models/Scene';
 import { SceneManager } from '../services/SceneManager';
@@ -2930,9 +2930,12 @@ export class PlotgridView extends ItemView {
                 commit();
                 const curR = Number(cellEl.getAttribute('data-row'));
                 const curC = Number(cellEl.getAttribute('data-col'));
-                const target = tabTarget(curR, curC, e.shiftKey, this.data.rows.length, this.data.columns.length, this.hiddenColumns);
-                if (!target) return;
-                const { row: nr, col: nc } = target;
+                let nr = curR;
+                let nc = curC + (e.shiftKey ? -1 : 1);
+                while (this.hiddenColumns.has(nc)) nc += e.shiftKey ? -1 : 1;
+                if (nc >= this.data.columns.length) { nc = firstVisibleColumn(this.data.columns.length, this.hiddenColumns) ?? 0; nr = Math.min(this.data.rows.length - 1, curR + 1); }
+                if (nc < 0) { nc = firstVisibleColumn(this.data.columns.length, this.hiddenColumns, true) ?? 0; nr = Math.max(0, curR - 1); }
+                if (this.hiddenColumns.has(nc)) return;
                 window.setTimeout(() => {
                     const newEl = this.getCellElement(nr, nc);
                     const key = `${this.data.rows[nr].id}-${this.data.columns[nc].id}`;
