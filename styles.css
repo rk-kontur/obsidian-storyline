@@ -14007,10 +14007,21 @@ body.sl-focus-active-global.sl-focus-dim-text .markdown-source-view.mod-cm6 .cm-
     margin-bottom: 8px;
 }
 
-.sl-km-volume-row {
+/* The list is the grid and every row a subgrid, so header and rows share
+   the column widths (the deadline column is only as wide as the date) */
+.sl-km-volumes-list {
     display: grid;
     grid-template-columns: minmax(120px, 2fr) 70px 70px 100px max-content 56px 32px;
-    gap: 6px;
+    column-gap: 6px;
+}
+
+.sl-km-volumes-list > * {
+    grid-column: 1 / -1;
+}
+
+.sl-km-volume-row {
+    display: grid;
+    grid-template-columns: subgrid;
     align-items: center;
     margin-bottom: 6px;
 }
@@ -14020,7 +14031,6 @@ body.sl-focus-active-global.sl-focus-dim-text .markdown-source-view.mod-cm6 .cm-
     min-width: 0;
 }
 
-/* The deadline column is only as wide as the date needs */
 .sl-km-volume-row input[type="date"] {
     width: auto;
 }
@@ -14029,10 +14039,6 @@ body.sl-focus-active-global.sl-focus-dim-text .markdown-source-view.mod-cm6 .cm-
 .is-phone .sl-km-volumes-list {
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;
-}
-
-.is-phone .sl-km-volume-row {
-    min-width: max-content;
 }
 
 .sl-km-volume-head {
