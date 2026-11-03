@@ -1,5 +1,5 @@
 // Volume bands: where a volume starts (and ends) in views that list acts in
-// order (Timeline, Board, Manuscript, Plot Grid, Plotlines, Navigator).
+// order (Timeline, Board, Manuscript, Plot Grid, Subway map, Navigator).
 // Also the "V2" volume badge on scene cards. Without volumes nothing is
 // rendered.
 
