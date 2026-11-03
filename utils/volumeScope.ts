@@ -158,12 +158,20 @@ export function actInVolumeScope(vol: VolumeDef, act: unknown): boolean {
 
 /**
  * Scene predicate for the selected volume (always true without one), the
- * same set as scopeFilter. Resolved once: use it outside loops.
+ * same set as scopeFilter. Resolved once: use it outside loops. With
+ * `keepUnassigned` false, scenes without an act are outside the volume
+ * (Statistics counts only the volume's own scenes).
  */
-export function volumeScopePredicate(app: App, projectFilePath: string | undefined | null): (scene: Scene) => boolean {
+export function volumeScopePredicate(
+    app: App,
+    projectFilePath: string | undefined | null,
+    keepUnassigned = true,
+): (scene: Scene) => boolean {
     const vol = getScopedVolume(app, projectFilePath);
     if (!vol) return () => true;
-    return (scene: Scene) => actInVolumeScope(vol, scene.act);
+    return (scene: Scene) => (scene.act === undefined || scene.act === '')
+        ? keepUnassigned
+        : actInVolumeScope(vol, scene.act);
 }
 
 /** Scenes of the selected volume (all scenes without one). */

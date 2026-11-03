@@ -14048,3 +14048,81 @@ body.sl-focus-active-global.sl-focus-dim-text .markdown-source-view.mod-cm6 .cm-
 .sl-manuscript-focus.sl-manuscript-focus .story-line-volume-divider {
     display: none;
 }
+
+/* ─── Statistics: volumes table ─────────────────────────────── */
+.story-line-volume-stats {
+    min-width: 0;
+    max-width: 100%;
+    margin: 8px 0 16px;
+    padding: 8px 12px;
+    border: 1px solid var(--background-modifier-border);
+    border-radius: 8px;
+}
+
+.story-line-volume-stats > summary {
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.story-line-volume-stats-edit {
+    margin: 6px 0;
+}
+
+/* Wide tables scroll inside the frame, like the character × chapter heatmap */
+.story-line-volume-stats-scroll {
+    overflow-x: auto;
+}
+
+.story-line-volume-stats-table {
+    width: 100%;
+    margin-top: 8px;
+    border-collapse: collapse;
+    font-size: 0.9em;
+}
+
+.story-line-volume-stats-table th,
+.story-line-volume-stats-table td {
+    padding: 4px 6px;
+    text-align: left;
+    border-bottom: 1px solid var(--background-modifier-border);
+}
+
+.story-line-volume-stats-table tr.is-total td {
+    border-top: 2px solid var(--background-modifier-border-hover);
+    font-weight: 700;
+}
+
+.story-line-volume-stats-table tr.is-selected td {
+    background: var(--background-modifier-hover);
+}
+
+.story-line-volume-stats-bar {
+    display: inline-block;
+    width: 70px;
+    height: 6px;
+    vertical-align: middle;
+    border-radius: 3px;
+    background: var(--background-modifier-border);
+    overflow: hidden;
+}
+
+.story-line-volume-stats-bar-fill {
+    height: 100%;
+    background: var(--interactive-accent);
+}
+
+.story-line-volume-stats-muted {
+    color: var(--text-muted);
+}
+
+.story-line-volume-stats-setups {
+    margin-top: 12px;
+}
+
+.story-line-volume-stats-setups h4 {
+    margin: 4px 0;
+}
+
+.story-line-volume-stats-setups summary {
+    cursor: pointer;
+}

@@ -1,6 +1,9 @@
 /* eslint-disable @typescript-eslint/no-floating-promises, @typescript-eslint/no-unused-vars, no-useless-escape -- Obsidian's API surface and several untyped third-party libraries force dynamic dispatch; floating promises are intentional in DOM/event handlers; matching enable at end of file */
 import { SceneManager } from '../services/SceneManager';
 import { renderViewSwitcher } from '../components/ViewSwitcher';
+import { renderVolumeStatsSection } from '../components/VolumeStatsSection';
+import { renderVolumeScopeSelect } from '../utils/volumeScope';
+import { getStatsScope, scopedDeadline, scopedWordGoal, statsHeading, validateForScope, withLinkPartners, type StatsScope } from '../utils/volumeStats';
 import * as obsidian from 'obsidian';
 import type SceneCardsPlugin from '../main';
 import { buildDeadlinePlan, type WritingTracker } from '../services/WritingTracker';
@@ -40,6 +43,8 @@ export class StatsView extends ItemView {
     private echoCache: { echoes: EchoCluster[]; perScene: SceneEchoReport[] } | null = null;
     private sprintTimerId: number | null = null;
     private sectionStateOverrides = new Map<string, boolean>();
+    /** Volume selection of the current render (counts everything without one). */
+    private statsScope: StatsScope = { volumes: [], inScope: () => true, projectScenes: [], scenes: [] };
 
     constructor(leaf: WorkspaceLeaf, plugin: SceneCardsPlugin, sceneManager: SceneManager) {
         super(leaf);
@@ -89,7 +94,11 @@ export class StatsView extends ItemView {
         titleRow.createEl('h3', { cls: 'story-line-view-title', text: 'StoryLine' });
 
         renderViewSwitcher(toolbar, STATS_VIEW_TYPE, this.plugin, this.leaf);
+        renderVolumeScopeSelect(toolbar, this.plugin);
 
+        // With a volume selected, every section counts only that volume
+        const scope = this.statsScope = getStatsScope(this.app, this.sceneManager.activeProject?.filePath,
+            this.sceneManager.getAllScenes().filter(scene => !scene.inactive && !scene.corkboardNote));
         const content = container.createDiv('story-line-stats-content');
         const redesigned = this.plugin.settings.statsViewMode !== 'original';
         content.toggleClass('sl-stats-redesigned', redesigned);
@@ -97,18 +106,24 @@ export class StatsView extends ItemView {
         if (redesigned) {
             content.createEl('h2', {
                 cls: 'sl-stats__heading sl-stats-redesigned__heading',
-                text: 'Project statistics',
+                text: statsHeading(scope),
             });
+        } else if (scope.volumes.length) {
+            content.createEl('h4', { text: statsHeading(scope) });
         }
-        const stats = this.sceneManager.queryService.getStatistics(this.plugin.settings.excludeArcAnchorFromWordcount ?? true);
-        const allScenes = this.sceneManager.getAllScenes()
-            .filter(scene => !scene.inactive && !scene.corkboardNote);
+        const excludeArcAnchor = this.plugin.settings.excludeArcAnchorFromWordcount ?? true;
+        const stats = this.sceneManager.queryService.getStatistics(excludeArcAnchor, scope.volume ? scope.scenes : undefined);
+        const allScenes = scope.scenes;
+        // Writing sessions are tracked per project: always the project total
+        const projectWords = scope.volume ? this.sceneManager.queryService.getStatistics(excludeArcAnchor).totalWords : stats.totalWords;
+        const linkScenes = (): Scene[] => withLinkPartners(allScenes, scope.projectScenes);
+        renderVolumeStatsSection(content, this.plugin, scope);
 
         if (redesigned) {
             // Section order, icons, and default open states follow Scribe's
             // redesigned Statistics view so both apps stay interchangeable.
             this.renderOverview(content, stats);
-            this.renderWritingSprint(content, stats.totalWords);
+            this.renderWritingSprint(content, projectWords);
 
             this.renderCollapsible(content, 'target', 'Progress Breakdown', true, body =>
                 this.renderProgressBreakdown(body, stats, allScenes));
@@ -117,7 +132,7 @@ export class StatsView extends ItemView {
                 this.renderWritingHistory(body));
 
             this.renderCollapsible(content, 'history', 'Writing Trail', false, body =>
-                this.renderWritingTrail(body, allScenes, stats.totalWords));
+                this.renderWritingTrail(body, allScenes, stats.totalWords, scope.volume ? 'Words in volume' : undefined));
 
             this.renderCollapsible(content, 'users', 'Characters & World', true, body =>
                 this.renderCharactersWorld(body, stats, allScenes));
@@ -135,7 +150,7 @@ export class StatsView extends ItemView {
                 this.renderDialogueRatio(body, allScenes));
 
             this.renderCollapsible(content, 'link-2', 'Setup & Payoff Map', false, body =>
-                this.renderSetupPayoffMap(body, allScenes));
+                this.renderSetupPayoffMap(body, linkScenes()));
 
             this.renderCollapsible(content, 'search', 'Echo Finder', false, body =>
                 this.renderEchoFinderPlaceholder(body, allScenes));
@@ -155,14 +170,14 @@ export class StatsView extends ItemView {
         this.renderOverview(content, stats);
 
         // 2. Writing Sprint (always open)
-        this.renderWritingSprint(content, stats.totalWords);
+        this.renderWritingSprint(content, projectWords);
 
         // 3. Writing History (collapsible, default open)
         this.renderCollapsible(content, 'calendar', 'Writing History', true, body =>
             this.renderWritingHistory(body));
 
         this.renderCollapsible(content, 'footprints', 'Writing Trail', false, body =>
-            this.renderWritingTrail(body, allScenes, stats.totalWords));
+            this.renderWritingTrail(body, allScenes, stats.totalWords, scope.volume ? 'Words in volume' : undefined));
 
         // 4. Progress Breakdown (collapsible, default open)
         this.renderCollapsible(content, 'list-checks', 'Progress Breakdown', true, body =>
@@ -174,7 +189,7 @@ export class StatsView extends ItemView {
 
         // 5b. Setup & Payoff Map (collapsible, default collapsed)
         this.renderCollapsible(content, 'link', 'Setup & Payoff Map', false, body =>
-            this.renderSetupPayoffMap(body, allScenes));
+            this.renderSetupPayoffMap(body, linkScenes()));
 
         // 6. Pacing & Tension (collapsible, default collapsed)
         this.renderCollapsible(content, 'activity', 'Pacing & Tension', false, body =>
@@ -357,7 +372,7 @@ export class StatsView extends ItemView {
         let readMinutes: number;
         if (cpm > 0 && isScriptioContinuaLocale(locale)) {
             // Sum CJK chars across all scenes (cheaper than re-tokenising).
-            const scenes = this.plugin.sceneManager?.getAllScenes?.() ?? [];
+            const scenes = (this.plugin.sceneManager?.getAllScenes?.() ?? []).filter(this.statsScope.inScope);
             let chars = 0;
             for (const s of scenes) if (s.body) chars += countReadingCharacters(s.body);
             readMinutes = chars > 0 ? Math.round(chars / cpm) : Math.round(stats.totalWords / wpm);
@@ -370,7 +385,7 @@ export class StatsView extends ItemView {
             readH > 0 ? `${readH}h ${readM}m` : `${readMinutes}m`);
 
         const renderProjectOverview = (section: HTMLElement): void => {
-            const totalTarget = this.plugin.settings.projectWordGoal || stats.totalTargetWords || 80000;
+            const totalTarget = scopedWordGoal(this.statsScope, this.plugin.settings.projectWordGoal, stats.totalTargetWords) || 80000;
             const wordPct = Math.round((stats.totalWords / totalTarget) * 100);
             const goalRow = section.createDiv('stats-sprint-goal sl-stats-redesigned__goal');
             goalRow.createSpan({
@@ -386,7 +401,7 @@ export class StatsView extends ItemView {
             });
 
             const tracker = this.plugin.writingTracker;
-            const deadline = tracker.getProjectDeadline();
+            const deadline = scopedDeadline(this.statsScope, tracker.getProjectDeadline());
             const deadlinePlan = buildDeadlinePlan(
                 deadline.deadline,
                 totalTarget,
@@ -1601,7 +1616,8 @@ export class StatsView extends ItemView {
     }
 
     private renderTensionSection(parent: HTMLElement): void {
-        const ordered = this.sceneManager.queryService.getFilteredScenes(undefined, { field: 'sequence', direction: 'asc' });
+        const ordered = this.sceneManager.queryService.getFilteredScenes(undefined, { field: 'sequence', direction: 'asc' })
+            .filter(this.statsScope.inScope);
         const intensityScenes = ordered.filter(scene => scene.intensity !== undefined);
         if (intensityScenes.length > 2) {
             this.renderTensionCurve(parent, intensityScenes);
@@ -2132,7 +2148,8 @@ export class StatsView extends ItemView {
     // ════════════════════════════════════════════════════
 
     private renderPacingCoach(parent: HTMLElement, _allScenes: Scene[]): void {
-        const ordered = this.sceneManager.queryService.getFilteredScenes(undefined, { field: 'sequence', direction: 'asc' });
+        const ordered = this.sceneManager.queryService.getFilteredScenes(undefined, { field: 'sequence', direction: 'asc' })
+            .filter(this.statsScope.inScope);
         if (ordered.length < 3) return;
 
         const sec = parent.createDiv('stats-subsection');
@@ -2217,7 +2234,7 @@ export class StatsView extends ItemView {
 
     private renderWarnings(parent: HTMLElement, allScenes: Scene[]): void {
         if (this.plugin.settings.enablePlotHoleDetection && allScenes.length > 0) {
-            const warnings = Validator.validate(allScenes);
+            const warnings = validateForScope(allScenes, this.statsScope.projectScenes);
             if (warnings.length === 0) {
                 const ok = parent.createDiv('stats-ok');
                 const ic = ok.createSpan();
@@ -2274,7 +2291,7 @@ export class StatsView extends ItemView {
         }
     }
 
-    private renderWritingTrail(parent: HTMLElement, scenes: Scene[], currentWords: number): void {
+    private renderWritingTrail(parent: HTMLElement, scenes: Scene[], currentWords: number, currentLabel = 'Current words'): void {
         const tracker = this.plugin.writingTracker;
         const history = tracker.getFullHistory();
         const changes = tracker.getFullChangeHistory();
@@ -2298,7 +2315,7 @@ export class StatsView extends ItemView {
         exportButton.addEventListener('click', () => this.exportWritingTrailCsv(dates, history, changes, revisions));
 
         const metrics = parent.createDiv('stats-writing-trail-metrics');
-        this.createStatCard(metrics, 'file-text', 'Current words', currentWords.toLocaleString());
+        this.createStatCard(metrics, 'file-text', currentLabel, currentWords.toLocaleString());
         this.createStatCard(metrics, 'activity', 'Net tracked', (wordsAdded - wordsDeleted).toLocaleString());
         this.createStatCard(metrics, 'plus', 'Words added', wordsAdded.toLocaleString());
         this.createStatCard(metrics, 'minus', 'Words deleted', wordsDeleted.toLocaleString());
