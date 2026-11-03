@@ -122,9 +122,7 @@ function pickDeletions(raw: unknown[], resolved: string[], pending: Map<string, 
         const candidates = resolved.map((r, i) => (r === id && explicitId(raw[i]) ? i : -1)).filter(i => i >= 0);
         // Never saved (added and deleted before the first save): nothing of ours is in the file
         if (candidates.length === 0 || !fields) continue;
-        const match = fields
-            ? candidates.find(i => { const p = parseVolumes([raw[i]])[0]; return p ? sameFields(p, fields) : false; })
-            : undefined;
+        const match = candidates.find(i => { const p = parseVolumes([raw[i]])[0]; return p ? sameFields(p, fields) : false; });
         out.add(match ?? candidates[0]);
     }
     return out;
@@ -559,14 +557,10 @@ export function addVolumesSection(modal: Modal, ctx: VolumesSectionContext): voi
         const previousOnOpen = modal.onOpen.bind(modal) as () => void;
         modal.onOpen = () => {
             previousOnOpen();
-            // Third frame after opening: BoardView resets the scroll right after
-            // open() and again in the next two frames (Issue #214). Its frame
-            // callbacks are queued after ours, so the third one comes after its last.
-            const frames = (n: number) => window.requestAnimationFrame(() => {
-                if (n > 1) frames(n - 1);
-                else heading.scrollIntoView({ block: 'start' });
-            });
-            frames(3);
+            // After the last scroll reset of BoardView's structure dialog
+            // (Issue #214: right after open(), in the next two frames and
+            // after 50, 150 and 300 ms)
+            window.setTimeout(() => heading.scrollIntoView({ block: 'start' }), 350);
         };
     }
 }

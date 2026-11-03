@@ -22,7 +22,7 @@ export function emptyTimelineActs(definedActs: number[], baseSceneActs: unknown[
     return definedActs.filter(a => !withScenes.has(Number(a)));
 }
 
-/** First act of a volume (its acts are never empty). */
+/** First act of a volume (a volume always has at least one act). */
 export function firstVolumeAct(vol: VolumeDef): number {
     return Math.min(...vol.acts);
 }
