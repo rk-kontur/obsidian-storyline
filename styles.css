@@ -13967,3 +13967,20 @@ body.sl-focus-active-global.sl-focus-dim-text .markdown-source-view.mod-cm6 .cm-
     color: var(--text-muted);
     font-size: var(--font-ui-smaller);
 }
+
+/* Plot Grid: empty auto columns hidden under a volume selection */
+.plot-grid-hidden-columns-hint {
+    margin-left: auto;
+    padding: 2px 8px;
+    font-size: var(--font-ui-smaller);
+    color: var(--text-muted);
+    white-space: nowrap;
+}
+
+.plot-grid-canvas > .plot-grid-col-hidden {
+    visibility: hidden;
+    overflow: hidden;
+    padding: 0 !important;
+    border: none !important;
+    min-width: 0 !important;
+}

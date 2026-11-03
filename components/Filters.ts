@@ -31,6 +31,8 @@ export class FiltersComponent {
     private container: HTMLElement;
     private sceneManager: SceneManager;
     private plugin: SceneCardsPlugin | null;
+    /** Lets a view add its own controls at the right end of the filter bar */
+    renderBarEnd?: (bar: HTMLElement) => void;
     private currentFilter: SceneFilter = {};
     private currentSort: SortConfig = { field: 'sequence', direction: 'asc' };
     private onChange: (filter: SceneFilter, sort: SortConfig) => void;
@@ -175,6 +177,7 @@ export class FiltersComponent {
             this.visible = !this.visible;
             filterPanel.setCssStyles({ display: this.visible ? 'block' : 'none' });
         });
+        this.renderBarEnd?.(topBar);
 
         // Expandable filter panel
         const filterPanel = this.container.createDiv('story-line-filter-panel');
