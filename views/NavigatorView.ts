@@ -2,8 +2,6 @@
 import { ItemView, WorkspaceLeaf, Menu, TFile, setIcon } from 'obsidian';
 import { renderVolumeScopeSelect } from '../utils/volumeScope';
 import { collectChapterChips, collectTagChips, emptyListMessage, filterOutsideVolume, outsideVolumeHint, resolveNavigatorScope, volumeProgressLabel, volumeProgressTooltip, type NavigatorScope } from '../utils/navigatorVolumes';
-import { VolumeDividerTracker } from '../utils/volumeBands';
-import { getProjectVolumes } from '../utils/volumes';
 import type SceneCardsPlugin from '../main';
 import { ManuscriptView } from './ManuscriptView';
 import { resolveTagColor, getPlotlineHSL } from '../settings';
@@ -436,9 +434,7 @@ export class NavigatorView extends ItemView {
             return;
         }
 
-        const volumeTracker = new VolumeDividerTracker(getProjectVolumes(this.app, this.sceneManager.activeProject?.filePath), { bandEnd: true });
         for (const [act, actScenes] of groups) {
-            volumeTracker.renderBefore(this.listEl!, actScenes[0]?.act);
             const isCollapsed = this.collapsedActs.has(act);
 
             const header = this.listEl!.createDiv('sl-nav-act-header');

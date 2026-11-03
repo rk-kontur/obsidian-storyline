@@ -13,7 +13,7 @@
 import { TFile, type App } from 'obsidian';
 import type SceneCardsPlugin from '../main';
 import type { Scene, SceneFilter } from '../models/Scene';
-import { actNumber, getProjectVolumes, getVolumeForAct, type VolumeDef } from './volumes';
+import { actNumber, getProjectVolumes, type VolumeDef } from './volumes';
 
 const STORAGE_KEY = 'storyline-volume-scope';
 
@@ -369,20 +369,4 @@ export function renderVolumeFilterBarStart(bar: HTMLElement, plugin: SceneCardsP
     wrap.createSpan({ cls: 'story-line-filter-by-label', text: 'Filter by' });
     createScopeSelect(wrap, plugin, wrap);
     bar.prepend(wrap);
-}
-
-/** Short volume badge text, e.g. "V2", from the title's number if it ends in one. */
-function volumeBadgeText(volumes: VolumeDef[], vol: VolumeDef): string {
-    const num = vol.title.match(/(\d+)\s*$/)?.[1];
-    return num ? `V${num}` : `V${volumes.indexOf(vol) + 1}`;
-}
-
-/** Small "V2" badge in a scene card header. Renders nothing without volumes. */
-export function renderVolumeBadge(parent: HTMLElement, plugin: SceneCardsPlugin, scene: Scene): void {
-    if (scene.act === undefined) return;
-    const volumes = getProjectVolumes(plugin.app, plugin.sceneManager?.activeProject?.filePath);
-    if (volumes.length === 0) return;
-    const vol = getVolumeForAct(volumes, scene.act);
-    if (!vol) return;
-    parent.createSpan({ cls: 'story-line-volume-badge', text: volumeBadgeText(volumes, vol), attr: { title: vol.title } });
 }

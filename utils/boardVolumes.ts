@@ -4,10 +4,23 @@
 // exactly as before.
 
 import type { Scene } from '../models/Scene';
-import { actFromColumnKey } from './volumeBands';
+import { EPILOGUE_ACT, PROLOGUE_ACT } from './actChapter';
 import { actNumber, type VolumeDef } from './volumes';
 
 type ActValue = number | string | undefined;
+
+/**
+ * Act number from a Board act column key, as getActDisplayLabel builds it:
+ * "Act 5" (also for "05"), "100", "Prologue", "Epilogue". Other keys
+ * ("No Act", "Part 5") are no numeric act and belong to no volume.
+ */
+export function actFromColumnKey(key: string): number | undefined {
+    const k = key.trim().toLowerCase();
+    if (k === 'prologue') return PROLOGUE_ACT;
+    if (k === 'epilogue') return EPILOGUE_ACT;
+    const m = k.match(/^(?:act\s+)?(\d+(?:\.\d+)?)$/);
+    return m ? Number(m[1]) : undefined;
+}
 
 /** True if the act is numerically one of the volume's acts (actNumber; Prologue/Epilogue are in no volume). */
 function actInVolume(vol: VolumeDef, act: unknown): boolean {
