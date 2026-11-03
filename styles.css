@@ -14049,6 +14049,7 @@ body.sl-focus-active-global.sl-focus-dim-text .markdown-source-view.mod-cm6 .cm-
     .sl-km-volumes-list,
     .sl-km-volume-row {
         grid-template-columns: minmax(120px, 2fr) 70px 70px 100px 140px 56px 32px;
+        column-gap: 6px;
     }
 
     .sl-km-volume-row input[type="date"] {
