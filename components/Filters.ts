@@ -6,6 +6,9 @@ import type SceneCardsPlugin from '../main';
 import type { SceneFilter, SortConfig, SortField, FilterPreset } from '../models/Scene';
 import { getStatusOrder } from '../models/Scene';
 import { getActDisplayLabel } from '../utils/actChapter';
+import { getProjectVolumes } from '../utils/volumes';
+import { renderVolumeFilterBarStart } from '../utils/volumeScope';
+import { renderVolumeFilterChips } from './VolumeFilterChips';
 
 type FocusModeCallback = (active: boolean) => void;
 
@@ -157,6 +160,9 @@ export class FiltersComponent {
             });
         }
 
+        // "Filter by [Volume]" at the far left (hidden without volumes)
+        if (this.plugin) renderVolumeFilterBarStart(topBar, this.plugin);
+
         // Filter toggle button (Lucide icon)
         const toggleBtn = topBar.createEl('button', {
             cls: 'story-line-filter-toggle clickable-icon',
@@ -231,6 +237,11 @@ export class FiltersComponent {
                     this.emitChange();
                 });
             });
+            // Volume chips: shortcut for all acts of a volume
+            if (this.plugin) {
+                renderVolumeFilterChips(panel, getProjectVolumes(this.plugin.app, this.sceneManager.activeProject?.filePath),
+                    this.currentFilter, actValues, actContainer, () => this.emitChange());
+            }
         }
 
         // Chapter filter

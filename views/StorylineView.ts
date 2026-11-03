@@ -1,5 +1,8 @@
 /* eslint-disable @typescript-eslint/no-floating-promises, @typescript-eslint/no-misused-promises, @typescript-eslint/no-unnecessary-type-assertion -- Obsidian's API surface and several untyped third-party libraries force dynamic dispatch; floating promises are intentional in DOM/event handlers; matching enable at end of file */
 import { ButtonComponent, ItemView, Menu, MenuItem, Modal, Notice, Setting, TFile, TextComponent, WorkspaceLeaf } from 'obsidian';
+import { renderVolumeScopeSelect, scopeFilter } from '../utils/volumeScope';
+import { drawSubwayVolumeMarker, setSubwayActLabel, VolumeDividerTracker } from '../utils/volumeBands';
+import { getProjectVolumes, getVolumeForAct } from '../utils/volumes';
 import * as obsidian from 'obsidian';
 import { Scene } from '../models/Scene';
 import { SceneManager } from '../services/SceneManager';
@@ -142,6 +145,8 @@ export class StorylineView extends ItemView {
             menu.showAtPosition({ x: e.clientX, y: e.clientY });
         });
 
+        renderVolumeScopeSelect(controls, this.plugin);
+
         // Arc Points filter toggle (All / Scenes / Arc Points)
         const arcFilterContainer = controls.createDiv('story-line-arc-filter');
         const arcModes: { value: 'all' | 'scenes' | 'arcPoints'; label: string }[] = [
@@ -260,7 +265,7 @@ export class StorylineView extends ItemView {
 
         const arcFilter = this.arcAnchorFilter === 'all' ? undefined : { arcAnchorFilter: this.arcAnchorFilter };
         const allScenes = this.sceneManager.queryService.getFilteredScenes(
-            arcFilter,
+            scopeFilter(this.app, this.sceneManager.activeProject?.filePath, arcFilter),
             { field: 'sequence', direction: 'asc' }
         );
         // Corkboard sticky notes are not story scenes — exclude them from
@@ -511,6 +516,18 @@ export class StorylineView extends ItemView {
             acts.get(act)!.push(col);
         });
 
+        // Volume lines follow the column order (scenes without a numeric act come
+        // last there): a solid line where a volume starts or its band ends
+        const volumes = getProjectVolumes(this.app, this.sceneManager.activeProject?.filePath);
+        const volumeTracker = new VolumeDividerTracker(volumes, { bandEnd: true });
+        const volumeLineCols = new Set<number>();
+        orderedScenes.forEach((s, col) => {
+            if (volumeTracker.advance(s.act) && col > 0) {
+                volumeLineCols.add(col);
+                drawSubwayVolumeMarker(svg, activeDocument, { x: colX(col) - SCENE_SPACING / 2, y1: TOP_MARGIN - 50, y2: trackBottom });
+            }
+        });
+
         const actEntries = [...acts.entries()].sort((a, b) => a[0] - b[0]);
         for (let ai = 0; ai < actEntries.length; ai++) {
             const [actNum, cols] = actEntries[ai];
@@ -528,9 +545,12 @@ export class StorylineView extends ItemView {
             actLabel.setAttribute('fill', 'var(--text-muted)');
             actLabel.textContent = getActDisplayLabel(actNum).toUpperCase();
             svg.appendChild(actLabel);
+            // "VOLUME 1 ACT 1", wrapped or shortened if wider than the act
+            const volume = getVolumeForAct(volumes, actNum);
+            if (volume) setSubwayActLabel(actLabel, activeDocument, { volumeTitle: volume.title, actLabel: getActDisplayLabel(actNum), maxWidth: (maxCol - minCol + 1) * SCENE_SPACING - 16, fontSize: 16, lineHeight: 18 });
 
-            // Vertical divider line before this act group (clear, visible)
-            if (ai > 0) {
+            // Vertical divider line before this act group (clear, visible), unless a volume line is there
+            if (ai > 0 && !volumeLineCols.has(minCol)) {
                 const divX = colX(minCol) - SCENE_SPACING / 2;
                 const line = activeDocument.createElementNS(svgNS, 'line');
                 line.setAttribute('x1', String(divX));

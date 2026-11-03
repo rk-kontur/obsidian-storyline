@@ -2,6 +2,9 @@
 import { App, ItemView, WorkspaceLeaf, Menu, Modal, TFile, Notice, MarkdownRenderer, Component } from 'obsidian';
 import * as obsidian from 'obsidian';
 import { CellData, ColumnMeta, RowMeta, PlotGridData } from '../models/PlotGridData';
+import { scopeFilter, volumeScopeKey } from '../utils/volumeScope';
+import { renderVolumeStep, VolumeDividerTracker } from '../utils/volumeBands';
+import { getProjectVolumes, type VolumeDef } from '../utils/volumes';
 import { LocationManager } from '../services/LocationManager';
 import type { SceneFilter, SortConfig } from '../models/Scene';
 import { SceneManager } from '../services/SceneManager';
@@ -1001,7 +1004,9 @@ export class PlotgridView extends ItemView {
         if (!this.canvasEl || !this.scrollAreaEl) return;
 
         const projectKey = this.getProjectKey();
-        const preserveScroll = this.renderedProjectKey === projectKey;
+        // A changed volume selection starts at the top, like a project switch
+        const renderKey = `${projectKey ?? ''}|${volumeScopeKey(this.app, this.plugin?.sceneManager?.activeProject?.filePath)}`;
+        const preserveScroll = this.renderedProjectKey === renderKey;
         const prevScrollTop = preserveScroll ? this.scrollAreaEl.scrollTop : 0;
         const prevScrollLeft = preserveScroll ? this.scrollAreaEl.scrollLeft : 0;
         const scrollRestoreGeneration = ++this.scrollRestoreGeneration;
@@ -1009,7 +1014,7 @@ export class PlotgridView extends ItemView {
             window.cancelAnimationFrame(this.scrollRestoreFrame);
             this.scrollRestoreFrame = null;
         }
-        this.renderedProjectKey = projectKey;
+        this.renderedProjectKey = renderKey;
 
         this.ensureDefaults();
         this.canvasEl.empty();
@@ -1024,9 +1029,13 @@ export class PlotgridView extends ItemView {
             k => { const v = (this.currentFilter as unknown as Record<string, unknown>)[k]; return v !== undefined && v !== '' && !(Array.isArray(v) && v.length === 0); }
         );
         let filteredPaths: Set<string> | null = null;
-        if (hasFilter && sceneManager) {
+        // The selected volume restricts the rows like an act filter. On its own it
+        // hides only rows of other volumes: inactive scenes stay, as without it.
+        let scopedFilter = sceneManager ? scopeFilter(this.app, activeProject?.filePath, this.currentFilter) : this.currentFilter;
+        if (!hasFilter && scopedFilter && scopedFilter !== this.currentFilter && scopedFilter.activeState === undefined) scopedFilter = { ...scopedFilter, activeState: 'all' };
+        if ((hasFilter || scopedFilter !== this.currentFilter) && sceneManager) {
             filteredPaths = new Set(
-                sceneManager.queryService.getFilteredScenes(this.currentFilter, undefined).map(s => s.filePath)
+                sceneManager.queryService.getFilteredScenes(scopedFilter, undefined).map(s => s.filePath)
             );
         }
 
@@ -1141,9 +1150,25 @@ export class PlotgridView extends ItemView {
         const rowHeightParts: string[] = [];
         this.renderedRowTrackIndices.clear();
         let gridTrackIndex = 1;
+        // Volume band (or band end) before an act divider, band end before a scene row
+        // without act; the tracks are reserved here and the bands drawn below
+        const volumeSteps = new Map<number, VolumeDef | 'end'>();
+        const volumeTracker = new VolumeDividerTracker(getProjectVolumes(this.app, activeProject?.filePath), { bandEnd: true });
         for (const ri of rowIndices) {
             if (!visibleRows.has(ri)) continue;
             const divs = dividersBefore.get(ri);
+            if (volumeTracker.active) {
+                const actDivider = divs?.find(d => d.type === 'act');
+                const row = this.data.rows[ri];
+                const scene = row.sourceType === 'auto' && row.sourceId ? sceneManager?.getScene(row.sourceId) : undefined;
+                const noAct = !actDivider && !!scene && scene.act === undefined && !collapsedRows.has(ri);
+                const step = actDivider ? volumeTracker.advance(actDivider.key.slice('act:'.length)) : (noAct ? volumeTracker.advance(undefined) : undefined);
+                if (step) {
+                    volumeSteps.set(ri, step);
+                    rowHeightParts.push(step === 'end' ? '6px' : '34px');
+                    gridTrackIndex++;
+                }
+            }
             if (divs) {
                 for (const d of divs) {
                     rowHeightParts.push(d.type === 'act' ? '32px' : '26px');
@@ -1373,6 +1398,11 @@ export class PlotgridView extends ItemView {
 
         for (const ri of rowIndices) {
             if (!visibleRows.has(ri)) continue; // skip filtered-out rows
+            const volumeStep = volumeSteps.get(ri);
+            if (volumeStep) {
+                renderVolumeStep(this.canvasEl, volumeStep, `1 / ${this.data.columns.length + 2}`)
+                    .setCssStyles({ position: (this.data.stickyHeaders === false) ? 'relative' : 'sticky' });
+            }
             // ── Act/chapter dividers ──
             const divs = dividersBefore.get(ri);
             if (divs) {

@@ -3,6 +3,8 @@ import * as obsidian from 'obsidian';
 import { SceneManager } from '../services/SceneManager';
 import { CharacterManager } from '../services/CharacterManager';
 import { renderViewSwitcher } from '../components/ViewSwitcher';
+import { renderVolumeScopeSelect, scopeSceneRefs, scopeScenes, volumeScopeChanged } from '../utils/volumeScope';
+import { renderScopeHiddenNote, renderScopedReferencesEmpty, scopedNoScenesText, scopeSceneCharacterNames } from '../components/VolumeScopeNotes';
 import { RelationshipMap } from '../components/RelationshipMap';
 import { StoryGraph } from '../components/StoryGraph';
 import { pickImage as pickImageModal, resolveImagePath } from '../components/ImagePicker';
@@ -161,6 +163,7 @@ export class CharacterView extends ItemView {
     // ── Main render ────────────────────────────────────
 
     private renderView(container: HTMLElement): void {
+        volumeScopeChanged(this, this.plugin); // remember the rendered volume selection (see refresh)
         this.clearPortaledDropdowns(); // issue #102 — don't leak portaled popups across re-renders
         container.empty();
 
@@ -172,6 +175,7 @@ export class CharacterView extends ItemView {
         renderViewSwitcher(toolbar, CHARACTER_VIEW_TYPE, this.plugin, this.leaf);
 
         const controls = toolbar.createDiv('story-line-toolbar-controls');
+        renderVolumeScopeSelect(controls, this.plugin);
 
         // ── Codex category tabs ─────────────────────
         renderCodexCategoryTabs(container, {
@@ -355,8 +359,9 @@ export class CharacterView extends ItemView {
         const q = this.searchText.toLowerCase();
 
         let fileCharacters = this.characterManager.getAllCharacters();
-        const sceneCharNames = this.sceneManager.queryService.getAllCharacters();
-        const scenes = this.sceneManager.getAllScenes().filter(scene => !scene.inactive);
+        const scenes = scopeScenes(this.plugin, this.sceneManager.getAllScenes().filter(scene => !scene.inactive));
+        // Characters of the selected volume's scenes (inactive ones included, like getAllCharacters)
+        const sceneCharNames = scopeSceneCharacterNames(this.plugin, this.sceneManager.queryService.getAllCharacters(), scopeScenes(this.plugin, this.sceneManager.getAllScenes()));
 
         // Build alias map: lowered alias → canonical name
         const aliasMap = this.characterManager.buildAliasMap(this.plugin.settings.characterAliases);
@@ -666,7 +671,7 @@ export class CharacterView extends ItemView {
             stats.createSpan({ cls: 'character-stat-sep', text: '\u00b7' });
             stats.createSpan({ text: `${total} scenes` });
         } else {
-            stats.createSpan({ cls: 'character-stat-none', text: 'No scenes yet' });
+            stats.createSpan({ cls: 'character-stat-none', text: scopedNoScenesText(this.plugin, 'No scenes yet') });
         }
 
         // Completeness indicator
@@ -1009,7 +1014,7 @@ export class CharacterView extends ItemView {
         container.empty();
         container.createEl('h3', { text: 'Story graph' });
 
-        const scenes = this.sceneManager.getAllScenes().filter(scene => !scene.inactive);
+        const scenes = scopeScenes(this.plugin, this.sceneManager.getAllScenes().filter(scene => !scene.inactive));
         const characters = this.characterManager.getAllCharacters();
         const scanner = this.plugin.linkScanner;
         // Ensure scan results are up to date
@@ -2962,10 +2967,11 @@ export class CharacterView extends ItemView {
     // ── Scene side panel ───────────────────────────────
 
     private renderScenePanel(container: HTMLElement, characterName: string): void {
-        const scenes = this.sceneManager.queryService.getFilteredScenes(
+        const allScenes = this.sceneManager.queryService.getFilteredScenes(
             undefined,
             { field: 'sequence', direction: 'asc' }
         );
+        const scenes = scopeScenes(this.plugin, allScenes);
 
         // Build alias set for this character (full name + all aliases)
         const aliasMap = this.characterManager.buildAliasMap(this.plugin.settings.characterAliases);
@@ -2995,6 +3001,8 @@ export class CharacterView extends ItemView {
         this.renderStat(statGrid, String(povScenes.length), 'POV');
         this.renderStat(statGrid, String(presentScenes.length), 'Supporting');
         this.renderStat(statGrid, String(allCharScenes.length), 'Total');
+        renderScopeHiddenNote(statsBox, this.plugin, allCharScenes.length,
+            allScenes.filter(s => this.isCharInScene(s, charAliases).isPresent).length - allCharScenes.length);
 
         // Plotgrid stat (patched async)
         const pgStatEl = statGrid.createDiv('character-stat-item');
@@ -3164,11 +3172,13 @@ export class CharacterView extends ItemView {
 
     private renderReferencesPanel(container: HTMLElement, entityName: string): void {
         const index = this.plugin.linkScanner.buildEntityIndex();
-        const refs = index.get(entityName.toLowerCase());
-        if (!refs || refs.length === 0) return;
+        const allRefs = index.get(entityName.toLowerCase()) ?? [];
+        const refs = scopeSceneRefs(this.plugin, allRefs);
+        if (refs.length === 0) { renderScopedReferencesEmpty(container, this.plugin, 'character-references-panel', allRefs.length); return; }
 
         const section = container.createDiv('character-references-panel');
         section.createEl('h3', { text: 'Referenced by' });
+        renderScopeHiddenNote(section, this.plugin, refs.length, allRefs.length - refs.length, 'references');
 
         const groups: Record<string, typeof refs> = {};
         for (const ref of refs) {
@@ -3696,9 +3706,11 @@ export class CharacterView extends ItemView {
      * save (within the grace window), skip the re-render to avoid stealing focus.
      */
     async refresh(): Promise<void> {
+        const scopeChanged = volumeScopeChanged(this, this.plugin); // a volume switch always re-renders
         if (
             this.selectedCharacter &&
             Date.now() - this._lastSaveTime < CharacterView.SAVE_REFRESH_GRACE_MS
+            && !scopeChanged
         ) {
             // Our own save triggered this — silently reload data but don't re-render
             await this.plugin.reloadEntities();

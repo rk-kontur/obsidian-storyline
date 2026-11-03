@@ -10,6 +10,8 @@ import { CodexManager } from '../services/CodexManager';
 import { CodexEntry, CodexCategoryDef, CodexFieldCategory, CodexFieldDef, BUILTIN_CODEX_CATEGORIES, makeCustomCodexCategory, CODEX_ICON_OPTIONS } from '../models/Codex';
 import { CODEX_VIEW_TYPE, CHARACTER_VIEW_TYPE, LOCATION_VIEW_TYPE } from '../constants';
 import { renderViewSwitcher } from '../components/ViewSwitcher';
+import { renderVolumeScopeSelect, scopeSceneRefs, volumeScopeChanged } from '../utils/volumeScope';
+import { renderScopeHiddenNote, scopeHiddenText } from '../components/VolumeScopeNotes';
 import { applyMobileClass } from '../components/MobileAdapter';
 import { pickImage as pickImageModal, resolveImagePath } from '../components/ImagePicker';
 import { AddFieldModal } from '../components/AddFieldModal';
@@ -199,8 +201,9 @@ export class CodexView extends ItemView {
 
     /** Called by refreshOpenViews */
     async refresh(): Promise<void> {
+        const scopeChanged = volumeScopeChanged(this, this.plugin); // a volume switch always re-renders
         // Grace period — skip re-render if we just saved ourselves
-        if (this.selectedEntry && (Date.now() - this._lastSaveTime) < CodexView.SAVE_REFRESH_GRACE_MS) {
+        if (this.selectedEntry && (Date.now() - this._lastSaveTime) < CodexView.SAVE_REFRESH_GRACE_MS && !scopeChanged) {
             this.codexManager.initCategories(
                 this.plugin.settings.codexEnabledCategories,
                 this.resolveCustomDefs(),
@@ -221,6 +224,7 @@ export class CodexView extends ItemView {
     // ══════════════════════════════════════════════════
 
     private renderView(container: HTMLElement): void {
+        volumeScopeChanged(this, this.plugin); // remember the rendered volume selection (see refresh)
         this.clearPortaledDropdowns(); // issue #102 — don't leak portaled popups across re-renders
         container.empty();
 
@@ -232,6 +236,7 @@ export class CodexView extends ItemView {
 
         // ── Controls row ───────────────────────────────
         const controls = toolbar.createDiv('story-line-toolbar-controls');
+        renderVolumeScopeSelect(controls, this.plugin);
 
         // Manage categories button (icon-only)
         const addCatBtn = controls.createEl('button', {
@@ -1974,7 +1979,8 @@ export class CodexView extends ItemView {
 
     private renderReferencesPanel(container: HTMLElement, entry: CodexEntry): void {
         const index = this.plugin.linkScanner.buildEntityIndex();
-        const refs = index.get(entry.name.toLowerCase()) ?? [];
+        const allRefs = index.get(entry.name.toLowerCase()) ?? [];
+        const refs = scopeSceneRefs(this.plugin, allRefs);
         const section = container.createDiv('codex-references-panel');
         const header = section.createDiv('codex-references-header');
         header.createEl('h3', { text: 'Referenced by' });
@@ -1989,10 +1995,11 @@ export class CodexView extends ItemView {
         if (refs.length === 0) {
             section.createEl('p', {
                 cls: 'codex-references-empty',
-                text: 'No linked entries yet.',
+                text: scopeHiddenText(this.plugin, 0, allRefs.length, 'references') || 'No linked entries yet.',
             });
             return;
         }
+        renderScopeHiddenNote(section, this.plugin, refs.length, allRefs.length - refs.length, 'references');
 
         const groups: Record<string, typeof refs> = {};
         for (const ref of refs) {

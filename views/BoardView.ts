@@ -4,6 +4,10 @@ import * as obsidian from 'obsidian';
 import { Scene, SceneFilter, SortConfig, BoardGroupBy, SceneStatus, SceneTemplate, BeatSheetTemplate, BUILTIN_BEAT_SHEETS, getStatusOrder, getStatusConfig, resolveStatusCfg } from '../models/Scene';
 import { openConfirmModal } from '../components/ConfirmModal';
 import { addVolumesSection } from '../components/VolumesEditor';
+import { getScopedVolume, scopeActs, scopeFilter } from '../utils/volumeScope';
+import { boardQuickAddAct, scopeDefinedChapters } from '../utils/boardVolumes';
+import { actFromColumnKey, VolumeDividerTracker } from '../utils/volumeBands';
+import { getProjectVolumes } from '../utils/volumes';
 import { openStructureLabelModal } from '../components/StructureLabelModal';
 import { SceneManager } from '../services/SceneManager';
 import { SceneCardComponent } from '../components/SceneCard';
@@ -536,11 +540,13 @@ export class BoardView extends ItemView {
         // Pass defined acts/chapters so empty containers still render as
         // drop targets (issue #220 — newly inserted chapters were invisible
         // until a scene was dragged into them).
-        const definedActs = this.sceneManager.getDefinedActs();
-        const definedChapters = this.sceneManager.getDefinedChapters();
+        // With a volume selected: only its acts, and only chapters with scenes in it
+        const projectPath = this.sceneManager.activeProject?.filePath;
+        const definedActs = scopeActs(this.app, projectPath, this.sceneManager.getDefinedActs());
+        const definedChapters = scopeDefinedChapters(this.sceneManager.getDefinedChapters(), this.sceneManager.getAllScenes(), getScopedVolume(this.app, projectPath));
         const groups = this.sceneManager.queryService.getScenesGroupedByWithEmpty(
             this.groupBy,
-            this.currentFilter,
+            scopeFilter(this.app, projectPath, this.currentFilter),
             this.currentSort,
             definedActs,
             definedChapters
@@ -556,6 +562,7 @@ export class BoardView extends ItemView {
             return;
         }
 
+        const volumeTracker = new VolumeDividerTracker(this.groupBy === 'act' ? getProjectVolumes(this.app, projectPath) : [], { bandEnd: true });
         for (const key of sortedKeys) {
             let scenes = groups.get(key) || [];
             if (!this.plugin.settings.showNotesInKanban) {
@@ -565,6 +572,7 @@ export class BoardView extends ItemView {
                     continue;
                 }
             }
+            volumeTracker.renderColumnBefore(this.boardEl, actFromColumnKey(key));
             this.renderColumn(this.boardEl, key, scenes);
         }
     }
@@ -584,7 +592,7 @@ export class BoardView extends ItemView {
         for (const vs of this.scrollers) vs.destroy();
         this.scrollers = [];
 
-        let scenes = this.sceneManager.queryService.getFilteredScenes(this.currentFilter, this.currentSort);
+        let scenes = this.sceneManager.queryService.getFilteredScenes(scopeFilter(this.app, this.sceneManager.activeProject?.filePath, this.currentFilter), this.currentSort);
         if (!this.plugin.settings.showScenesInCorkboard) {
             scenes = scenes.filter(scene => this.isCorkboardNoteScene(scene));
         }
@@ -2063,7 +2071,7 @@ export class BoardView extends ItemView {
                     const targetColumn = targetEl.closest('.story-line-column');
                     const targetGroupKey = targetColumn?.getAttribute('data-group') || title;
                     const groups = this.sceneManager.queryService.getScenesGroupedByWithEmpty(
-                        this.groupBy, this.currentFilter, this.currentSort
+                        this.groupBy, scopeFilter(this.app, this.sceneManager.activeProject?.filePath, this.currentFilter), this.currentSort
                     );
                     const targetScenes = groups.get(targetGroupKey) || scenes;
 
@@ -3898,6 +3906,12 @@ export class BoardView extends ItemView {
             } else if (this.groupBy === 'pov') {
                 if (presetColumn !== 'No POV') defaults.pov = presetColumn;
             }
+        }
+        // With a volume selected: the act of the column, else the volume's first act
+        const volume = getScopedVolume(this.app, this.sceneManager.activeProject?.filePath);
+        if (volume) {
+            const act = boardQuickAddAct({ groupBy: this.groupBy, presetColumn, columnAct: defaults.act, volume, scenes: this.sceneManager.getAllScenes() });
+            if (act !== undefined) defaults.act = act; else delete defaults.act;
         }
 
         const modal = new QuickAddModal(

@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-unsafe-return, @typescript-eslint/no-floating-promises, @typescript-eslint/no-misused-promises, @typescript-eslint/no-unnecessary-type-assertion -- Obsidian's API surface and several untyped third-party libraries force dynamic dispatch; floating promises are intentional in DOM/event handlers; matching enable at end of file */
 import * as obsidian from 'obsidian';
+import { renderVolumeBadge } from '../utils/volumeScope';
 import { Modal, App } from 'obsidian';
 import type SceneCardsPlugin from '../main';
 import { resolveTagColor, getPlotlineHSL, resolveStickyNoteColors, resolveStickyNoteFontColor } from '../settings';
@@ -74,6 +75,7 @@ export class SceneCardComponent {
             attr: { title: statusCfg.label }
         });
         obsidian.setIcon(statusIconEl, statusCfg.icon);
+        renderVolumeBadge(header, this.plugin, scene);
 
         // Title
         const displayTitle = this.getDisplayTitle(scene);

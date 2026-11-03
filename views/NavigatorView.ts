@@ -1,5 +1,9 @@
 /* eslint-disable @typescript-eslint/no-floating-promises, @typescript-eslint/no-misused-promises, @typescript-eslint/no-unnecessary-type-assertion -- Obsidian's API surface and several untyped third-party libraries force dynamic dispatch; floating promises are intentional in DOM/event handlers; matching enable at end of file */
 import { ItemView, WorkspaceLeaf, Menu, TFile, setIcon } from 'obsidian';
+import { renderVolumeScopeSelect } from '../utils/volumeScope';
+import { collectChapterChips, collectTagChips, emptyListMessage, filterOutsideVolume, outsideVolumeHint, resolveNavigatorScope, volumeProgressLabel, volumeProgressTooltip, type NavigatorScope } from '../utils/navigatorVolumes';
+import { VolumeDividerTracker } from '../utils/volumeBands';
+import { getProjectVolumes } from '../utils/volumes';
 import type SceneCardsPlugin from '../main';
 import { ManuscriptView } from './ManuscriptView';
 import { resolveTagColor, getPlotlineHSL } from '../settings';
@@ -118,6 +122,7 @@ export class NavigatorView extends ItemView {
             this.renderList();
         });
 
+        renderVolumeScopeSelect(toolbar, this.plugin);
         this.sortBtn = toolbar.createDiv('sl-nav-sort-btn');
         setIcon(this.sortBtn, SORT_ICONS[this.sortMode]);
         attachTooltip(this.sortBtn, 'Sort');
@@ -196,24 +201,33 @@ export class NavigatorView extends ItemView {
      * Called by refreshOpenViews() to re-render the navigator.
      */
     refresh(): void {
-        this.renderChips();
-        this.renderChapterFilter();
-        this.renderList();
-        this.renderProgress();
+        const scope = this.resolveScope(); // volume selection, read once per render
+        this.renderChips(scope);
+        this.renderChapterFilter(scope);
+        this.renderList(scope);
+        this.renderProgress(scope);
+    }
+
+    private resolveScope(): NavigatorScope {
+        return resolveNavigatorScope(this.app, this.sceneManager.activeProject?.filePath);
     }
 
     // ────────────────────────────────────────────────────────
     // Plotline filter chips
     // ────────────────────────────────────────────────────────
 
-    private renderChips(): void {
+    private renderChips(scope: NavigatorScope = this.resolveScope()): void {
         if (!this.chipRow || !this.chipSection || !this.chipToggle) return;
         this.chipRow.empty();
 
-        const tags = this.sceneManager.queryService.getAllTags().sort();
+        // With a volume selected: only the plotlines of its scenes, counted in it
+        const volumeChips = scope.volume ? collectTagChips(this.sceneManager.getAllScenes().filter(scope.inList)) : null;
+        const projectTags = volumeChips ? this.sceneManager.queryService.getAllTags() : null; // colours keep the project index
+        const tags = volumeChips ? volumeChips.values : this.sceneManager.queryService.getAllTags().sort();
+        const filterOutside = volumeChips !== null && filterOutsideVolume(this.plotlineFilter, tags);
 
-        // Hide entire section if no tags
-        if (tags.length === 0) {
+        // Hide entire section if no tags (an active filter outside the volume stays visible)
+        if (tags.length === 0 && !filterOutside) {
             this.chipSection.setCssStyles({ display: 'none' });
             return;
         }
@@ -252,7 +266,7 @@ export class NavigatorView extends ItemView {
 
         for (let i = 0; i < tags.length; i++) {
             const tag = tags[i];
-            const color = resolveTagColor(tag, i, scheme, tagColors, hslAdj);
+            const color = resolveTagColor(tag, projectTags ? projectTags.indexOf(tag) : i, scheme, tagColors, hslAdj);
 
             const row = this.chipRow.createDiv('sl-nav-plotline-item');
             if (this.plotlineFilter === tag) row.addClass('is-active');
@@ -263,7 +277,7 @@ export class NavigatorView extends ItemView {
             row.createSpan({ text: tag, cls: 'sl-nav-plotline-name' });
 
             // Scene count for this plotline
-            const count = this.sceneManager.getAllScenes()
+            const count = volumeChips ? (volumeChips.counts.get(tag) ?? 0) : this.sceneManager.getAllScenes()
                 .filter(s => !s.corkboardNote && !s.inactive && s.tags?.includes(tag)).length;
             row.createSpan({ text: String(count), cls: 'sl-nav-plotline-count' });
 
@@ -273,14 +287,33 @@ export class NavigatorView extends ItemView {
                 this.renderList();
             });
         }
+        if (filterOutside && this.plotlineFilter) this.renderOutsideVolumeRow(this.chipRow, this.plotlineFilter, scope, () => {
+            this.plotlineFilter = null;
+            this.renderChips();
+            this.renderList();
+        });
     }
 
-    private renderChapterFilter(): void {
+    /** Active filter whose value does not occur in the selected volume; a click clears it. */
+    private renderOutsideVolumeRow(parent: HTMLElement, name: string, scope: NavigatorScope, clear: () => void): void {
+        if (!scope.volume) return;
+        const hint = outsideVolumeHint(scope.volume);
+        const row = parent.createDiv('sl-nav-plotline-item is-active');
+        row.setAttribute('title', hint);
+        row.createSpan({ text: name, cls: 'sl-nav-plotline-name' });
+        row.createSpan({ text: hint, cls: 'sl-nav-plotline-count' });
+        row.addEventListener('click', clear);
+    }
+
+    private renderChapterFilter(scope: NavigatorScope = this.resolveScope()): void {
         if (!this.chapterRow || !this.chapterSection || !this.chapterToggle) return;
         this.chapterRow.empty();
 
-        const chapters = this.sceneManager.queryService.getUniqueValues('chapter');
-        if (chapters.length === 0) {
+        // With a volume selected: only the chapters of its scenes, counted in it
+        const volumeChips = scope.volume ? collectChapterChips(this.sceneManager.getAllScenes().filter(scope.inList)) : null;
+        const chapters = volumeChips ? volumeChips.values : this.sceneManager.queryService.getUniqueValues('chapter');
+        const filterOutside = volumeChips !== null && filterOutsideVolume(this.chapterFilter, chapters);
+        if (chapters.length === 0 && !filterOutside) {
             this.chapterSection.setCssStyles({ display: 'none' });
             return;
         }
@@ -307,7 +340,7 @@ export class NavigatorView extends ItemView {
             const row = this.chapterRow.createDiv('sl-nav-plotline-item');
             if (this.chapterFilter === chapter) row.addClass('is-active');
             row.createSpan({ cls: 'sl-nav-plotline-name', text: `Chapter ${chapter}` });
-            const count = this.sceneManager.getAllScenes()
+            const count = volumeChips ? (volumeChips.counts.get(chapter) ?? 0) : this.sceneManager.getAllScenes()
                 .filter(s => !s.corkboardNote && !s.inactive && String(s.chapter) === chapter).length;
             row.createSpan({ text: String(count), cls: 'sl-nav-plotline-count' });
             row.addEventListener('click', () => {
@@ -316,17 +349,23 @@ export class NavigatorView extends ItemView {
                 this.renderList();
             });
         }
+        if (filterOutside && this.chapterFilter) this.renderOutsideVolumeRow(this.chapterRow, `Chapter ${this.chapterFilter}`, scope, () => {
+            this.chapterFilter = null;
+            this.renderChapterFilter();
+            this.renderList();
+        });
     }
 
     // ────────────────────────────────────────────────────────
     // Scene list
     // ────────────────────────────────────────────────────────
 
-    private renderList(): void {
+    private renderList(scope: NavigatorScope = this.resolveScope()): void {
         if (!this.listEl) return;
         this.listEl.empty();
 
         let scenes = this.sceneManager.getAllScenes().filter(s => !s.corkboardNote && !s.inactive);
+        if (scope.volume) scenes = scenes.filter(scope.inList);
 
         // Plotline filter
         if (this.plotlineFilter) {
@@ -352,9 +391,9 @@ export class NavigatorView extends ItemView {
 
         if (scenes.length === 0) {
             const empty = this.listEl.createDiv('sl-nav-empty');
-            empty.textContent = this.filterText || this.plotlineFilter || this.chapterFilter
+            empty.textContent = this.outsideVolumeMessage(scope) ?? (this.filterText || this.plotlineFilter || this.chapterFilter
                 ? 'No matching scenes'
-                : 'No scenes yet';
+                : 'No scenes yet');
             return;
         }
 
@@ -368,6 +407,15 @@ export class NavigatorView extends ItemView {
                 this.renderSceneRow(this.listEl!, scene);
             }
         }
+    }
+
+    /** Empty list because an active plotline or chapter filter does not occur in the selected volume. */
+    private outsideVolumeMessage(scope: NavigatorScope): string | undefined {
+        if (!scope.volume || (!this.plotlineFilter && !this.chapterFilter)) return undefined;
+        const inVolume = this.sceneManager.getAllScenes().filter(scope.inList);
+        return emptyListMessage(scope.volume,
+            this.plotlineFilter, this.plotlineFilter !== null && filterOutsideVolume(this.plotlineFilter, collectTagChips(inVolume).values),
+            this.chapterFilter, this.chapterFilter !== null && filterOutsideVolume(this.chapterFilter, collectChapterChips(inVolume).values));
     }
 
     private renderGroupedByAct(scenes: Scene[]): void {
@@ -388,7 +436,9 @@ export class NavigatorView extends ItemView {
             return;
         }
 
+        const volumeTracker = new VolumeDividerTracker(getProjectVolumes(this.app, this.sceneManager.activeProject?.filePath), { bandEnd: true });
         for (const [act, actScenes] of groups) {
+            volumeTracker.renderBefore(this.listEl!, actScenes[0]?.act);
             const isCollapsed = this.collapsedActs.has(act);
 
             const header = this.listEl!.createDiv('sl-nav-act-header');
@@ -671,10 +721,16 @@ export class NavigatorView extends ItemView {
     // Progress bar
     // ────────────────────────────────────────────────────────
 
-    private renderProgress(): void {
+    private renderProgress(scope: NavigatorScope = this.resolveScope()): void {
         if (!this.progressBar || !this.progressLabel) return;
 
-        const stats = this.sceneManager.queryService.getStatistics();
+        // With a volume selected: the same statistics over the volume's own scenes
+        const volume = scope.volume;
+        const stats = volume
+            ? this.sceneManager.queryService.getStatistics(false, this.sceneManager.getAllScenes().filter(scope.inOwn))
+            : this.sceneManager.queryService.getStatistics();
+        if (volume) this.progressBar.parentElement?.setAttribute('title', volumeProgressTooltip(volume));
+        else this.progressBar.parentElement?.removeAttribute('title');
         const useChars = this.plugin.settings.countUnit === 'chars';
         const totalCount = useChars ? stats.totalChars : stats.totalWords;
         const targetCount = useChars ? stats.totalTargetChars : stats.totalTargetWords;
@@ -684,12 +740,12 @@ export class NavigatorView extends ItemView {
             const pct = Math.min(100, Math.round((totalCount / targetCount) * 100));
             const fill = this.progressBar.querySelector('.sl-nav-progress-fill') as HTMLElement;
             if (fill) fill.setCssStyles({ width: `${pct}%` });
-            this.progressLabel.textContent = `${this.formatWords(totalCount)} / ${this.formatWords(targetCount)} (${pct}%)`;
+            this.progressLabel.textContent = volumeProgressLabel(volume, `${this.formatWords(totalCount)} / ${this.formatWords(targetCount)} (${pct}%)`);
         } else {
             const fill = this.progressBar.querySelector('.sl-nav-progress-fill') as HTMLElement;
             if (fill) fill.setCssStyles({ width: '0%' });
-            const totalScenes = this.sceneManager.getAllScenes().filter(s => !s.corkboardNote && !s.inactive).length;
-            this.progressLabel.textContent = `${this.formatWords(totalCount)} ${unit} · ${totalScenes} scenes`;
+            const totalScenes = volume ? stats.totalScenes : this.sceneManager.getAllScenes().filter(s => !s.corkboardNote && !s.inactive).length;
+            this.progressLabel.textContent = volumeProgressLabel(volume, `${this.formatWords(totalCount)} ${unit} · ${totalScenes} scenes`);
         }
     }
 

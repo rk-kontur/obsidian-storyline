@@ -12,6 +12,8 @@ import {
 import { SceneManager } from '../services/SceneManager';
 import { LocationManager } from '../services/LocationManager';
 import { renderViewSwitcher } from '../components/ViewSwitcher';
+import { renderVolumeScopeSelect, scopeSceneRefs, scopeScenes, volumeScopeChanged } from '../utils/volumeScope';
+import { renderScopeHiddenNote, renderScopedReferencesEmpty } from '../components/VolumeScopeNotes';
 import { pickImage as pickImageModal, resolveImagePath } from '../components/ImagePicker';
 import { AddFieldModal } from '../components/AddFieldModal';
 import {
@@ -144,6 +146,7 @@ export class LocationView extends ItemView {
     // ── Main render ────────────────────────────────────
 
     private renderView(container: HTMLElement): void {
+        volumeScopeChanged(this, this.plugin); // remember the rendered volume selection (see refresh)
         this.clearPortaledDropdowns(); // issue #102 — don't leak portaled popups across re-renders
         container.empty();
 
@@ -154,6 +157,7 @@ export class LocationView extends ItemView {
         renderViewSwitcher(toolbar, LOCATION_VIEW_TYPE, this.plugin, this.leaf);
 
         const controls = toolbar.createDiv('story-line-toolbar-controls');
+        renderVolumeScopeSelect(controls, this.plugin);
 
         // ── Codex category tabs ─────────────────────
         renderCodexCategoryTabs(container, {
@@ -273,7 +277,7 @@ export class LocationView extends ItemView {
 
         const allWorlds = this.locationManager.getAllWorlds();
         const allOrphans = this.locationManager.getOrphanLocations();
-        const scenes = this.sceneManager.getAllScenes().filter(scene => !scene.inactive);
+        const scenes = scopeScenes(this.plugin, this.sceneManager.getAllScenes().filter(scene => !scene.inactive));
 
         // Filter worlds: show a world if its name OR any child location name matches
         let worlds = q ? allWorlds.filter(w => {
@@ -1994,7 +1998,8 @@ export class LocationView extends ItemView {
 
     private renderWorldSidePanel(container: HTMLElement, world: StoryWorld): void {
         const locations = this.locationManager.getLocationsForWorld(world.name);
-        const scenes = this.sceneManager.getAllScenes().filter(scene => !scene.inactive);
+        const allScenes = this.sceneManager.getAllScenes().filter(scene => !scene.inactive);
+        const scenes = scopeScenes(this.plugin, allScenes);
 
         // Location count
         const statsBox = container.createDiv('location-side-stats');
@@ -2006,6 +2011,8 @@ export class LocationView extends ItemView {
         const locNames = new Set(locations.map(l => l.name.toLowerCase()));
         const worldScenes = scenes.filter(s => s.location && locNames.has(s.location.toLowerCase()));
         this.renderStat(statGrid, String(worldScenes.length), 'Scenes');
+        renderScopeHiddenNote(statsBox, this.plugin, worldScenes.length,
+            allScenes.filter(s => s.location && locNames.has(s.location.toLowerCase())).length - worldScenes.length);
 
         // Location list
         if (locations.length > 0) {
@@ -2032,10 +2039,11 @@ export class LocationView extends ItemView {
     }
 
     private renderLocationSidePanel(container: HTMLElement, loc: StoryLocation): void {
-        const scenes = this.sceneManager.queryService.getFilteredScenes(
+        const allScenes = this.sceneManager.queryService.getFilteredScenes(
             undefined,
             { field: 'sequence', direction: 'asc' }
         );
+        const scenes = scopeScenes(this.plugin, allScenes);
         const locLower = loc.name.toLowerCase();
         const locScenes = scenes.filter(s => s.location?.toLowerCase() === locLower);
 
@@ -2059,6 +2067,8 @@ export class LocationView extends ItemView {
 
         const statGrid = statsBox.createDiv('location-stat-grid');
         this.renderStat(statGrid, String(locScenes.length), 'Scenes');
+        renderScopeHiddenNote(statsBox, this.plugin, locScenes.length,
+            allScenes.filter(s => s.location?.toLowerCase() === locLower).length - locScenes.length);
 
         // Child locations
         const children = this.locationManager.getChildLocations(loc.name);
@@ -2139,11 +2149,13 @@ export class LocationView extends ItemView {
 
     private renderReferencesPanel(container: HTMLElement, entityName: string): void {
         const index = this.plugin.linkScanner.buildEntityIndex();
-        const refs = index.get(entityName.toLowerCase());
-        if (!refs || refs.length === 0) return;
+        const allRefs = index.get(entityName.toLowerCase()) ?? [];
+        const refs = scopeSceneRefs(this.plugin, allRefs);
+        if (refs.length === 0) { renderScopedReferencesEmpty(container, this.plugin, 'location-references-panel', allRefs.length); return; }
 
         const section = container.createDiv('location-references-panel');
         section.createEl('h3', { text: 'Referenced by' });
+        renderScopeHiddenNote(section, this.plugin, refs.length, allRefs.length - refs.length, 'references');
 
         const groups: Record<string, typeof refs> = {};
         for (const ref of refs) {
@@ -2539,9 +2551,11 @@ export class LocationView extends ItemView {
     }
 
     async refresh(): Promise<void> {
+        const scopeChanged = volumeScopeChanged(this, this.plugin); // a volume switch always re-renders
         if (
             this.selectedItem &&
             Date.now() - this._lastSaveTime < LocationView.SAVE_REFRESH_GRACE_MS
+            && !scopeChanged
         ) {
             await this.plugin.reloadEntities();
             return;

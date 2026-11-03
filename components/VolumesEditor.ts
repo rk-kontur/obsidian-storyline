@@ -4,6 +4,7 @@
 import { Notice, TFile } from 'obsidian';
 import type { App, Modal } from 'obsidian';
 import { EPILOGUE_ACT } from '../utils/actChapter';
+import { clearVolumeScopeIfId, getVolumeScope } from '../utils/volumeScope';
 import { isValidActRange, isVolumeAct, MAX_VOLUME_ACT, MAX_VOLUME_RANGE, nextVolumeId, normalizeVolumeIds, parseVolumes, readVolumeIdSeq, resolveVolumeIds, volumeIdNumber, type VolumeIdFix } from '../utils/volumes';
 
 interface EditableVolume {
@@ -233,7 +234,7 @@ async function saveVolumes(
             if (written.has(v.id) || original.has(v.id)) continue;
             // Its id is in the file already (foreign entry, see above): fresh id
             if (taken.has(v.id)) {
-                v.id = nextVolumeId([...volumes.map(x => x.id), ...rawIds], retiredIds, seq);
+                v.id = nextVolumeId([...volumes.map(x => x.id), ...rawIds, getVolumeScope(app, projectFilePath)], retiredIds, seq);
                 seq = Math.max(seq, volumeIdNumber(v.id));
             }
             const e: Record<string, unknown> = { id: v.id, title: v.title, acts: v.acts };
@@ -484,6 +485,7 @@ export function renderVolumesEditor(
                 volumes.splice(i, 1);
                 retiredIds.add(v.id);
                 session.pendingDeletes.set(v.id, original.get(v.id));
+                clearVolumeScopeIfId(app, projectFilePath, v.id); // the selection goes back to "All volumes"
                 scheduleSave();
                 render();
             });
@@ -500,7 +502,8 @@ export function renderVolumesEditor(
         const used = volumes.flatMap(v => v.acts);
         const lastSize = volumes.length ? volumes[volumes.length - 1].acts.length : 4;
         const start = used.length ? Math.max(...used) + 1 : (getDefinedActs().filter(a => a > 0 && a !== 99)[0] ?? 1);
-        const id = nextVolumeId([...volumes.map(v => v.id), ...rawVolumeIds(projectFm()?.volumes)], retiredIds, readVolumeIdSeq(projectFm()));
+        // The selected volume's id (it may be gone from the file) is never handed out again either
+        const id = nextVolumeId([...volumes.map(v => v.id), ...rawVolumeIds(projectFm()?.volumes), getVolumeScope(app, projectFilePath)], retiredIds, readVolumeIdSeq(projectFm()));
         // Stay inside the act limits of parseActList, without Prologue (0) and Epilogue (99)
         const first = Math.min(Math.max(start, 1), MAX_VOLUME_ACT);
         let acts = toRange(first, Math.min(first + Math.max(1, lastSize) - 1, MAX_VOLUME_ACT)).filter(isVolumeAct);
