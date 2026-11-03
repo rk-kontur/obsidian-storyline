@@ -3,9 +3,8 @@
 // ═══════════════════════════════════════════════════════
 //
 // Pure helpers for the Board view: which act a scene created with "+" in a
-// column gets while a volume is selected, and which defined chapters belong
-// to the selected volume. Without a selected volume the Board behaves
-// exactly like upstream.
+// column gets while a volume is selected. Without a selected volume the
+// Board behaves exactly like upstream.
 
 import type { Scene } from '../models/Scene';
 import { actFromColumnKey, actNumber, type VolumeDef } from './volumes';
@@ -90,23 +89,4 @@ export function boardQuickAddAct(input: BoardQuickAddInput): ActValue {
         }
     }
     return volume.acts[0];
-}
-
-/**
- * Defined chapters (SceneManager.getDefinedChapters) that belong to the
- * selected volume: a chapter belongs to it if one of its scenes (corkboard
- * notes left out) has an act of the volume. Chapters without such a scene
- * (only defined, or only in scenes without act) are shown only under
- * "All volumes". Without a volume the list is returned unchanged.
- */
-export function scopeDefinedChapters(chapters: number[], scenes: Scene[], volume: VolumeDef | undefined): number[] {
-    if (!volume) return chapters;
-    const inVolume = new Set<number>();
-    for (const s of scenes) {
-        if (s.corkboardNote || s.chapter === undefined || s.chapter === null) continue;
-        if (!actInVolume(volume, s.act)) continue;
-        const n = Number(s.chapter);
-        if (!isNaN(n)) inVolume.add(n);
-    }
-    return chapters.filter(ch => inVolume.has(ch));
 }

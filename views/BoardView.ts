@@ -2,7 +2,7 @@
 import { ItemView, WorkspaceLeaf, Menu, Notice, TFile, Modal, Setting, MarkdownRenderer, normalizePath } from 'obsidian';
 import { enhanceStructureModal } from '../components/StructureModalSections';
 import { getScopedVolume, scopeActs, scopeFilter } from '../utils/volumeScope';
-import { boardQuickAddAct, scopeDefinedChapters } from '../utils/boardVolumes';
+import { boardQuickAddAct } from '../utils/boardVolumes';
 import { actFromColumnKey, getProjectVolumes, VolumeDividerTracker } from '../utils/volumes';
 import * as obsidian from 'obsidian';
 import { Scene, SceneFilter, SortConfig, BoardGroupBy, SceneStatus, SceneTemplate, BeatSheetTemplate, BUILTIN_BEAT_SHEETS, getStatusOrder, getStatusConfig, resolveStatusCfg } from '../models/Scene';
@@ -541,8 +541,8 @@ export class BoardView extends ItemView {
         // until a scene was dragged into them).
         const projectPath = this.sceneManager.activeProject?.filePath;
         const definedActs = scopeActs(this.app, projectPath, this.sceneManager.getDefinedActs());
-        // fork: only chapters of the selected volume get empty columns
-        const definedChapters = scopeDefinedChapters(this.sceneManager.getDefinedChapters(), this.sceneManager.getAllScenes(), getScopedVolume(this.app, projectPath));
+        // fork: chapters have no act, so all defined chapters stay under a volume
+        const definedChapters = this.sceneManager.getDefinedChapters();
         const groups = this.sceneManager.queryService.getScenesGroupedByWithEmpty(
             this.groupBy,
             scopeFilter(this.app, projectPath, this.currentFilter),
