@@ -10,7 +10,7 @@
 // `volumes:` in the project nothing is selected and every helper here returns
 // its input unchanged.
 
-import type { App } from 'obsidian';
+import { TFile, type App } from 'obsidian';
 import type SceneCardsPlugin from '../main';
 import type { Scene, SceneFilter } from '../models/Scene';
 import { actNumber, getProjectVolumes, getVolumeForAct, type VolumeDef } from './volumes';
@@ -74,18 +74,24 @@ export function prepareVolumeScopeRefresh(plugin: SceneCardsPlugin): boolean {
 }
 
 /**
- * True if the selection changed since the last call for this owner (a view),
- * and records the current one. Called when a view renders and in its
+ * True if the selected volume changed since the last call for this owner (a
+ * view), and records the current one. Called when a view renders and in its
  * refresh(), which then skips its "just saved" grace window. The first call
- * only records.
+ * only records; without volumes in the project it is always false.
  */
 const lastScopeKeys = new WeakMap<object, string>();
 export function volumeScopeChanged(owner: object, plugin: SceneCardsPlugin): boolean {
     const projectFilePath = plugin.sceneManager?.activeProject?.filePath;
-    const key = `${projectFilePath ?? ''}|${volumeScopeKey(plugin.app, projectFilePath)}`;
+    const hasVolumes = getProjectVolumes(plugin.app, projectFilePath).length > 0;
+    const key = `${projectFilePath ?? ''}|${scopedVolumeId(plugin.app, projectFilePath)}`;
     const prev = lastScopeKeys.get(owner);
     lastScopeKeys.set(owner, key);
-    return prev !== undefined && prev !== key;
+    return hasVolumes && prev !== undefined && prev !== key;
+}
+
+/** Id of the selected volume that exists in the project, '' for "All volumes" (or no volumes). */
+export function scopedVolumeId(app: App, projectFilePath: string | undefined | null): string {
+    return getScopedVolume(app, projectFilePath)?.id ?? '';
 }
 
 /** The selected volume, or undefined for "All volumes" / an unknown id. */
@@ -209,22 +215,17 @@ export function scopeActs(app: App, projectFilePath: string | undefined | null, 
     return vol ? acts.filter(a => vol.acts.includes(a)) : acts;
 }
 
-/** Key fragment for view caches that must be invalidated when the selection changes. */
-export function volumeScopeKey(app: App, projectFilePath: string | undefined | null): string {
-    return `vol:${getVolumeScope(app, projectFilePath)}`;
-}
-
 /**
  * Cache key for a view that caches the scenes of scopeFilter(filter)
- * (Manuscript): the selection plus the volume's acts and the merged act list
+ * (Manuscript): the selected volume, its acts and the merged act list
  * (including raw spellings like "05"), so a changed `acts:` or a changed act
- * spelling invalidates the cache.
+ * spelling invalidates the cache. '' without a selected volume.
  */
 export function volumeScopeFilterKey(app: App, projectFilePath: string | undefined | null, filter: SceneFilter | undefined): string {
     const vol = getScopedVolume(app, projectFilePath);
-    if (!vol) return volumeScopeKey(app, projectFilePath);
+    if (!vol) return '';
     const scoped = scopeFilter(app, projectFilePath, filter);
-    return `${volumeScopeKey(app, projectFilePath)}|acts:${JSON.stringify(vol.acts)}|scope:${JSON.stringify(scoped?.act ?? [])}`;
+    return `vol:${vol.id}|acts:${JSON.stringify(vol.acts)}|scope:${JSON.stringify(scoped?.act ?? [])}`;
 }
 
 // ── Self-updating dropdowns ─────────────────────────
@@ -279,9 +280,12 @@ export function syncVolumeScopeSelects(plugin: SceneCardsPlugin): void {
     syncedProject = projectFilePath ?? null; // before getVolumeScope, which checks it
     const volumes = getProjectVolumes(plugin.app, projectFilePath);
     let current = getVolumeScope(plugin.app, projectFilePath);
-    // Stored id of a volume that no longer exists: back to "All volumes", so a
-    // later volume that gets the same id is not selected silently.
-    if (current && volumes.length > 0 && !volumes.some(v => v.id === current)) {
+    // Stored id of a volume that no longer exists (also when `volumes:` is gone
+    // entirely): back to "All volumes", so a later volume that gets the same id
+    // is not selected silently. Not before the project file is indexed: at
+    // startup its volumes may simply not be known yet.
+    const indexed = volumes.length > 0 || isProjectFileIndexed(plugin.app, projectFilePath);
+    if (current && indexed && !volumes.some(v => v.id === current)) {
         clearVolumeScope(plugin.app, projectFilePath);
         current = '';
     }
@@ -289,6 +293,13 @@ export function syncVolumeScopeSelects(plugin: SceneCardsPlugin): void {
     syncedScopeSig = vol ? `${projectFilePath ?? ''}|${vol.id}|${JSON.stringify(vol.acts)}` : '';
     pruneRegistry();
     for (const entry of registry) syncOne(entry, volumes, current);
+}
+
+/** True once the metadata cache has the project file (its `volumes:` are known). */
+function isProjectFileIndexed(app: App, projectFilePath: string | undefined | null): boolean {
+    if (!projectFilePath) return false;
+    const file = app.vault.getAbstractFileByPath(projectFilePath);
+    return file instanceof TFile && app.metadataCache.getFileCache(file) !== null;
 }
 
 /**

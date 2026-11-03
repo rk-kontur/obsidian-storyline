@@ -2,7 +2,7 @@
 import { App, ItemView, WorkspaceLeaf, Menu, Modal, TFile, Notice, MarkdownRenderer, Component } from 'obsidian';
 import * as obsidian from 'obsidian';
 import { CellData, ColumnMeta, RowMeta, PlotGridData } from '../models/PlotGridData';
-import { scopeFilter, volumeScopeKey } from '../utils/volumeScope';
+import { scopedVolumeId, scopeFilter } from '../utils/volumeScope';
 import { renderVolumeStep, VolumeDividerTracker } from '../utils/volumeBands';
 import { getProjectVolumes, type VolumeDef } from '../utils/volumes';
 import { LocationManager } from '../services/LocationManager';
@@ -60,6 +60,8 @@ export class PlotgridView extends ItemView {
     private currentSort: SortConfig = { field: 'sequence', direction: 'asc' };
     private dataLoadGeneration = 0;
     private renderedProjectKey: string | null = null;
+    /** Volume selected at the last render: a changed selection starts at the top, like a project switch */
+    private renderedVolumeScope = '';
     private scrollRestoreGeneration = 0;
     private scrollRestoreFrame: number | null = null;
     private saveProjectKey: string | null = null;
@@ -1004,9 +1006,8 @@ export class PlotgridView extends ItemView {
         if (!this.canvasEl || !this.scrollAreaEl) return;
 
         const projectKey = this.getProjectKey();
-        // A changed volume selection starts at the top, like a project switch
-        const renderKey = `${projectKey ?? ''}|${volumeScopeKey(this.app, this.plugin?.sceneManager?.activeProject?.filePath)}`;
-        const preserveScroll = this.renderedProjectKey === renderKey;
+        const volumeScope = scopedVolumeId(this.app, this.plugin?.sceneManager?.activeProject?.filePath);
+        const preserveScroll = this.renderedProjectKey === projectKey && this.renderedVolumeScope === volumeScope;
         const prevScrollTop = preserveScroll ? this.scrollAreaEl.scrollTop : 0;
         const prevScrollLeft = preserveScroll ? this.scrollAreaEl.scrollLeft : 0;
         const scrollRestoreGeneration = ++this.scrollRestoreGeneration;
@@ -1014,7 +1015,8 @@ export class PlotgridView extends ItemView {
             window.cancelAnimationFrame(this.scrollRestoreFrame);
             this.scrollRestoreFrame = null;
         }
-        this.renderedProjectKey = renderKey;
+        this.renderedProjectKey = projectKey;
+        this.renderedVolumeScope = volumeScope;
 
         this.ensureDefaults();
         this.canvasEl.empty();
