@@ -13875,10 +13875,21 @@ body.sl-focus-active-global.sl-focus-dim-text .markdown-source-view.mod-cm6 .cm-
 }
 
 /* ─── Manage story structure: volumes editor ────────────────── */
+/* The list is the grid and every row a subgrid, so header and rows share
+   the column widths (the deadline column is only as wide as the date) */
+.story-line-volumes-list {
+    display: grid;
+    grid-template-columns: minmax(80px, 2fr) minmax(48px, 0.6fr) minmax(48px, 0.6fr) minmax(64px, 1fr) max-content auto auto;
+    column-gap: 6px;
+}
+
+.story-line-volumes-list > * {
+    grid-column: 1 / -1;
+}
+
 .story-line-volume-row {
     display: grid;
-    grid-template-columns: minmax(80px, 2fr) minmax(48px, 0.6fr) minmax(48px, 0.6fr) minmax(64px, 1fr) minmax(125px, 1.4fr) auto auto;
-    gap: 6px;
+    grid-template-columns: subgrid;
     align-items: center;
     margin-bottom: 6px;
 }
@@ -13886,6 +13897,16 @@ body.sl-focus-active-global.sl-focus-dim-text .markdown-source-view.mod-cm6 .cm-
 .story-line-volume-row input {
     width: 100%;
     min-width: 0;
+}
+
+.story-line-volume-row input[type="date"] {
+    width: auto;
+}
+
+/* Phones: the rows keep their layout and the list scrolls sideways */
+.is-phone .story-line-volumes-list {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
 }
 
 .story-line-volume-head {
@@ -13905,22 +13926,6 @@ body.sl-focus-active-global.sl-focus-dim-text .markdown-source-view.mod-cm6 .cm-
 
 .story-line-volume-row.has-overlap input[type="number"] {
     border-color: var(--text-error);
-}
-
-/* Phones: two fields per line (title | from, to | goal, deadline | move, remove);
-   the inputs show placeholders instead of the header row */
-.is-phone .story-line-volume-head {
-    display: none;
-}
-
-.is-phone .story-line-volume-row {
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-    padding-bottom: 6px;
-    border-bottom: 1px solid var(--background-modifier-border);
-}
-
-.is-phone .story-line-volume-row > button {
-    justify-self: end;
 }
 
 .story-line-volumes-warning {
