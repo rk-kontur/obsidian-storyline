@@ -13967,3 +13967,84 @@ body.sl-focus-active-global.sl-focus-dim-text .markdown-source-view.mod-cm6 .cm-
     color: var(--text-muted);
     font-size: var(--font-ui-smaller);
 }
+
+/* ─── Volumes in the views: bands and card badges ───────────── */
+.story-line-volume-badge {
+    margin-left: auto;
+    padding: 0 6px;
+    border-radius: 8px;
+    background: var(--background-modifier-hover);
+    color: var(--text-muted);
+    font-size: var(--font-ui-smaller);
+    font-weight: 600;
+    line-height: 1.6;
+}
+
+/* Band above the first act of a volume (Timeline, Manuscript, Plot Grid, Navigator) */
+.story-line-volume-divider {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 18px 0 6px;
+    padding: 6px 10px;
+    border-top: 3px solid var(--text-muted);
+    background: var(--background-secondary);
+    font-size: 1.05em;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--text-accent);
+}
+
+/* Band end before Prologue, Epilogue, "No act" and acts outside every volume */
+.story-line-volume-divider.story-line-volume-end {
+    padding: 0;
+    background: none;
+}
+
+.plot-grid-canvas > .story-line-volume-divider {
+    margin: 0;
+    /* position (sticky or relative) is set inline, following "Sticky headers" */
+    left: 0;
+    z-index: 8;
+}
+
+.sl-nav-list .story-line-volume-divider {
+    margin: 10px 0 2px;
+    padding: 3px 8px;
+    font-size: var(--font-ui-small);
+}
+
+/* Board (grouped by act): vertical band between act columns */
+.story-line-volume-column {
+    flex: 0 0 28px;
+    align-self: stretch;
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    padding-top: 12px;
+    border-left: 3px solid var(--text-muted);
+    background: var(--background-secondary);
+    border-radius: 4px;
+}
+
+.story-line-volume-column.story-line-volume-end {
+    flex: 0 0 6px;
+    padding-top: 0;
+    background: none;
+}
+
+.story-line-volume-column-label {
+    writing-mode: vertical-rl;
+    transform: rotate(180deg);
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--text-accent);
+    white-space: nowrap;
+}
+
+/* Manuscript focus mode hides the volume bands like the act dividers */
+.sl-manuscript-focus.sl-manuscript-focus .story-line-volume-divider {
+    display: none;
+}

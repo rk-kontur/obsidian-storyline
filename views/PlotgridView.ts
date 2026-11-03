@@ -3,6 +3,8 @@ import { App, ItemView, WorkspaceLeaf, Menu, Modal, TFile, Notice, MarkdownRende
 import * as obsidian from 'obsidian';
 import { CellData, ColumnMeta, RowMeta, PlotGridData } from '../models/PlotGridData';
 import { scopedVolumeId, scopeFilter } from '../utils/volumeScope';
+import { renderVolumeStep, VolumeDividerTracker } from '../utils/volumeBands';
+import { getProjectVolumes, type VolumeDef } from '../utils/volumes';
 import { LocationManager } from '../services/LocationManager';
 import type { SceneFilter, SortConfig } from '../models/Scene';
 import { SceneManager } from '../services/SceneManager';
@@ -1150,9 +1152,25 @@ export class PlotgridView extends ItemView {
         const rowHeightParts: string[] = [];
         this.renderedRowTrackIndices.clear();
         let gridTrackIndex = 1;
+        // Volume band (or band end) before an act divider, band end before a scene row
+        // without act; the tracks are reserved here and the bands drawn below
+        const volumeSteps = new Map<number, VolumeDef | 'end'>();
+        const volumeTracker = new VolumeDividerTracker(getProjectVolumes(this.app, activeProject?.filePath), { bandEnd: true });
         for (const ri of rowIndices) {
             if (!visibleRows.has(ri)) continue;
             const divs = dividersBefore.get(ri);
+            if (volumeTracker.active) {
+                const actDivider = divs?.find(d => d.type === 'act');
+                const row = this.data.rows[ri];
+                const scene = row.sourceType === 'auto' && row.sourceId ? sceneManager?.getScene(row.sourceId) : undefined;
+                const noAct = !actDivider && !!scene && scene.act === undefined && !collapsedRows.has(ri);
+                const step = actDivider ? volumeTracker.advance(actDivider.key.slice('act:'.length)) : (noAct ? volumeTracker.advance(undefined) : undefined);
+                if (step) {
+                    volumeSteps.set(ri, step);
+                    rowHeightParts.push(step === 'end' ? '6px' : '34px');
+                    gridTrackIndex++;
+                }
+            }
             if (divs) {
                 for (const d of divs) {
                     rowHeightParts.push(d.type === 'act' ? '32px' : '26px');
@@ -1382,6 +1400,11 @@ export class PlotgridView extends ItemView {
 
         for (const ri of rowIndices) {
             if (!visibleRows.has(ri)) continue; // skip filtered-out rows
+            const volumeStep = volumeSteps.get(ri);
+            if (volumeStep) {
+                renderVolumeStep(this.canvasEl, volumeStep, `1 / ${this.data.columns.length + 2}`)
+                    .setCssStyles({ position: (this.data.stickyHeaders === false) ? 'relative' : 'sticky' });
+            }
             // ── Act/chapter dividers ──
             const divs = dividersBefore.get(ri);
             if (divs) {

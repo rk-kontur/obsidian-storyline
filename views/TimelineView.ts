@@ -2,6 +2,9 @@
 import { openConfirmModal } from '../components/ConfirmModal';
 import { addVolumesSection } from '../components/VolumesEditor';
 import { defaultActForScope, getScopedVolume, placeInFullList, renderVolumeScopeSelect, scopeActs, scopeFilter } from '../utils/volumeScope';
+import { emptyTimelineActs, emptyTimelineVolumes, firstVolumeAct, mergeByAct, renderEmptyVolumeEntry } from '../utils/timelineVolumes';
+import { VolumeDividerTracker } from '../utils/volumeBands';
+import { getProjectVolumes, type VolumeDef } from '../utils/volumes';
 import { SceneManager } from '../services/SceneManager';
 import { SceneCardComponent } from '../components/SceneCard';
 import { InspectorComponent } from '../components/Inspector';
@@ -329,9 +332,15 @@ export class TimelineView extends ItemView {
         for (const s of scenes) {
             if (s.act !== undefined) actsWithScenes.add(Number(s.act));
         }
+        // Volumes without scenes get a placeholder; in Reading order empty acts
+        // and volumes sit between the acts, inside their volume band
+        const actOrder = this.timelineOrder !== 'chronological';
+        const volumes = getProjectVolumes(this.app, projectPath);
         const scopedVolume = getScopedVolume(this.app, projectPath);
+        const sceneActs = scenes.map(s => s.act);
+        const emptyVolumes = emptyTimelineVolumes(volumes, scopedVolume, sceneActs, emptyTimelineActs(definedActs, sceneActs), actOrder);
 
-        if (scenes.length === 0 && definedActs.length === 0) {
+        if (scenes.length === 0 && definedActs.length === 0 && emptyVolumes.length === 0) {
             const empty = timelineEl.createDiv('story-line-empty');
             empty.createEl('p', { text: 'No scenes found.' });
             empty.createEl('p', { text: 'Click "+ new scene" to create your first scene, or use the structure button to set up acts and chapters.' });
@@ -384,8 +393,10 @@ export class TimelineView extends ItemView {
         // Store dropIndex on the track so drop handlers in child entries can read it
         (track as unknown as Record<string, unknown>)._slDropIndex = null;
 
+        const placeholdersInActOrder = actOrder && volumes.length > 0;
         const refreshDropIndicators = () => {
-            const entries = track.querySelectorAll('.timeline-entry');
+            // Placeholders between the acts are no drop positions
+            const entries = track.querySelectorAll(placeholdersInActOrder ? '.timeline-entry:not(.timeline-entry-empty)' : '.timeline-entry');
             entries.forEach((el, idx) => {
                 el.classList.toggle('drop-above', dropIndex === idx);
                 el.classList.toggle('drop-below', dropIndex === idx + 1);
@@ -473,7 +484,8 @@ export class TimelineView extends ItemView {
             | { kind: 'divider'; actLabel: string; actNum: number | undefined }
             | { kind: 'chapter-divider'; label: string; chapterLabel?: string; chapterNum?: number }
             | { kind: 'scene'; scene: Scene; globalIdx: number; dateInvalid: boolean; timeInvalid: boolean }
-            | { kind: 'empty-act'; actLabel: string; actNum: number };
+            | { kind: 'empty-act'; actLabel: string; actNum: number }
+            | { kind: 'empty-volume'; actNum: number; volume: VolumeDef };
 
         const tlItems: TLItem[] = [];
         let lastRenderedAct: number | undefined = undefined;
@@ -510,18 +522,25 @@ export class TimelineView extends ItemView {
         }
 
         // Add empty-act placeholders for defined acts with no scenes
+        const placeholders: TLItem[] = emptyVolumes.map(volume => ({ kind: 'empty-volume' as const, actNum: firstVolumeAct(volume), volume }));
         for (const actNum of sortedActs) {
             if (!actsWithScenes.has(Number(actNum))) {
                 const beatLabel = this.sceneManager.getActLabel(actNum);
                 const cleanBeat = beatLabel?.replace(/^(Act|Prologue|Epilogue)\s*\d*\s*[—:]\s*/i, '');
                 const actDisplay = getActDisplayLabel(actNum);
                 const actLabel = cleanBeat ? `${actDisplay} — ${cleanBeat}` : actDisplay;
-                tlItems.push({ kind: 'empty-act', actLabel, actNum });
+                placeholders.push({ kind: 'empty-act', actLabel, actNum });
             }
         }
+        tlItems.splice(0, tlItems.length, ...mergeByAct(tlItems, placeholders, placeholdersInActOrder));
 
+        // Volume bands only in Reading order; in chronological order the acts interleave
+        const volumeTracker = new VolumeDividerTracker(actOrder ? volumes : [], { bandEnd: true });
         const renderTLItem = (item: TLItem) => {
-            if (item.kind === 'divider') {
+            if (item.kind === 'empty-volume') {
+                renderEmptyVolumeEntry(track, item.volume, volumeTracker, act => this.openQuickAdd(act));
+            } else if (item.kind === 'divider') {
+                volumeTracker.renderBefore(track, item.actNum);
                 const divider = track.createDiv('timeline-act-divider');
                 divider.createSpan({ cls: 'timeline-act-label', text: item.actLabel });
                 if (item.actNum !== undefined) {
@@ -566,6 +585,7 @@ export class TimelineView extends ItemView {
                 this.renderTimelineEntry(track, item.scene, item.globalIdx, scenes, dragIndex, dropIndex, refreshDropIndicators, handleDrop, (di) => { dragIndex = di; }, (di) => { dropIndex = di; (track as unknown as Record<string, unknown>)._slDropIndex = di; }, item.dateInvalid, item.timeInvalid);
             } else {
                 // empty-act placeholder
+                volumeTracker.renderBefore(track, item.actNum);
                 const divider = track.createDiv('timeline-act-divider');
                 divider.createSpan({ cls: 'timeline-act-label', text: item.actLabel });
                 const addInAct = divider.createEl('button', {
@@ -635,8 +655,16 @@ export class TimelineView extends ItemView {
             scopeFilter(this.app, projectPath, undefined),
             { field: sortField, direction: 'asc' }
         ).filter(scene => !this.isNoteScene(scene));
+        // Volume bands only in Reading order; in chronological order the acts interleave
+        const volumeTracker = new VolumeDividerTracker(this.timelineOrder !== 'chronological' ? getProjectVolumes(this.app, projectPath) : [], { bandEnd: true });
 
         if (scenes.length === 0) {
+            // The selected volume has no scenes: its band and an empty card
+            const scopedVolume = getScopedVolume(this.app, projectPath);
+            if (scopedVolume) {
+                renderEmptyVolumeEntry(timelineEl, scopedVolume, volumeTracker, act => this.openQuickAdd(act));
+                return;
+            }
             const empty = timelineEl.createDiv('story-line-empty');
             empty.createEl('p', { text: 'No scenes found.' });
             empty.createEl('p', { text: 'Click "+ new scene" to create your first scene.' });
@@ -700,6 +728,7 @@ export class TimelineView extends ItemView {
         // 5. Render each row
         for (const row of rows) {
             if (row.type === 'act-divider') {
+                volumeTracker.renderBefore(grid, row.actNum, '1 / -1');
                 // Act divider spans the full width
                 const divider = grid.createDiv('swimlane-act-divider');
                 divider.setCssStyles({ gridColumn: `1 / -1` });

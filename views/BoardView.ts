@@ -5,7 +5,9 @@ import { Scene, SceneFilter, SortConfig, BoardGroupBy, SceneStatus, SceneTemplat
 import { openConfirmModal } from '../components/ConfirmModal';
 import { addVolumesSection } from '../components/VolumesEditor';
 import { getScopedVolume, scopeActs, scopeFilter } from '../utils/volumeScope';
-import { boardQuickAddAct, scopeDefinedChapters } from '../utils/boardVolumes';
+import { actFromColumnKey, boardQuickAddAct, scopeDefinedChapters } from '../utils/boardVolumes';
+import { VolumeDividerTracker } from '../utils/volumeBands';
+import { getProjectVolumes } from '../utils/volumes';
 import { openStructureLabelModal } from '../components/StructureLabelModal';
 import { SceneManager } from '../services/SceneManager';
 import { SceneCardComponent } from '../components/SceneCard';
@@ -560,6 +562,7 @@ export class BoardView extends ItemView {
             return;
         }
 
+        const volumeTracker = new VolumeDividerTracker(this.groupBy === 'act' ? getProjectVolumes(this.app, projectPath) : [], { bandEnd: true });
         for (const key of sortedKeys) {
             let scenes = groups.get(key) || [];
             if (!this.plugin.settings.showNotesInKanban) {
@@ -569,6 +572,7 @@ export class BoardView extends ItemView {
                     continue;
                 }
             }
+            volumeTracker.renderColumnBefore(this.boardEl, actFromColumnKey(key));
             this.renderColumn(this.boardEl, key, scenes);
         }
     }
