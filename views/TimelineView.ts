@@ -873,6 +873,12 @@ export class TimelineView extends ItemView {
         return Array.from(seen);
     }
 
+    /** fork: scene characters without the POV character, which the card already shows as "POV: …". */
+    private kmCharactersWithoutPov(scene: Scene): string[] {
+        const characters = scene.characters ?? [];
+        return scene.pov ? characters.filter(c => linkKey(c) !== linkKey(scene.pov)) : characters;
+    }
+
     /**
      * Render a compact scene card inside a swimlane cell.
      * Uses the same visual language as the linear timeline cards.
@@ -907,11 +913,14 @@ export class TimelineView extends ItemView {
 
         const meta = card.createDiv('timeline-card-meta');
         // Show the field that is NOT the grouping field (avoid redundancy)
-        if (this.swimlaneGroupBy !== 'pov' && scene.pov) {
+        const showPov = this.swimlaneGroupBy !== 'pov' && !!scene.pov;
+        if (showPov) {
             meta.createSpan({ cls: 'timeline-card-pov', text: `POV: ${scene.pov}` });
         }
-        if (this.swimlaneGroupBy !== 'character' && scene.characters?.length) {
-            meta.createSpan({ cls: 'timeline-card-pov', text: scene.characters.join(', ') });
+        // fork: without the POV character when the card shows it as "POV: …"
+        const metaChars = showPov ? this.kmCharactersWithoutPov(scene) : (scene.characters ?? []);
+        if (this.swimlaneGroupBy !== 'character' && metaChars.length) {
+            meta.createSpan({ cls: 'timeline-card-pov', text: metaChars.join(', ') });
         }
         const sceneLocations = parseSceneLocations(scene.location);
         if (this.swimlaneGroupBy !== 'location' && sceneLocations.length > 0) {
@@ -1139,7 +1148,7 @@ export class TimelineView extends ItemView {
         }
 
         // Characters (fork: without the POV character, it is already shown as "POV: …")
-        const timelineChars = (scene.characters ?? []).filter(c => !scene.pov || linkKey(c) !== linkKey(scene.pov));
+        const timelineChars = this.kmCharactersWithoutPov(scene);
         if (timelineChars.length) {
             const chars = card.createDiv('timeline-card-chars');
             timelineChars.forEach(c => {
