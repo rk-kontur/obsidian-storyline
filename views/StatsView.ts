@@ -12,6 +12,8 @@ import { ItemView, WorkspaceLeaf } from 'obsidian';
 import { Scene, getStatusOrder, resolveStatusCfg } from '../models/Scene';
 import { getActDisplayLabel } from '../utils/actChapter';
 import { PlotWarning, Validator } from '../services/Validator';
+import { adjustOffPageWarnings, computeOffPageCoverage, offPageCardValue, renderOffPageCoverage, type OffPageLineCoverage } from '../components/OffPageStatsSection';
+import { getOffPageLines } from '../utils/pageZones';
 import {
     tokenizeWords,
     splitSentences,
@@ -40,6 +42,8 @@ export class StatsView extends ItemView {
     private echoCache: { echoes: EchoCluster[]; perScene: SceneEchoReport[] } | null = null;
     private sprintTimerId: number | null = null;
     private sectionStateOverrides = new Map<string, boolean>();
+    /** Coverage of off page plotlines for the current render (empty without `offPageLines`) */
+    private offPageCoverage: OffPageLineCoverage[] = [];
 
     constructor(leaf: WorkspaceLeaf, plugin: SceneCardsPlugin, sceneManager: SceneManager) {
         super(leaf);
@@ -103,6 +107,7 @@ export class StatsView extends ItemView {
         const stats = this.sceneManager.queryService.getStatistics(this.plugin.settings.excludeArcAnchorFromWordcount ?? true);
         const allScenes = this.sceneManager.getAllScenes()
             .filter(scene => !scene.inactive && !scene.corkboardNote);
+        this.offPageCoverage = computeOffPageCoverage(this.app, getOffPageLines(this.app, this.sceneManager.activeProject?.filePath), allScenes);
 
         if (redesigned) {
             // Section order, icons, and default open states follow Scribe's
@@ -112,6 +117,8 @@ export class StatsView extends ItemView {
 
             this.renderCollapsible(content, 'target', 'Progress Breakdown', true, body =>
                 this.renderProgressBreakdown(body, stats, allScenes));
+
+            this.renderOffPageSection(content);
 
             this.renderCollapsible(content, 'calendar', 'Writing History', false, body =>
                 this.renderWritingHistory(body));
@@ -168,6 +175,8 @@ export class StatsView extends ItemView {
         this.renderCollapsible(content, 'list-checks', 'Progress Breakdown', true, body =>
             this.renderProgressBreakdown(body, stats, allScenes));
 
+        this.renderOffPageSection(content);
+
         // 5. Characters & World (collapsible, default collapsed)
         this.renderCollapsible(content, 'users', 'Characters & World', false, body =>
             this.renderCharactersWorld(body, stats, allScenes));
@@ -191,6 +200,13 @@ export class StatsView extends ItemView {
         // 8. Warnings (collapsible, default collapsed)
         this.renderCollapsible(content, 'alert-triangle', 'Warnings', false, body =>
             this.renderWarnings(body, allScenes));
+    }
+
+    /** "Off page coverage" section, only when the project has off page plotlines. */
+    private renderOffPageSection(content: HTMLElement): void {
+        if (!this.offPageCoverage.length) return;
+        this.renderCollapsible(content, 'cloud', 'Off page coverage', true, body =>
+            renderOffPageCoverage(body, this.offPageCoverage, scene => { void this.app.workspace.openLinkText(scene.filePath, '', true); }));
     }
 
     /** True when the Statistics view renders in Scribe-compatible redesigned mode. */
@@ -368,6 +384,7 @@ export class StatsView extends ItemView {
         const readM = readMinutes % 60;
         this.createStatCard(row, 'book-open', 'Read Time',
             readH > 0 ? `${readH}h ${readM}m` : `${readMinutes}m`);
+        if (this.offPageCoverage.length) this.createStatCard(row, 'cloud', 'Off page stages told', offPageCardValue(this.offPageCoverage));
 
         const renderProjectOverview = (section: HTMLElement): void => {
             const totalTarget = this.plugin.settings.projectWordGoal || stats.totalTargetWords || 80000;
@@ -2217,7 +2234,7 @@ export class StatsView extends ItemView {
 
     private renderWarnings(parent: HTMLElement, allScenes: Scene[]): void {
         if (this.plugin.settings.enablePlotHoleDetection && allScenes.length > 0) {
-            const warnings = Validator.validate(allScenes);
+            const warnings = adjustOffPageWarnings(Validator.validate(allScenes), this.offPageCoverage);
             if (warnings.length === 0) {
                 const ok = parent.createDiv('stats-ok');
                 const ic = ok.createSpan();

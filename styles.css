@@ -13945,3 +13945,34 @@ body.sl-focus-active-global.sl-focus-dim-text .markdown-source-view.mod-cm6 .cm-
 .plot-grid-cell.is-off-page.selected {
     box-shadow: inset 0 0 0 2px var(--interactive-accent), inset 0 0 0 9999px color-mix(in srgb, var(--background-modifier-hover) 60%, transparent);
 }
+
+/* Statistics: off page coverage */
+.stats-offpage-line {
+    margin: 4px 0 8px;
+}
+
+.stats-offpage-line > summary {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+}
+
+.stats-offpage-line-name {
+    min-width: 120px;
+    font-weight: 600;
+}
+
+.stats-offpage-line > summary .stats-bar {
+    display: block;
+    flex: 0 0 70px;
+    margin-top: 0;
+}
+
+.stats-offpage-line-count {
+    color: var(--text-muted);
+}
+
+.stats-offpage-line > .stats-subsection-title {
+    margin: 6px 0 2px 16px;
+}
