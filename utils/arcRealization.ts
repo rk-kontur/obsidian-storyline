@@ -14,6 +14,8 @@
 //
 // The field is read straight from the metadata cache, so the scene parser
 // (MetadataParser whitelist) stays untouched.
+// Unticking "Arc point" keeps the field: it is ignored while the scene is
+// not an Arc Point and counts again once it is one (e.g. after an undo).
 
 import type { App } from 'obsidian';
 import { TFile } from 'obsidian';
@@ -32,7 +34,7 @@ export function readRealizedBy(app: App, scene: Scene): string | undefined {
     return typeof raw === 'string' && raw.trim() ? raw.trim() : undefined;
 }
 
-/** Resolve the realizing scene of an Arc Point among `candidates`. */
+/** Resolve the realizing scene of an Arc Point among `candidates`. Does not check `arc.arcAnchor`; callers only pass Arc Points. */
 export function resolveRealizingScene(app: App, arc: Scene, candidates: Scene[]): Scene | undefined {
     const raw = readRealizedBy(app, arc);
     if (!raw) return undefined;
@@ -55,6 +57,7 @@ export interface Realization {
 /**
  * Arc Points among `scenes` whose realizing scene is also in `scenes`
  * (and is not itself an Arc Point). Keyed by the Arc Point's file path.
+ * A `realizedBy` on a scene that is not an Arc Point is ignored.
  */
 export function resolveRealizations(app: App, scenes: Scene[]): Map<string, Realization> {
     const result = new Map<string, Realization>();

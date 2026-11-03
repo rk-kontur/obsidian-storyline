@@ -23,22 +23,6 @@ async function writeRealizedBy(app: App, arc: Scene, target: Scene | undefined):
 }
 
 /**
- * Removes `realizedBy` (and the `realized_by` spelling) from a scene that is
- * no longer an Arc Point, so no orphaned link stays behind. Call after the
- * `arcAnchor` write has finished; does nothing when neither key is set.
- */
-export async function clearRealizedBy(app: App, scene: Scene): Promise<void> {
-    const file = app.vault.getAbstractFileByPath(scene.filePath);
-    if (!(file instanceof TFile)) return;
-    const fm = app.metadataCache.getFileCache(file)?.frontmatter;
-    if (fm && !(REALIZED_BY_KEY in fm) && !('realized_by' in fm)) return;
-    await app.fileManager.processFrontMatter(file, (front: Record<string, unknown>) => {
-        delete front[REALIZED_BY_KEY];
-        delete front.realized_by;
-    });
-}
-
-/**
  * Renders "Realized [dropdown: not yet | scenes…]" next to the Arc point checkbox.
  * `container` is the Arc point row of the Inspector.
  * `getScenes` returns the candidate scenes (regular scenes of the project).
