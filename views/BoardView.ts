@@ -5,7 +5,7 @@ import { Scene, SceneFilter, SortConfig, BoardGroupBy, SceneStatus, SceneTemplat
 import { openConfirmModal } from '../components/ConfirmModal';
 import { addVolumesSection } from '../components/VolumesEditor';
 import { getScopedVolume, scopeActs, scopeFilter } from '../utils/volumeScope';
-import { actFromColumnKey, boardQuickAddAct, scopeDefinedChapters } from '../utils/boardVolumes';
+import { actFromColumnKey, boardQuickAddAct } from '../utils/boardVolumes';
 import { VolumeDividerTracker } from '../utils/volumeBands';
 import { getProjectVolumes } from '../utils/volumes';
 import { openStructureLabelModal } from '../components/StructureLabelModal';
@@ -540,10 +540,10 @@ export class BoardView extends ItemView {
         // Pass defined acts/chapters so empty containers still render as
         // drop targets (issue #220 — newly inserted chapters were invisible
         // until a scene was dragged into them).
-        // With a volume selected: only its acts, and only chapters with scenes in it
+        // With a volume selected: only its acts (chapters have no act, so all stay)
         const projectPath = this.sceneManager.activeProject?.filePath;
         const definedActs = scopeActs(this.app, projectPath, this.sceneManager.getDefinedActs());
-        const definedChapters = scopeDefinedChapters(this.sceneManager.getDefinedChapters(), this.sceneManager.getAllScenes(), getScopedVolume(this.app, projectPath));
+        const definedChapters = this.sceneManager.getDefinedChapters();
         const groups = this.sceneManager.queryService.getScenesGroupedByWithEmpty(
             this.groupBy,
             scopeFilter(this.app, projectPath, this.currentFilter),
