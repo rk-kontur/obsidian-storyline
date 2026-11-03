@@ -18,6 +18,7 @@ import { enableDragToPan } from '../components/DragToPan';
 import { isMobile } from '../components/MobileAdapter';
 import { PLOTGRID_VIEW_TYPE } from '../constants';
 import { resolveTagColor, getPlotlineHSL, resolveStickyNoteColors, contrastTextColor } from '../settings';
+import { plotlineColorsOn, getPlotlineColor, isPlotline } from '../utils/plotlineColor';
 import { compareActChapter, getActDisplayLabel, getChapterDisplayLabel } from '../utils/actChapter';
 import { attachTooltip } from '../components/Tooltip';
 import type SceneCardsPlugin from '../main';
@@ -1238,12 +1239,15 @@ export class PlotgridView extends ItemView {
 
         for (let ci = 0; ci < this.data.columns.length; ci++) {
             const col = this.data.columns[ci];
+            // Render-only: synced plotline columns without own colour show the plotline colour
+            const plotlineBg = (this.plugin && col.sourceType === 'auto' && col.sourceKind === 'tags' && col.sourceId
+                && plotlineColorsOn(this.plugin, 'plotgrid')) ? getPlotlineColor(this.plugin, col.sourceId) : '';
             const el = this.canvasEl.createDiv('plot-grid-col-header');
             el.setCssStyles({
                 position: (this.data.stickyHeaders === false) ? 'relative' : 'sticky',
                 top: '0',
                 zIndex: '10',
-                background: col.headerBgColor || col.bgColor || 'var(--background-secondary)',
+                background: col.headerBgColor || col.bgColor || plotlineBg || 'var(--background-secondary)',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
@@ -1252,7 +1256,7 @@ export class PlotgridView extends ItemView {
             });
             el.textContent = col.label;
             if (col.textColor) el.setCssStyles({ color: col.textColor });
-            else { const _bg = col.headerBgColor || col.bgColor; if (_bg && _bg.startsWith('#')) el.setCssStyles({ color: contrastTextColor(_bg) }); }
+            else { const _bg = col.headerBgColor || col.bgColor || plotlineBg; if (_bg && _bg.startsWith('#')) el.setCssStyles({ color: contrastTextColor(_bg) }); }
             if (col.bold) el.setCssStyles({ fontWeight: '600' });
             if (col.italic) el.setCssStyles({ fontStyle: 'italic' });
 
@@ -3853,7 +3857,9 @@ export class PlotgridView extends ItemView {
                     borderRadius: '10px',
                     fontSize: '12px',
                 });
-                const chipColor = resolveTagColor(tag, allTagsSorted.indexOf(tag), scheme, tagColors, getPlotlineHSL(this.plugin!.settings));
+                const chipColor = (plotlineColorsOn(this.plugin, 'plotgrid') && isPlotline(this.plugin!, tag))
+                    ? getPlotlineColor(this.plugin!, tag)
+                    : resolveTagColor(tag, allTagsSorted.indexOf(tag), scheme, tagColors, getPlotlineHSL(this.plugin!.settings));
                 chip.setCssStyles({
                     background: chipColor,
                     color: contrastTextColor(chipColor),

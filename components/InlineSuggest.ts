@@ -5,6 +5,7 @@
  * Attaches to a text <input> and shows a filtered suggestion list below it.
  * Supports fuzzy matching, keyboard navigation, and "create new" entry.
  */
+import { contrastTextColor } from '../settings';
 
 export interface InlineSuggestOptions {
     /** The text input element to attach to */
@@ -378,6 +379,8 @@ export interface TagPillInputOptions {
     highlightLabel?: string;
     /** Keep the suggestion list open after each selection. */
     keepOpenOnSelect?: boolean;
+    /** Optional: background colour for a pill (e.g. the plotline colour) */
+    getColor?: (value: string) => string | undefined;
 }
 
 export function renderTagPillInput(opts: TagPillInputOptions): { refresh: (values: string[], highlightValue?: string) => void } {
@@ -406,6 +409,9 @@ export function renderTagPillInput(opts: TagPillInputOptions): { refresh: (value
             if (currentHighlight && val === currentHighlight && opts.highlightLabel) {
                 pill.createSpan({ cls: 'sl-tag-pill-badge', text: ` ${opts.highlightLabel}` });
                 pill.addClass('sl-tag-pill-highlighted');
+            } else {
+                const color = opts.getColor?.(val);
+                if (color) pill.setCssStyles({ background: color, color: contrastTextColor(color) });
             }
 
             const removeBtn = pill.createSpan({ cls: 'sl-tag-pill-remove', text: '×' });

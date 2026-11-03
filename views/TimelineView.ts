@@ -17,6 +17,7 @@ import { ButtonComponent, DropdownComponent, ItemView, Menu, Modal, Notice, Sett
 import * as obsidian from 'obsidian';
 import { BUILTIN_BEAT_SHEETS, Scene, SceneStatus, TIMELINE_MODES, TIMELINE_MODE_ICONS, TIMELINE_MODE_LABELS, TimelineMode, formatSceneLength, getStatusOrder, resolveStatusCfg } from '../models/Scene';
 import { getActDisplayLabel, getChapterDisplayLabel } from '../utils/actChapter';
+import { plotlineColorsOn, getPlotlineColor, isPlotline } from '../utils/plotlineColor';
 import { parseSceneLocations } from '../services/MetadataParser';
 
 /**
@@ -677,10 +678,15 @@ export class TimelineView extends ItemView {
         corner.textContent = '#';
 
         // Lane headers
+        const colorLanes = (this.swimlaneGroupBy === 'plotline' || this.swimlaneGroupBy === 'tag')
+            && plotlineColorsOn(this.plugin, 'timeline');
         for (const lane of laneKeys) {
             const header = grid.createDiv('swimlane-lane-header');
             header.textContent = lane;
             header.setAttribute('title', lane);
+            if (colorLanes && isPlotline(this.plugin, lane)) {
+                header.setCssStyles({ borderLeft: `4px solid ${getPlotlineColor(this.plugin, lane)}` });
+            }
         }
 
         // 5. Render each row

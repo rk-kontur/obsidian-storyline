@@ -3,6 +3,7 @@ import { ItemView, WorkspaceLeaf, Menu, TFile, setIcon } from 'obsidian';
 import type SceneCardsPlugin from '../main';
 import { ManuscriptView } from './ManuscriptView';
 import { resolveTagColor, getPlotlineHSL } from '../settings';
+import { plotlineColorsOn, getPlotlineColor } from '../utils/plotlineColor';
 import { attachTooltip } from '../components/Tooltip';
 import { SceneCardComponent } from '../components/SceneCard';
 import { compareActChapter, getActDisplayLabel } from '../utils/actChapter';
@@ -325,6 +326,7 @@ export class NavigatorView extends ItemView {
     private renderList(): void {
         if (!this.listEl) return;
         this.listEl.empty();
+        this.listEl.toggleClass('sl-nav-plotline-stripes', plotlineColorsOn(this.plugin, 'navigator'));
 
         let scenes = this.sceneManager.getAllScenes().filter(s => !s.corkboardNote && !s.inactive);
 
@@ -475,6 +477,14 @@ export class NavigatorView extends ItemView {
         const row = parent.createDiv('sl-nav-row');
         const isPinned = this.pinnedScenes.has(scene.filePath);
         if (isPinned) row.addClass('is-pinned');
+
+        // Plotline stripe: one equal segment per plotline, in tag order
+        if (scene.tags?.length && plotlineColorsOn(this.plugin, 'navigator')) {
+            const step = 100 / scene.tags.length;
+            const stops = scene.tags.map((tag, i) =>
+                `${getPlotlineColor(this.plugin, tag)} ${i * step}% ${(i + 1) * step}%`);
+            row.setCssStyles({ backgroundImage: `linear-gradient(to bottom, ${stops.join(', ')})` });
+        }
 
         // Status dot
         const dot = row.createSpan('sl-nav-status-dot');

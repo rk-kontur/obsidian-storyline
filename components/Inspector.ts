@@ -13,6 +13,7 @@ import { UniversalFieldTemplate } from '../services/FieldTemplateService';
 import { parseActChapterInput, actChapterHasIllegalPathChars, isPrologueAct, isEpilogueAct, PROLOGUE_ACT, EPILOGUE_ACT } from '../utils/actChapter';
 import { Scene, SceneStatus, TIMELINE_MODES, TIMELINE_MODE_LABELS, TimelineMode, getStatusOrder, resolveStatusCfg } from '../models/Scene';
 import { parseSceneLocations } from '../services/MetadataParser';
+import { plotlineColorsOn, getPlotlineColor, isPlotline } from '../utils/plotlineColor';
 
 /**
  * Scene inspector sidebar component
@@ -574,6 +575,9 @@ export class InspectorComponent {
                 scene.tags = values;
             },
             placeholder: 'Add plotline…',
+            getColor: plotlineColorsOn(this.plugin, 'inspector')
+                ? (tag) => isPlotline(this.plugin, tag) ? getPlotlineColor(this.plugin, tag) : undefined
+                : undefined,
         });
 
         // ── Synopsis (editable) ──

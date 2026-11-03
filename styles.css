@@ -757,6 +757,16 @@ body.sl-auto-hide-tab-labels .story-line-view-switcher.sl-collapsed .story-line-
     border-color: var(--sc-accent);
 }
 
+/* Plotline colour dot in tag chips (Settings → Colors → Filters) */
+.story-line-chip-dot {
+    display: inline-block;
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    margin-right: 5px;
+    vertical-align: middle;
+}
+
 .story-line-clear-filters {
     font-size: 0.8em;
     padding: 4px 12px;
@@ -9349,6 +9359,15 @@ body /* Clamp title on mobile too, in case it's very long */
 .sl-nav-row.is-pinned {
     border-left: 2px solid var(--interactive-accent);
     padding-left: 8px;
+}
+/* Plotline stripe (Settings → Colors → Navigator) */
+.sl-nav-plotline-stripes .sl-nav-row {
+    padding-left: 14px;
+    background-repeat: no-repeat;
+    background-size: 4px 100%;
+}
+.sl-nav-plotline-stripes .sl-nav-row.is-pinned {
+    padding-left: 12px;
 }
 
 .sl-nav-status-dot {
