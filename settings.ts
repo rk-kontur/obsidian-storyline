@@ -2452,8 +2452,8 @@ export class SceneCardsSettingTab extends PluginSettingTab {
         });
         viewsLabel.textContent = 'Transfer plotline colors to';
         const plotlineColorViews: Array<[PlotlineColorView, string, string]> = [
-            ['plotgrid', 'Plot grid', 'Headers of columns synced from plotlines, and tag chips in the cell inspector.'],
-            ['timeline', 'Timeline', 'Lane headers when swimlanes are grouped by plotline or tag.'],
+            ['plotgrid', 'Plot grid', 'Headers of plotline columns, a plotline stripe on mini scene cards, and tag chips in the cell inspector.'],
+            ['timeline', 'Timeline', 'A plotline stripe on scene cards, and tinted lane headers when swimlanes are grouped by plotline or tag.'],
             ['inspector', 'Inspector', 'Plotline pills in the scene inspector.'],
             ['filters', 'Filters', 'Tag chips in the filter panel.'],
             ['navigator', 'Navigator', 'Small bar next to the status dot of each scene, one colour segment per plotline.'],
