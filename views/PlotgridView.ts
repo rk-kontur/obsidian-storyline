@@ -18,7 +18,7 @@ import { enableDragToPan } from '../components/DragToPan';
 import { isMobile } from '../components/MobileAdapter';
 import { PLOTGRID_VIEW_TYPE } from '../constants';
 import { resolveTagColor, getPlotlineHSL, resolveStickyNoteColors, contrastTextColor } from '../settings';
-import { plotlineColorsOn, getPlotlineColor, isPlotline } from '../utils/plotlineColor';
+import { makePlotlineColorResolver } from '../utils/plotlineColor';
 import { compareActChapter, getActDisplayLabel, getChapterDisplayLabel } from '../utils/actChapter';
 import { attachTooltip } from '../components/Tooltip';
 import type SceneCardsPlugin from '../main';
@@ -1237,11 +1237,12 @@ export class PlotgridView extends ItemView {
             menu.showAtMouseEvent(evt);
         });
 
+        const plotlineColors = makePlotlineColorResolver(this.plugin, 'plotgrid');
         for (let ci = 0; ci < this.data.columns.length; ci++) {
             const col = this.data.columns[ci];
             // Render-only: synced plotline columns without own colour show the plotline colour
-            const plotlineBg = (this.plugin && col.sourceType === 'auto' && col.sourceKind === 'tags' && col.sourceId
-                && plotlineColorsOn(this.plugin, 'plotgrid')) ? getPlotlineColor(this.plugin, col.sourceId) : '';
+            const plotlineBg = (plotlineColors && col.sourceType === 'auto' && col.sourceKind === 'tags' && col.sourceId)
+                ? plotlineColors.color(col.sourceId) : '';
             const el = this.canvasEl.createDiv('plot-grid-col-header');
             el.setCssStyles({
                 position: (this.data.stickyHeaders === false) ? 'relative' : 'sticky',
@@ -3850,6 +3851,7 @@ export class PlotgridView extends ItemView {
             const tagColors = this.plugin?.settings.tagColors || {};
             const scheme = this.plugin?.settings.colorScheme || 'mocha';
             const allTagsSorted = [...result.tags].sort();
+            const plotlineColors = makePlotlineColorResolver(this.plugin, 'plotgrid');
             for (const tag of result.tags) {
                 const chip = tagList.createSpan({ cls: 'inspector-tag-chip', text: `#${tag}` });
                 chip.setCssStyles({
@@ -3857,8 +3859,8 @@ export class PlotgridView extends ItemView {
                     borderRadius: '10px',
                     fontSize: '12px',
                 });
-                const chipColor = (plotlineColorsOn(this.plugin, 'plotgrid') && isPlotline(this.plugin!, tag))
-                    ? getPlotlineColor(this.plugin!, tag)
+                const chipColor = plotlineColors?.has(tag)
+                    ? plotlineColors.color(tag)
                     : resolveTagColor(tag, allTagsSorted.indexOf(tag), scheme, tagColors, getPlotlineHSL(this.plugin!.settings));
                 chip.setCssStyles({
                     background: chipColor,

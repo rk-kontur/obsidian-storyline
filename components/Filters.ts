@@ -6,7 +6,7 @@ import type SceneCardsPlugin from '../main';
 import type { SceneFilter, SortConfig, SortField, FilterPreset } from '../models/Scene';
 import { getStatusOrder } from '../models/Scene';
 import { getActDisplayLabel } from '../utils/actChapter';
-import { plotlineColorsOn, getPlotlineColor } from '../utils/plotlineColor';
+import { makePlotlineColorResolver } from '../utils/plotlineColor';
 
 type FocusModeCallback = (active: boolean) => void;
 
@@ -343,14 +343,15 @@ export class FiltersComponent {
         if (tagValues.length > 0) {
             new Setting(panel).setName('Tags');
             const tagContainer = panel.createDiv('story-line-filter-chips');
+            const plotlineColors = makePlotlineColorResolver(this.plugin, 'filters');
             tagValues.forEach(tag => {
                 const chip = tagContainer.createEl('button', {
                     cls: 'story-line-chip',
                     text: tag,
                 });
-                if (this.plugin && plotlineColorsOn(this.plugin, 'filters')) {
+                if (plotlineColors) {
                     const dot = chip.createSpan('story-line-chip-dot');
-                    dot.setCssStyles({ background: getPlotlineColor(this.plugin, tag) });
+                    dot.setCssStyles({ background: plotlineColors.color(tag) });
                     chip.prepend(dot);
                 }
                 if (this.currentFilter.tags?.includes(tag)) chip.addClass('active');

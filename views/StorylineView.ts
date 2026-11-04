@@ -10,7 +10,7 @@ import { STORYLINE_VIEW_TYPE } from '../constants';
 import { applyMobileClass } from '../components/MobileAdapter';
 import { enableDragToPan } from '../components/DragToPan';
 import { resolveTagColor, getPlotlineHSL, contrastTextColor } from '../settings';
-import { plotlineColorsOn, getPlotlineColor } from '../utils/plotlineColor';
+import { makePlotlineColorResolver } from '../utils/plotlineColor';
 import { attachTooltip } from '../components/Tooltip';
 import { compareScenesByActChapter, getActDisplayLabel } from '../utils/actChapter';
 
@@ -437,9 +437,9 @@ export class StorylineView extends ItemView {
         const numLanes = plotlineKeys.length;
 
         const hslAdj = getPlotlineHSL(this.plugin.settings);
-        const usePlotlineColor = plotlineColorsOn(this.plugin, 'plotlines');
-        const laneColor = (idx: number, plotline: string): string => usePlotlineColor
-            ? getPlotlineColor(this.plugin, plotline)
+        const plotlineColors = makePlotlineColorResolver(this.plugin, 'plotlines');
+        const laneColor = (idx: number, plotline: string): string => plotlineColors
+            ? plotlineColors.color(plotline)
             : resolveTagColor(plotline, idx, scheme, tagColors, hslAdj);
 
         // ── SVG dimensions ──
@@ -725,8 +725,8 @@ export class StorylineView extends ItemView {
 
                     for (const { tag, width } of pillData) {
                         const pillIdx = plotlineKeys.indexOf(tag);
-                        const pillColor = usePlotlineColor
-                            ? getPlotlineColor(this.plugin, tag)
+                        const pillColor = plotlineColors
+                            ? plotlineColors.color(tag)
                             : resolveTagColor(tag, Math.max(0, pillIdx), scheme, tagColors, hslAdj);
                         const rect = activeDocument.createElementNS(svgNS, 'rect');
                         rect.setAttribute('x', String(px));
@@ -784,8 +784,9 @@ export class StorylineView extends ItemView {
             (s.tags || []).forEach(t => { if (!tags.includes(t)) tags.push(t); });
             return tags;
         }, [] as string[]).sort().indexOf(plotline);
-        const plotlineColor = plotlineColorsOn(this.plugin, 'plotlines')
-            ? getPlotlineColor(this.plugin, plotline)
+        const plotlineColors = makePlotlineColorResolver(this.plugin, 'plotlines');
+        const plotlineColor = plotlineColors
+            ? plotlineColors.color(plotline)
             : resolveTagColor(plotline, Math.max(0, plotlineIdx), scheme, tagColors, getPlotlineHSL(this.plugin.settings));
 
         // Collapsible header
