@@ -17,7 +17,7 @@ import { ButtonComponent, DropdownComponent, ItemView, Menu, Modal, Notice, Sett
 import * as obsidian from 'obsidian';
 import { BUILTIN_BEAT_SHEETS, Scene, SceneStatus, TIMELINE_MODES, TIMELINE_MODE_ICONS, TIMELINE_MODE_LABELS, TimelineMode, formatSceneLength, getStatusOrder, resolveStatusCfg } from '../models/Scene';
 import { getActDisplayLabel, getChapterDisplayLabel } from '../utils/actChapter';
-import { makePlotlineColorResolver } from '../utils/plotlineColor';
+import { makePlotlineColorResolver, applyPlotlineStripe, type PlotlineColorResolver } from '../utils/plotlineColor';
 import { parseSceneLocations } from '../services/MetadataParser';
 
 /**
@@ -53,6 +53,8 @@ export class TimelineView extends ItemView {
     private swimlaneMode = false;
     /** How to group lanes in swimlane mode */
     private swimlaneGroupBy: SwimlaneGroupBy = 'pov';
+    /** Plotline colours for the current render, null when off (Settings → Colors) */
+    private plotlineColors: PlotlineColorResolver | null = null;
     /** Whether to sort by reading order (sequence) or chronological order */
     private timelineOrder: TimelineOrder = 'reading';
 
@@ -267,6 +269,7 @@ export class TimelineView extends ItemView {
         if (existing) existing.remove();
 
         const timelineEl = container.createDiv('story-line-timeline');
+        this.plotlineColors = makePlotlineColorResolver(this.plugin, 'timeline');
         const sortField = this.timelineOrder === 'chronological' ? 'chronologicalOrder' : 'chapter';
         const scenes = this.sceneManager.queryService.getFilteredScenes(
             undefined,
@@ -616,6 +619,7 @@ export class TimelineView extends ItemView {
         if (existing) existing.remove();
 
         const timelineEl = container.createDiv('story-line-timeline swimlane-timeline');
+        this.plotlineColors = makePlotlineColorResolver(this.plugin, 'timeline');
         enableDragToPan(timelineEl);
         const sortField = this.timelineOrder === 'chronological' ? 'chronologicalOrder' : 'chapter';
         const scenes = this.sceneManager.queryService.getFilteredScenes(
@@ -679,13 +683,17 @@ export class TimelineView extends ItemView {
 
         // Lane headers
         const plotlineColors = (this.swimlaneGroupBy === 'plotline' || this.swimlaneGroupBy === 'tag')
-            ? makePlotlineColorResolver(this.plugin, 'timeline') : null;
+            ? this.plotlineColors : null;
         for (const lane of laneKeys) {
             const header = grid.createDiv('swimlane-lane-header');
             header.textContent = lane;
             header.setAttribute('title', lane);
             if (plotlineColors?.has(lane)) {
-                header.setCssStyles({ borderLeft: `4px solid ${plotlineColors.color(lane)}` });
+                const laneColor = plotlineColors.color(lane);
+                header.setCssStyles({
+                    borderLeft: `4px solid ${laneColor}`,
+                    background: `color-mix(in srgb, ${laneColor} 20%, var(--background-secondary))`,
+                });
             }
         }
 
@@ -798,6 +806,7 @@ export class TimelineView extends ItemView {
 
         // Card
         const card = cell.createDiv('timeline-card swimlane-card');
+        if (this.plotlineColors) applyPlotlineStripe(card, scene.tags, this.plotlineColors);
         if (this.selectedScene?.filePath === scene.filePath) {
             card.addClass('selected');
         }
@@ -972,6 +981,7 @@ export class TimelineView extends ItemView {
         // Right column: card
         const cardCol = entry.createDiv('timeline-entry-card');
         const card = cardCol.createDiv('timeline-card');
+        if (this.plotlineColors) applyPlotlineStripe(card, scene.tags, this.plotlineColors);
 
         // Apply custom scene color as background tint
         if (scene.color && /^#[0-9a-fA-F]{6}$/.test(scene.color)) {

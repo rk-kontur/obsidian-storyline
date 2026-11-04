@@ -18,7 +18,7 @@ import { enableDragToPan } from '../components/DragToPan';
 import { isMobile } from '../components/MobileAdapter';
 import { PLOTGRID_VIEW_TYPE } from '../constants';
 import { resolveTagColor, getPlotlineHSL, resolveStickyNoteColors, contrastTextColor } from '../settings';
-import { makePlotlineColorResolver } from '../utils/plotlineColor';
+import { makePlotlineColorResolver, applyPlotlineStripe } from '../utils/plotlineColor';
 import { compareActChapter, getActDisplayLabel, getChapterDisplayLabel } from '../utils/actChapter';
 import { attachTooltip } from '../components/Tooltip';
 import type SceneCardsPlugin from '../main';
@@ -1240,9 +1240,14 @@ export class PlotgridView extends ItemView {
         const plotlineColors = makePlotlineColorResolver(this.plugin, 'plotgrid');
         for (let ci = 0; ci < this.data.columns.length; ci++) {
             const col = this.data.columns[ci];
-            // Render-only: synced plotline columns without own colour show the plotline colour
-            const plotlineBg = (plotlineColors && col.sourceType === 'auto' && col.sourceKind === 'tags' && col.sourceId)
-                ? plotlineColors.color(col.sourceId) : '';
+            // Render-only: plotline columns without own colour show the plotline colour. Besides columns
+            // synced from plotlines this covers older synced columns without sourceKind and manual
+            // columns, as long as their tag or label is a known plotline.
+            const plotlineTag = col.sourceType === 'auto'
+                ? (col.sourceKind === 'tags' || !col.sourceKind ? col.sourceId : undefined)
+                : col.label?.trim();
+            const plotlineBg = (plotlineColors && plotlineTag && (col.sourceKind === 'tags' || plotlineColors.has(plotlineTag)))
+                ? plotlineColors.color(plotlineTag) : '';
             const el = this.canvasEl.createDiv('plot-grid-col-header');
             el.setCssStyles({
                 position: (this.data.stickyHeaders === false) ? 'relative' : 'sticky',
@@ -1707,6 +1712,10 @@ export class PlotgridView extends ItemView {
                         } else if (this.plugin?.settings.plotgridShowLinkedSceneCards ?? true) {
                         // Render mini scene card inside the cell when enabled.
                         const miniCard = cellEl.createDiv('plot-grid-mini-card');
+                        if (plotlineColors && scene.tags?.length) {
+                            applyPlotlineStripe(miniCard, scene.tags, plotlineColors);
+                            miniCard.setCssStyles({ paddingLeft: '6px' });
+                        }
 
                         // Status icon + title row
                         const titleRow = miniCard.createDiv('pg-mini-title-row');
