@@ -14390,7 +14390,7 @@ body.sl-focus-active-global.sl-focus-dim-text .markdown-source-view.mod-cm6 .cm-
     display: none;
 }
 
-/* Plotline colour dot in tag chips (Settings → Colors → Filters) */
+/* Fork: plotline colour dot in tag chips (Settings → Colors → Filters) */
 .sl-km-chip-dot {
     display: inline-block;
     width: 7px;
@@ -14400,7 +14400,7 @@ body.sl-focus-active-global.sl-focus-dim-text .markdown-source-view.mod-cm6 .cm-
     vertical-align: middle;
 }
 
-/* Plotline marker next to the status dot in the Navigator (Settings → Colors → Navigator) */
+/* Fork: plotline marker next to the status dot in the Navigator (Settings → Colors → Navigator) */
 .sl-km-nav-plotline-marker {
     flex-shrink: 0;
     width: 18px;

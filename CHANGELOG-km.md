@@ -2,6 +2,36 @@
 
 Changes of this fork compared to the original StoryLine plugin by Jan Sandström. Each `## <version>` section is used as the initial text of the matching GitHub release; texts edited on GitHub (e.g. with screenshots) are never overwritten. Every release also carries `storyline-km-source.zip` (all source files that are new or changed compared to the original, without `main.js`) and `storyline-km.patch` (the full diff against the original).
 
+## 1.11.8-km.31
+
+**Plotline colours in more views, switched on per view**
+
+- New settings block **Transfer plotline colors to** (Settings → Colors → Plotline color scheme), five toggles, all off by default. A view that is switched on shows each plotline in the colour the Board already uses (custom plotline colours, colour scheme and HSL sliders included):
+    - **Plot Grid:** headers of columns synced from plotlines get the plotline colour; your own column colours still win. The `#tag` chips in the cell inspector use the same colour.
+    - **Timeline:** with swimlanes grouped by plotline or tag, each lane header gets a coloured left border.
+    - **Inspector:** the plotline pills of a scene are coloured.
+    - **Filters:** the tag chips in the filter panel get a small colour dot.
+    - **Navigator:** each scene row gets a small bar next to the status dot, split into one colour segment per plotline. Rows without plotlines keep the same space, so titles stay aligned.
+- The Subway map and the Plotlines list already use these colours in this build (since 1.11.8-km.2), so they have no toggle here.
+- With the "custom" colour scheme and no colour set for a plotline, these views show grey, like the Subway map.
+- With all toggles off, every view looks exactly as before.
+
+**How and where to use:**
+
+1. **Settings** → **Colors** → open **Plotline color scheme** → scroll below the HSL sliders to **Transfer plotline colors to**.
+2. Switch on the views you want, e.g. **Navigator** and **Plot Grid**. Open views redraw at once.
+3. To change a plotline's colour: **Plotlines** (list view) → colour picker on the plotline header, or the custom colours list in the same settings block. All switched-on views follow.
+
+**Suggestion branch for upstream:** [`suggest-feature/colors-everywhere-matrix`](https://github.com/rk-kontur/obsidian-storyline/tree/suggest-feature/colors-everywhere-matrix) ([compare with upstream](https://github.com/PixeroJan/obsidian-storyline/compare/main...rk-kontur:obsidian-storyline:suggest-feature/colors-everywhere-matrix)); there it also has a sixth toggle for the Subway map and Plotlines list.
+
+**Files:**
+
+- `utils/plotlineColor.ts` (new: colour resolver, built once per render)
+- `settings.ts` (setting `plotlineColorViews`, toggle block)
+- `views/PlotgridView.ts`, `views/TimelineView.ts`, `views/NavigatorView.ts`
+- `components/Inspector.ts`, `components/InlineSuggest.ts` (optional pill colour), `components/Filters.ts`
+- `styles.css` (fork section: filter chip dot, Navigator marker)
+
 ## 1.11.8-km.30
 
 **Arc point links survive unticking, all chapters under a volume, plotline descriptions kept on rename, POV shown once on swimlane cards, Volumes editor on older devices**
