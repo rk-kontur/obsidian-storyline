@@ -14400,12 +14400,10 @@ body.sl-focus-active-global.sl-focus-dim-text .markdown-source-view.mod-cm6 .cm-
     vertical-align: middle;
 }
 
-/* Plotline stripe in the Navigator scene list (Settings → Colors → Navigator) */
-.sl-km-nav-plotline-stripes .sl-nav-row {
-    padding-left: 14px;
-    background-repeat: no-repeat;
-    background-size: 4px 100%;
-}
-.sl-km-nav-plotline-stripes .sl-nav-row.is-pinned {
-    padding-left: 12px;
+/* Plotline marker next to the status dot in the Navigator (Settings → Colors → Navigator) */
+.sl-km-nav-plotline-marker {
+    flex-shrink: 0;
+    width: 18px;
+    height: 8px;
+    border-radius: 4px;
 }

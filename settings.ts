@@ -2456,7 +2456,7 @@ export class SceneCardsSettingTab extends PluginSettingTab {
             ['timeline', 'Timeline', 'Lane headers when swimlanes are grouped by plotline or tag.'],
             ['inspector', 'Inspector', 'Plotline pills in the scene inspector.'],
             ['filters', 'Filters', 'Tag chips in the filter panel.'],
-            ['navigator', 'Navigator', 'Stripe at the left edge of each scene, one segment per plotline.'],
+            ['navigator', 'Navigator', 'Small marker next to the status dot, one segment per plotline.'],
         ];
         for (const [view, name, desc] of plotlineColorViews) {
             new Setting(colorBody)

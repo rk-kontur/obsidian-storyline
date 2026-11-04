@@ -364,7 +364,6 @@ export class NavigatorView extends ItemView {
     private renderList(kmScope: NavigatorScope = this.kmResolveScope()): void {
         if (!this.listEl) return;
         this.listEl.empty();
-        this.listEl.toggleClass('sl-km-nav-plotline-stripes', plotlineColorsOn(this.plugin, 'navigator'));
 
         let scenes = this.sceneManager.getAllScenes().filter(s => !s.corkboardNote && !s.inactive);
         // fork: shared volume scope (resolved once per render)
@@ -529,19 +528,23 @@ export class NavigatorView extends ItemView {
         const isPinned = this.pinnedScenes.has(scene.filePath);
         if (isPinned) row.addClass('is-pinned');
 
-        // Plotline stripe: one equal segment per plotline, in tag order
-        if (scene.tags?.length && plotlineColorsOn(this.plugin, 'navigator')) {
-            const step = 100 / scene.tags.length;
-            const stops = scene.tags.map((tag, i) =>
-                `${getPlotlineColor(this.plugin, tag)} ${i * step}% ${(i + 1) * step}%`);
-            row.setCssStyles({ backgroundImage: `linear-gradient(to bottom, ${stops.join(', ')})` });
-        }
-
         // Status dot
         const dot = row.createSpan('sl-nav-status-dot');
         const statusCfg = resolveStatusCfg(scene.status || 'idea');
         dot.setCssStyles({ background: statusCfg.color });
         dot.setAttribute('aria-label', statusCfg.label);
+
+        // Plotline marker: one equal segment per plotline, in tag order (empty placeholder keeps rows aligned)
+        if (plotlineColorsOn(this.plugin, 'navigator')) {
+            const marker = row.createSpan('sl-km-nav-plotline-marker');
+            const tags = scene.tags ?? [];
+            if (tags.length) {
+                const step = 100 / tags.length;
+                const stops = tags.map((tag, i) => `${getPlotlineColor(this.plugin, tag)} ${i * step}% ${(i + 1) * step}%`);
+                marker.setCssStyles({ backgroundImage: `linear-gradient(to right, ${stops.join(', ')})` });
+                marker.setAttribute('aria-label', tags.join(', '));
+            }
+        }
 
         // Sequence number (if available)
         if (scene.sequence !== undefined) {
