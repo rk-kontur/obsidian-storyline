@@ -9360,21 +9360,20 @@ body /* Clamp title on mobile too, in case it's very long */
     border-left: 2px solid var(--interactive-accent);
     padding-left: 8px;
 }
-/* Plotline stripe (Settings → Colors → Navigator) */
-.sl-nav-plotline-stripes .sl-nav-row {
-    padding-left: 14px;
-    background-repeat: no-repeat;
-    background-size: 4px 100%;
-}
-.sl-nav-plotline-stripes .sl-nav-row.is-pinned {
-    padding-left: 12px;
-}
 
 .sl-nav-status-dot {
     flex-shrink: 0;
     width: 8px;
     height: 8px;
     border-radius: 50%;
+}
+
+/* Plotline marker next to the status dot (Settings → Colors → Navigator) */
+.sl-nav-plotline-marker {
+    flex-shrink: 0;
+    width: 18px;
+    height: 8px;
+    border-radius: 4px;
 }
 
 .sl-nav-seq {
