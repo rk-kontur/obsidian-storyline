@@ -6,7 +6,7 @@ import { getProjectVolumes, VolumeDividerTracker } from '../utils/volumes';
 import type SceneCardsPlugin from '../main';
 import { ManuscriptView } from './ManuscriptView';
 import { resolveTagColor, getPlotlineHSL } from '../settings';
-import { plotlineColorsOn, getPlotlineColor } from '../utils/plotlineColor';
+import { makePlotlineColorResolver, type PlotlineColorResolver } from '../utils/plotlineColor';
 import { attachTooltip } from '../components/Tooltip';
 import { SceneCardComponent } from '../components/SceneCard';
 import { compareActChapter, getActDisplayLabel } from '../utils/actChapter';
@@ -61,6 +61,7 @@ export class NavigatorView extends ItemView {
     // DOM refs
     private searchInput: HTMLInputElement | null = null;
     private listEl: HTMLElement | null = null;
+    private plotlineColors: PlotlineColorResolver | null = null;
     private chipRow: HTMLElement | null = null;
     private chipToggle: HTMLElement | null = null;
     private chipSection: HTMLElement | null = null;
@@ -364,6 +365,7 @@ export class NavigatorView extends ItemView {
     private renderList(kmScope: NavigatorScope = this.kmResolveScope()): void {
         if (!this.listEl) return;
         this.listEl.empty();
+        this.plotlineColors = makePlotlineColorResolver(this.plugin, 'navigator');
 
         let scenes = this.sceneManager.getAllScenes().filter(s => !s.corkboardNote && !s.inactive);
         // fork: shared volume scope (resolved once per render)
@@ -535,12 +537,13 @@ export class NavigatorView extends ItemView {
         dot.setAttribute('aria-label', statusCfg.label);
 
         // Plotline marker: one equal segment per plotline, in tag order (empty placeholder keeps rows aligned)
-        if (plotlineColorsOn(this.plugin, 'navigator')) {
+        const plotlineColors = this.plotlineColors;
+        if (plotlineColors) {
             const marker = row.createSpan('sl-km-nav-plotline-marker');
             const tags = scene.tags ?? [];
             if (tags.length) {
                 const step = 100 / tags.length;
-                const stops = tags.map((tag, i) => `${getPlotlineColor(this.plugin, tag)} ${i * step}% ${(i + 1) * step}%`);
+                const stops = tags.map((tag, i) => `${plotlineColors.color(tag)} ${i * step}% ${(i + 1) * step}%`);
                 marker.setCssStyles({ backgroundImage: `linear-gradient(to right, ${stops.join(', ')})` });
                 marker.setAttribute('aria-label', tags.join(', '));
             }
