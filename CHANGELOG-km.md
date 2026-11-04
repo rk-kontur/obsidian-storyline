@@ -2,6 +2,28 @@
 
 Changes of this fork compared to the original StoryLine plugin by Jan Sandström. Each `## <version>` section is used as the initial text of the matching GitHub release; texts edited on GitHub (e.g. with screenshots) are never overwritten. Every release also carries `storyline-km-source.zip` (all source files that are new or changed compared to the original, without `main.js`) and `storyline-km.patch` (the full diff against the original).
 
+## 1.11.8-km.32
+
+**Plotline colours: Plot Grid fixed, stripes on Timeline and Plot Grid cards**
+
+- **Plot Grid (toggle "Plot grid"):** in 1.11.8-km.31 only columns created by **Sync from scenes → Columns from: Plotlines (tags)** got the plotline colour, so most grids showed none. Now the header of every plotline column is coloured: also older synced columns and columns you created by hand with the name of a plotline. Character, location and codex columns stay uncoloured, your own column colours still win, and a plotline that no scene uses any more gets no colour (unless it has its own colour).
+- **Scene cards get a plotline stripe like on the Board:** the mini scene cards in Plot Grid cells, the cards in the linear Timeline and the swimlane cards show a 4px stripe at the left edge. A scene with several plotlines gets one segment per plotline, top to bottom. Nothing moves: cards with and without a stripe keep the same layout.
+- **Timeline swimlanes grouped by plotline or tag:** the lane header keeps its coloured left border and gets a light tint of the plotline colour.
+- With the toggles off, everything looks exactly as before.
+
+**How and where to use:**
+
+1. **Settings** → **Colors** → **Plotline color scheme** → **Transfer plotline colors to** → switch on **Plot grid** and/or **Timeline**.
+2. **Plot Grid:** plotline column headers are coloured; mini scene cards in the cells show the stripe.
+3. **Timeline:** cards show the stripe; in swimlanes **Group by Plotline** (or Tag) the lane headers are tinted.
+
+**Files:**
+
+- `utils/plotlineColor.ts` (new `applyPlotlineStripe`)
+- `views/PlotgridView.ts` (header matching for more plotline columns, mini card stripe)
+- `views/TimelineView.ts` (card stripes, tinted lane headers)
+- `settings.ts` (toggle descriptions)
+
 ## 1.11.8-km.31
 
 **Plotline colours in more views, switched on per view**
