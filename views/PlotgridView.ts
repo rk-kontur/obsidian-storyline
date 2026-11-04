@@ -1242,11 +1242,12 @@ export class PlotgridView extends ItemView {
             const col = this.data.columns[ci];
             // Render-only: plotline columns without own colour show the plotline colour. Besides columns
             // synced from plotlines this covers older synced columns without sourceKind and manual
-            // columns, as long as their tag or label is a known plotline.
+            // columns. The tag must be used by a scene or have its own colour.
             const plotlineTag = col.sourceType === 'auto'
                 ? (col.sourceKind === 'tags' || !col.sourceKind ? col.sourceId : undefined)
                 : col.label?.trim();
-            const plotlineBg = (plotlineColors && plotlineTag && (col.sourceKind === 'tags' || plotlineColors.has(plotlineTag)))
+            const plotlineBg = (plotlineColors && plotlineTag
+                && (plotlineColors.has(plotlineTag) || !!this.plugin?.settings.tagColors?.[plotlineTag]))
                 ? plotlineColors.color(plotlineTag) : '';
             const el = this.canvasEl.createDiv('plot-grid-col-header');
             el.setCssStyles({
@@ -1713,8 +1714,11 @@ export class PlotgridView extends ItemView {
                         // Render mini scene card inside the cell when enabled.
                         const miniCard = cellEl.createDiv('plot-grid-mini-card');
                         if (plotlineColors && scene.tags?.length) {
-                            applyPlotlineStripe(miniCard, scene.tags, plotlineColors);
-                            miniCard.setCssStyles({ paddingLeft: '6px' });
+                            // Stripe in the cell padding left of the card, so the card content does not move
+                            miniCard.setCssStyles({ position: 'relative' });
+                            const stripe = miniCard.createDiv();
+                            stripe.setCssStyles({ position: 'absolute', left: '-6px', top: '0', bottom: '0', width: '4px', borderRadius: '2px' });
+                            applyPlotlineStripe(stripe, scene.tags, plotlineColors);
                         }
 
                         // Status icon + title row
