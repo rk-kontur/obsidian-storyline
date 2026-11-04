@@ -39,18 +39,17 @@ export function makePlotlineColorResolver(
 }
 
 /**
- * Gives a card a 4px plotline stripe at its left edge, like the Board's colour stripe.
- * Several plotlines split the stripe into equal segments from top to bottom, in tag order.
- * Cards without plotlines are left unchanged.
+ * Paints a 4px plotline stripe as a background layer at the left edge of `el`, like the
+ * Board's colour stripe, without changing borders, padding or layout. Several plotlines
+ * split the stripe into equal segments from top to bottom, in tag order.
+ * Elements without plotlines are left unchanged.
  */
 export function applyPlotlineStripe(el: HTMLElement, tags: readonly string[] | undefined, colors: PlotlineColorResolver): void {
     if (!tags?.length) return;
     const step = 100 / tags.length;
     const stops = tags.map((tag, i) => `${colors.color(tag)} ${i * step}% ${(i + 1) * step}%`);
     el.setCssStyles({
-        borderLeft: '4px solid transparent',
         backgroundImage: `linear-gradient(to bottom, ${stops.join(', ')})`,
-        backgroundOrigin: 'border-box',
         backgroundSize: '4px 100%',
         backgroundRepeat: 'no-repeat',
     });
