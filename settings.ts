@@ -621,6 +621,8 @@ export interface SceneCardsSettings {
     lastStorylineArcFilter: 'all' | 'scenes' | 'arcPoints';
     /** Remembered Storyline subway tag-pill visibility from last session */
     lastStorylineShowTagPills: boolean;
+    /** Statistics → Warnings: include arc points in the checks */
+    statsWarningsIncludeArcPoints: boolean;
     /** Remembered Timeline order from last session */
     timelineOrder: 'reading' | 'chronological';
     /** Remembered Timeline swimlane mode from last session */
@@ -1015,6 +1017,7 @@ export const DEFAULT_SETTINGS: SceneCardsSettings = {
     lastStorylineSortMode: 'reading-order',
     lastStorylineArcFilter: 'all',
     lastStorylineShowTagPills: true,
+    statsWarningsIncludeArcPoints: true,
     timelineOrder: 'reading',
     timelineSwimlaneMode: false,
     timelineSwimlaneGroupBy: 'pov',

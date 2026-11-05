@@ -48,18 +48,30 @@ export class Validator {
     /**
      * Run all plot hole checks and return a list of warnings.
      */
-    static validate(scenes: Scene[]): PlotWarning[] {
+    static validate(scenes: Scene[], options: { excludeArcPoints?: boolean } = {}): PlotWarning[] {
         if (scenes.length === 0) return [];
 
         const warnings: PlotWarning[] = [];
+        // Arc points are often planned beats rather than written scenes. When
+        // excluded, they skip the scene checks. Setup/payoff still resolves
+        // links against all scenes (so a link to an arc point is not reported
+        // as missing) and only drops the warnings that involve an arc point.
+        const checked = options.excludeArcPoints ? scenes.filter(s => !s.arcAnchor) : scenes;
 
-        this.checkTimeline(scenes, warnings);
-        this.checkCharacters(scenes, warnings);
-        this.checkPlotlines(scenes, warnings);
-        this.checkSetupPayoff(scenes, warnings);
-        this.checkStructure(scenes, warnings);
-        this.checkContinuity(scenes, warnings);
-        this.checkTimelineGaps(scenes, warnings);
+        this.checkTimeline(checked, warnings);
+        this.checkCharacters(checked, warnings);
+        this.checkPlotlines(checked, warnings);
+        if (options.excludeArcPoints) {
+            const setupPayoff: PlotWarning[] = [];
+            this.checkSetupPayoff(scenes, setupPayoff);
+            const arcPaths = new Set(scenes.filter(s => s.arcAnchor).map(s => s.filePath));
+            warnings.push(...setupPayoff.filter(w => !w.scenePaths?.some(p => arcPaths.has(p))));
+        } else {
+            this.checkSetupPayoff(scenes, warnings);
+        }
+        this.checkStructure(checked, warnings);
+        this.checkContinuity(checked, warnings);
+        this.checkTimelineGaps(checked, warnings);
 
         return warnings;
     }

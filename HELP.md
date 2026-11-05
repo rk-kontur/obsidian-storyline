@@ -440,6 +440,7 @@ Section defaults can be set to expanded, collapsed, or remembered so the dashboa
 
 #### 8. Warnings (open by default)
 - **Plot hole detection** — automated warnings grouped by category (see [Plot Hole Detection](#plot-hole-detection)).
+- **Arc Points switch** — shown only when the project has Arc Points. "Hidden" leaves Arc Points out of the warnings, useful when they are planned beats rather than written scenes; links to them still count for Setup/Payoff.
 
 ### Navigator View
 

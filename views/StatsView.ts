@@ -2217,7 +2217,28 @@ export class StatsView extends ItemView {
 
     private renderWarnings(parent: HTMLElement, allScenes: Scene[]): void {
         if (this.plugin.settings.enablePlotHoleDetection && allScenes.length > 0) {
-            const warnings = Validator.validate(allScenes);
+            const includeArcPoints = this.plugin.settings.statsWarningsIncludeArcPoints !== false;
+            if (allScenes.some(s => s.arcAnchor)) {
+                const toggleWrap = parent.createEl('label', {
+                    cls: 'sl-toggle-wrap stats-warning-arc-toggle',
+                    attr: { title: 'Include arc points in the warnings' },
+                });
+                toggleWrap.createSpan({ cls: 'sl-toggle-label', text: 'Arc points' });
+                const cb = toggleWrap.createEl('input', { type: 'checkbox' });
+                cb.checked = includeArcPoints;
+                toggleWrap.createSpan({ cls: 'sl-toggle-track' });
+                toggleWrap.createSpan({
+                    cls: 'stats-warning-arc-toggle-state',
+                    text: includeArcPoints ? 'shown' : 'hidden',
+                });
+                cb.addEventListener('change', () => {
+                    this.plugin.settings.statsWarningsIncludeArcPoints = cb.checked;
+                    parent.empty();
+                    this.renderWarnings(parent, allScenes);
+                    void this.plugin.saveSettings();
+                });
+            }
+            const warnings = Validator.validate(allScenes, { excludeArcPoints: !includeArcPoints });
             if (warnings.length === 0) {
                 const ok = parent.createDiv('stats-ok');
                 const ic = ok.createSpan();
