@@ -2270,28 +2270,33 @@ export class StatsView extends ItemView {
 
     private renderWarnings(parent: HTMLElement, allScenes: Scene[]): void {
         if (this.plugin.settings.enablePlotHoleDetection && allScenes.length > 0) {
-            const includeArcPoints = this.plugin.settings.statsWarningsIncludeArcPoints;
+            const includeArcPoints = this.plugin.settings.statsWarningsIncludeArcPoints !== false;
             if (allScenes.some(s => s.arcAnchor)) {
-                const row = parent.createDiv('stats-warning-arc-toggle');
-                row.createSpan({ cls: 'stats-warning-arc-toggle-label', text: 'Arc points' });
-                new obsidian.ToggleComponent(row)
-                    .setValue(includeArcPoints)
-                    .setTooltip('Include arc points in the warnings')
-                    .onChange(async (value) => {
-                        this.plugin.settings.statsWarningsIncludeArcPoints = value;
-                        await this.plugin.saveSettings();
-                        parent.empty();
-                        this.renderWarnings(parent, allScenes);
-                    });
-                row.createSpan({
+                const toggleWrap = parent.createEl('label', {
+                    cls: 'sl-toggle-wrap stats-warning-arc-toggle',
+                    attr: { title: 'Include arc points in the warnings' },
+                });
+                toggleWrap.createSpan({ cls: 'sl-toggle-label', text: 'Arc points' });
+                const cb = toggleWrap.createEl('input', { type: 'checkbox' });
+                cb.checked = includeArcPoints;
+                toggleWrap.createSpan({ cls: 'sl-toggle-track' });
+                toggleWrap.createSpan({
                     cls: 'stats-warning-arc-toggle-state',
                     text: includeArcPoints ? 'shown' : 'hidden',
                 });
+                cb.addEventListener('change', () => {
+                    this.plugin.settings.statsWarningsIncludeArcPoints = cb.checked;
+                    parent.empty();
+                    this.renderWarnings(parent, allScenes);
+                    void this.plugin.saveSettings();
+                });
             }
             // fork: with a volume selected, validate with cross-volume link partners
-            const warnings = adjustOffPageWarnings( // fork: off page lines - no act gap warnings, unrealized stages instead
+            const adjusted = adjustOffPageWarnings( // fork: off page lines - no act gap warnings, unrealized stages instead
                 validateForScope(allScenes, this.sceneManager.getAllScenes().filter(sc => !sc.inactive && !sc.corkboardNote),
                     sc => Validator.validate(sc, { excludeArcPoints: !includeArcPoints })), this.kmOffPage);
+            // fork: the off page notes list arc points (stages), so the arc points switch hides them too
+            const warnings = includeArcPoints ? adjusted : adjusted.filter(w => w.category !== 'Off page');
             if (warnings.length === 0) {
                 const ok = parent.createDiv('stats-ok');
                 const ic = ok.createSpan();

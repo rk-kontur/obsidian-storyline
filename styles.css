@@ -5565,19 +5565,17 @@ body.sl-auto-hide-tab-labels .story-line-view-switcher.sl-collapsed .story-line-
     color: var(--sl-success);
 }
 
-/* Plot Hole Detection - Severity Styling */
+/* Plot Hole Detection - "Arc points" switch above the warnings */
 .stats-warning-arc-toggle {
-    display: flex;
-    align-items: center;
-    gap: 8px;
     margin-bottom: 8px;
-    font-size: 0.9em;
 }
 
 .stats-warning-arc-toggle-state {
     color: var(--text-muted);
+    font-size: 0.85em;
 }
 
+/* Plot Hole Detection - Severity Styling */
 .stats-warning-summary {
     display: flex;
     gap: 12px;
