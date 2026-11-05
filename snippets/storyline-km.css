@@ -447,6 +447,84 @@ settings:
         max: 2
         step: 0.05
     -
+        id: slkm-h-subway-labelcol
+        title: Subway - plotline name column
+        description: The fixed column on the left with the plotline names.
+        type: heading
+        level: 2
+        collapsed: true
+    -
+        id: slkm-subway-labelcol
+        title: Adjust the plotline name column
+        description: Width, font size and weight below. The map is moved so the tracks always start right of the column.
+        type: class-toggle
+        default: true
+    -
+        id: slkm-subway-labelcol-width
+        title: Column width
+        description: StoryLine default 160 px.
+        type: variable-number-slider
+        default: 160
+        min: 80
+        max: 360
+        step: 5
+        format: px
+    -
+        id: slkm-subway-labelcol-font
+        title: Plotline name font size
+        description: StoryLine default 15 px.
+        type: variable-number-slider
+        default: 15
+        min: 9
+        max: 22
+        step: 0.5
+        format: px
+    -
+        id: slkm-subway-labelcol-weight
+        title: Plotline name font weight
+        description: StoryLine default 700 (bold).
+        type: variable-number-slider
+        default: 700
+        min: 300
+        max: 900
+        step: 100
+    -
+        id: slkm-subway-labelcol-wrap
+        title: Wrap long plotline names
+        description: Long names break onto several lines inside the column instead of running under the map. Each name stays centred on its line.
+        type: class-toggle
+        default: true
+    -
+        id: slkm-subway-labelcol-line-height
+        title: Line height of wrapped names
+        type: variable-number-slider
+        default: 1.15
+        min: 0.9
+        max: 1.6
+        step: 0.05
+    -
+        id: slkm-subway-labelcol-divider
+        title: Fixed divider line between the name column and the tracks
+        description: A solid line at the right edge of the name column. Unlike the dashed act dividers it does not scroll. Same height as the act dividers.
+        type: class-toggle
+        default: true
+    -
+        id: slkm-subway-labelcol-divider-width
+        title: Divider line thickness
+        type: variable-number-slider
+        default: 2
+        min: 1
+        max: 6
+        step: 0.5
+        format: px
+    -
+        id: slkm-subway-labelcol-divider-color
+        title: Divider line colour
+        type: variable-themed-color
+        format: hex
+        default-light: '#ababab'
+        default-dark: '#666666'
+    -
         id: slkm-h-dialogs
         title: Dialogs
         type: heading
@@ -913,6 +991,84 @@ settings:
         max: 2
         step: 0.05
     -
+        id: "slkm-m-h-subway-labelcol"
+        title: "Subway - plotline name column"
+        description: "The fixed column on the left with the plotline names."
+        type: "heading"
+        level: 3
+        collapsed: true
+    -
+        id: "slkm-m-subway-labelcol"
+        title: "Adjust the plotline name column"
+        description: "Width, font size and weight below. The map is moved so the tracks always start right of the column."
+        type: "class-toggle"
+        default: true
+    -
+        id: "slkm-m-subway-labelcol-width"
+        title: "Column width"
+        description: "StoryLine default 160 px."
+        type: "variable-number-slider"
+        default: 160
+        min: 80
+        max: 360
+        step: 5
+        format: "px"
+    -
+        id: "slkm-m-subway-labelcol-font"
+        title: "Plotline name font size"
+        description: "StoryLine default 15 px."
+        type: "variable-number-slider"
+        default: 15
+        min: 9
+        max: 22
+        step: 0.5
+        format: "px"
+    -
+        id: "slkm-m-subway-labelcol-weight"
+        title: "Plotline name font weight"
+        description: "StoryLine default 700 (bold)."
+        type: "variable-number-slider"
+        default: 700
+        min: 300
+        max: 900
+        step: 100
+    -
+        id: "slkm-m-subway-labelcol-wrap"
+        title: "Wrap long plotline names"
+        description: "Long names break onto several lines inside the column instead of running under the map. Each name stays centred on its line."
+        type: "class-toggle"
+        default: true
+    -
+        id: "slkm-m-subway-labelcol-line-height"
+        title: "Line height of wrapped names"
+        type: "variable-number-slider"
+        default: 1.15
+        min: 0.9
+        max: 1.6
+        step: 0.05
+    -
+        id: "slkm-m-subway-labelcol-divider"
+        title: "Fixed divider line between the name column and the tracks"
+        description: "A solid line at the right edge of the name column. Unlike the dashed act dividers it does not scroll. Same height as the act dividers."
+        type: "class-toggle"
+        default: true
+    -
+        id: "slkm-m-subway-labelcol-divider-width"
+        title: "Divider line thickness"
+        type: "variable-number-slider"
+        default: 2
+        min: 1
+        max: 6
+        step: 0.5
+        format: "px"
+    -
+        id: "slkm-m-subway-labelcol-divider-color"
+        title: "Divider line colour"
+        type: "variable-themed-color"
+        format: "hex"
+        default-light: "#ababab"
+        default-dark: "#666666"
+    -
         id: "slkm-m-h-dialogs"
         title: "Dialogs"
         type: "heading"
@@ -969,6 +1125,12 @@ body {
     --slkm-subway-pill-offset: 0px;
     --slkm-subway-pill-width: 1;
     --slkm-subway-spacing-factor: 1;
+    --slkm-subway-labelcol-width: 160px;
+    --slkm-subway-labelcol-font: 15px;
+    --slkm-subway-labelcol-weight: 700;
+    --slkm-subway-labelcol-line-height: 1.15;
+    --slkm-subway-labelcol-divider-width: 2px;
+    --slkm-subway-labelcol-divider-color: var(--text-faint);
 }
 
 /* =====================================================================
@@ -1229,6 +1391,49 @@ body:is(.slkm-subway-style.slkm-on-desktop:not(.is-mobile), .slkm-m-subway-style
     stroke-dasharray: var(--slkm-realized-dash) var(--slkm-realized-gap);
 }
 
+/* ---------- Subway: plotline name column ----------
+   StoryLine sets width (160 px), font size (15 px), weight and nowrap
+   inline, so these rules need !important. The SVG is shifted by the
+   width difference, so the tracks still start right of the column. */
+body:is(.slkm-subway-labelcol.slkm-on-desktop:not(.is-mobile), .slkm-m-subway-labelcol.slkm-on-mobile.is-mobile) .subway-map-wrapper > .subway-label-col {
+    width: var(--slkm-subway-labelcol-width) !important;
+}
+
+body:is(.slkm-subway-labelcol.slkm-on-desktop:not(.is-mobile), .slkm-m-subway-labelcol.slkm-on-mobile.is-mobile) .subway-map-wrapper > svg {
+    margin-left: calc(var(--slkm-subway-labelcol-width) - 160px);
+}
+
+/* Each name is centred on its line (StoryLine places its top 8 px above the
+   line, which only fits one line of 15 px text) */
+body:is(.slkm-subway-labelcol.slkm-on-desktop:not(.is-mobile), .slkm-m-subway-labelcol.slkm-on-mobile.is-mobile) .subway-label-col > .subway-lane-label {
+    font-size: var(--slkm-subway-labelcol-font) !important;
+    font-weight: var(--slkm-subway-labelcol-weight) !important;
+    line-height: var(--slkm-subway-labelcol-line-height);
+    translate: 0 calc(8px - 50%);
+}
+
+/* Wrap long names inside the column (14 px left inset from StoryLine, 10 px gap to the divider) */
+body:is(.slkm-subway-labelcol-wrap.slkm-on-desktop:not(.is-mobile), .slkm-m-subway-labelcol-wrap.slkm-on-mobile.is-mobile) .subway-label-col > .subway-lane-label {
+    width: calc(100% - 24px);
+    white-space: normal !important;
+    overflow-wrap: break-word;
+    hyphens: auto;
+    translate: 0 calc(8px - 50%);
+}
+
+/* Fixed divider: the column is sticky, so the line stays while the map scrolls.
+   Same height as the dashed act dividers (y = 45 px to the bottom of the last lane,
+   30 px above the end of the column). */
+body:is(.slkm-subway-labelcol-divider.slkm-on-desktop:not(.is-mobile), .slkm-m-subway-labelcol-divider.slkm-on-mobile.is-mobile) .subway-map-wrapper > .subway-label-col::after {
+    content: "";
+    position: absolute;
+    top: 45px;
+    bottom: 30px;
+    right: 0;
+    border-right: var(--slkm-subway-labelcol-divider-width) solid var(--slkm-subway-labelcol-divider-color);
+    pointer-events: none;
+}
+
 /* ---------- Dialogs ---------- */
 body:is(.slkm-on-desktop:not(.is-mobile), .slkm-on-mobile.is-mobile) .sl-km-structure-modal .modal {
     width: min(var(--slkm-structure-width), 92vw);
@@ -1288,6 +1493,12 @@ body {
     --slkm-m-subway-pill-font: 9px;
     --slkm-m-subway-spacing-factor: 1;
     --slkm-m-structure-width: 960px;
+    --slkm-m-subway-labelcol-width: 160px;
+    --slkm-m-subway-labelcol-font: 15px;
+    --slkm-m-subway-labelcol-weight: 700;
+    --slkm-m-subway-labelcol-line-height: 1.15;
+    --slkm-m-subway-labelcol-divider-width: 2px;
+    --slkm-m-subway-labelcol-divider-color: var(--text-faint);
 }
 
 body.is-mobile.slkm-on-mobile {
@@ -1322,11 +1533,17 @@ body.is-mobile.slkm-on-mobile {
     --slkm-subway-pill-font: var(--slkm-m-subway-pill-font);
     --slkm-subway-spacing-factor: var(--slkm-m-subway-spacing-factor);
     --slkm-structure-width: var(--slkm-m-structure-width);
+    --slkm-subway-labelcol-width: var(--slkm-m-subway-labelcol-width);
+    --slkm-subway-labelcol-font: var(--slkm-m-subway-labelcol-font);
+    --slkm-subway-labelcol-weight: var(--slkm-m-subway-labelcol-weight);
+    --slkm-subway-labelcol-line-height: var(--slkm-m-subway-labelcol-line-height);
+    --slkm-subway-labelcol-divider-width: var(--slkm-m-subway-labelcol-divider-width);
 }
 
 body.theme-light.is-mobile.slkm-on-mobile,
 body.theme-dark.is-mobile.slkm-on-mobile {
     --slkm-volume-accent: var(--slkm-m-volume-accent);
+    --slkm-subway-labelcol-divider-color: var(--slkm-m-subway-labelcol-divider-color);
 }
 
 /* ---------- Mobile only: keep StoryLine below the system status bar ----------
