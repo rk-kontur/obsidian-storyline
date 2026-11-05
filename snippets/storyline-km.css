@@ -1,8 +1,10 @@
 /* =====================================================================
    StoryLine Advanced Settings – UI snippet with Style Settings
-   Version 1.2 (2026-11-05)
+   Version 1.3 (2026-11-05)
 
    Changelog
+   1.3  - Menu filter chips: font size, padding, gap, corner radius,
+          group spacing and section titles adjustable
    1.2  - Toolbar icons: "Space around each icon" now works (fixed button
           width / height removed); also applies to the view switcher tabs
         - List / Subway switch icons follow the icon size
@@ -27,7 +29,7 @@
 
 /* @settings
 
-name: StoryLine Advanced Settings 1.2
+name: StoryLine Advanced Settings 1.3
 id: storyline-km
 settings:
     -
@@ -182,6 +184,97 @@ settings:
         step: 1
         format: px
 
+    -
+        id: "slkm-h-chips"
+        title: "Menu filter chips"
+        description: "The chips in the expanded filter panel (Idea, Outlined, Draft …, Act 1, Act 2 …, Volume, POV, Characters, Locations, Tags, Saved presets) and their section titles."
+        type: "heading"
+        level: 2
+        collapsed: true
+    -
+        id: "slkm-chips"
+        title: "Adjust menu filter chips"
+        description: "Uses the values below. On mobile it also removes the 44 px minimum size StoryLine gives these chips."
+        type: "class-toggle"
+        default: true
+    -
+        id: "slkm-chip-font"
+        title: "Chip font size"
+        description: "StoryLine default about 12 px (0.8em)."
+        type: "variable-number-slider"
+        default: 12
+        min: 8
+        max: 18
+        step: 0.5
+        format: "px"
+    -
+        id: "slkm-chip-pad-y"
+        title: "Chip padding (top / bottom)"
+        description: "StoryLine default 3 px."
+        type: "variable-number-slider"
+        default: 3
+        min: 0
+        max: 12
+        step: 1
+        format: "px"
+    -
+        id: "slkm-chip-pad-x"
+        title: "Chip padding (left / right)"
+        description: "StoryLine default 10 px."
+        type: "variable-number-slider"
+        default: 10
+        min: 0
+        max: 20
+        step: 1
+        format: "px"
+    -
+        id: "slkm-chip-gap"
+        title: "Space between chips"
+        description: "StoryLine default 6 px."
+        type: "variable-number-slider"
+        default: 6
+        min: 0
+        max: 20
+        step: 1
+        format: "px"
+    -
+        id: "slkm-chip-radius"
+        title: "Chip corner radius"
+        description: "StoryLine default 20 px (pill). 0 = square."
+        type: "variable-number-slider"
+        default: 20
+        min: 0
+        max: 20
+        step: 1
+        format: "px"
+    -
+        id: "slkm-chip-group-space"
+        title: "Space below each chip group"
+        description: "StoryLine default 12 px."
+        type: "variable-number-slider"
+        default: 12
+        min: 0
+        max: 30
+        step: 1
+        format: "px"
+    -
+        id: "slkm-chip-title-font"
+        title: "Section title font size (Act, Volume …)"
+        type: "variable-number-slider"
+        default: 14
+        min: 9
+        max: 20
+        step: 0.5
+        format: "px"
+    -
+        id: "slkm-chip-title-pad"
+        title: "Section title padding (top / bottom)"
+        type: "variable-number-slider"
+        default: 6
+        min: 0
+        max: 20
+        step: 1
+        format: "px"
     -
         id: slkm-h-icons
         title: Toolbar icons
@@ -772,6 +865,97 @@ settings:
         step: 1
         format: "px"
     -
+        id: "slkm-m-h-chips"
+        title: "Menu filter chips"
+        description: "The chips in the expanded filter panel (Idea, Outlined, Draft …, Act 1, Act 2 …, Volume, POV, Characters, Locations, Tags, Saved presets) and their section titles."
+        type: "heading"
+        level: 2
+        collapsed: true
+    -
+        id: "slkm-m-chips"
+        title: "Adjust menu filter chips"
+        description: "Uses the values below. On mobile it also removes the 44 px minimum size StoryLine gives these chips."
+        type: "class-toggle"
+        default: true
+    -
+        id: "slkm-m-chip-font"
+        title: "Chip font size"
+        description: "StoryLine default about 12 px (0.8em)."
+        type: "variable-number-slider"
+        default: 12
+        min: 8
+        max: 18
+        step: 0.5
+        format: "px"
+    -
+        id: "slkm-m-chip-pad-y"
+        title: "Chip padding (top / bottom)"
+        description: "StoryLine default 3 px."
+        type: "variable-number-slider"
+        default: 3
+        min: 0
+        max: 12
+        step: 1
+        format: "px"
+    -
+        id: "slkm-m-chip-pad-x"
+        title: "Chip padding (left / right)"
+        description: "StoryLine default 10 px."
+        type: "variable-number-slider"
+        default: 10
+        min: 0
+        max: 20
+        step: 1
+        format: "px"
+    -
+        id: "slkm-m-chip-gap"
+        title: "Space between chips"
+        description: "StoryLine default 6 px."
+        type: "variable-number-slider"
+        default: 6
+        min: 0
+        max: 20
+        step: 1
+        format: "px"
+    -
+        id: "slkm-m-chip-radius"
+        title: "Chip corner radius"
+        description: "StoryLine default 20 px (pill). 0 = square."
+        type: "variable-number-slider"
+        default: 20
+        min: 0
+        max: 20
+        step: 1
+        format: "px"
+    -
+        id: "slkm-m-chip-group-space"
+        title: "Space below each chip group"
+        description: "StoryLine default 12 px."
+        type: "variable-number-slider"
+        default: 12
+        min: 0
+        max: 30
+        step: 1
+        format: "px"
+    -
+        id: "slkm-m-chip-title-font"
+        title: "Section title font size (Act, Volume …)"
+        type: "variable-number-slider"
+        default: 14
+        min: 9
+        max: 20
+        step: 0.5
+        format: "px"
+    -
+        id: "slkm-m-chip-title-pad"
+        title: "Section title padding (top / bottom)"
+        type: "variable-number-slider"
+        default: 6
+        min: 0
+        max: 20
+        step: 1
+        format: "px"
+    -
         id: "slkm-m-h-icons"
         title: "Toolbar icons"
         description: "Icon buttons in the toolbars and the filter bar (filter, sort direction, refresh / sync, undo, redo, zoom …) and the view switcher icons (Board, Timeline, Subway …)."
@@ -1254,6 +1438,14 @@ body {
     --slkm-subway-spacing-factor: 1;
     --slkm-subway-labelcol-width: 160px;
     --slkm-toolbar-icon-size: 14px;
+    --slkm-chip-font: 12px;
+    --slkm-chip-pad-y: 3px;
+    --slkm-chip-pad-x: 10px;
+    --slkm-chip-gap: 6px;
+    --slkm-chip-radius: 20px;
+    --slkm-chip-group-space: 12px;
+    --slkm-chip-title-font: 14px;
+    --slkm-chip-title-pad: 6px;
     --slkm-toolbar-icon-pad: 4px;
     --slkm-subway-labelcol-gap: 24px;
     --slkm-subway-labelcol-font: 15px;
@@ -1340,6 +1532,34 @@ body:is(.slkm-compact-dropdowns:is(.slkm-mode-desktop, :is(.slkm-mode-auto, .slk
     line-height: var(--slkm-dropdown-height) !important;
 }
 
+/* ---------- Menu filter chips (expanded filter panel) ---------- */
+body:is(.slkm-chips:is(.slkm-mode-desktop, :is(.slkm-mode-auto, .slkm-mode-desktop-only):not(.is-mobile)), .slkm-m-chips:is(.slkm-mode-mobile, .slkm-mode-auto.is-mobile)) .story-line-filter-panel .story-line-filter-chips {
+    gap: var(--slkm-chip-gap) !important;
+    margin-bottom: var(--slkm-chip-group-space) !important;
+}
+
+body:is(.slkm-chips:is(.slkm-mode-desktop, :is(.slkm-mode-auto, .slkm-mode-desktop-only):not(.is-mobile)), .slkm-m-chips:is(.slkm-mode-mobile, .slkm-mode-auto.is-mobile)) .story-line-filter-panel .story-line-chip {
+    width: auto !important;
+    height: auto !important;
+    min-width: 0 !important;
+    min-height: 0 !important;
+    padding: var(--slkm-chip-pad-y) var(--slkm-chip-pad-x) !important;
+    font-size: var(--slkm-chip-font) !important;
+    line-height: 1.3 !important;
+    border-radius: var(--slkm-chip-radius) !important;
+}
+
+/* Section titles (Act, Volume …) are Obsidian setting rows */
+body:is(.slkm-chips:is(.slkm-mode-desktop, :is(.slkm-mode-auto, .slkm-mode-desktop-only):not(.is-mobile)), .slkm-m-chips:is(.slkm-mode-mobile, .slkm-mode-auto.is-mobile)) .story-line-filter-panel .setting-item {
+    min-height: 0 !important;
+    padding-top: var(--slkm-chip-title-pad) !important;
+    padding-bottom: var(--slkm-chip-title-pad) !important;
+}
+
+body:is(.slkm-chips:is(.slkm-mode-desktop, :is(.slkm-mode-auto, .slkm-mode-desktop-only):not(.is-mobile)), .slkm-m-chips:is(.slkm-mode-mobile, .slkm-mode-auto.is-mobile)) .story-line-filter-panel .setting-item-name {
+    font-size: var(--slkm-chip-title-font) !important;
+}
+
 /* ---------- Toolbar icons: same size as the view switcher icons ----------
    StoryLine: view switcher icons 14 px, other icon buttons follow Obsidian's
    --icon-size (larger on mobile, plus a 44 px minimum button size). */
@@ -1370,7 +1590,7 @@ body:is(.slkm-toolbar-icons:is(.slkm-mode-desktop, :is(.slkm-mode-auto, .slkm-mo
 }
 
 /* ---------- Debug: outline everything the size settings target ---------- */
-body.slkm-debug :is(.story-line-arc-filter-btn, .story-line-active-filter-btn, .story-line-add-btn, .story-line-filter-bar input.story-line-search, .sl-nav-search-wrap, select.dropdown, select.sl-km-volume-scope, select.story-line-order-select, select.story-line-swimlane-group-select, :is(.story-line-toolbar, .story-line-filters-container, .story-line-filter-bar) :is(.clickable-icon, .codex-toolbar-icon-btn, .storyline-toggle-btn), .story-line-view-tab .view-tab-icon, .storyline-toggle-btn) {
+body.slkm-debug :is(.story-line-arc-filter-btn, .story-line-active-filter-btn, .story-line-add-btn, .story-line-filter-bar input.story-line-search, .sl-nav-search-wrap, select.dropdown, select.sl-km-volume-scope, select.story-line-order-select, select.story-line-swimlane-group-select, :is(.story-line-toolbar, .story-line-filters-container, .story-line-filter-bar) :is(.clickable-icon, .codex-toolbar-icon-btn, .storyline-toggle-btn), .story-line-view-tab .view-tab-icon, .storyline-toggle-btn, .story-line-filter-panel .story-line-chip) {
     outline: 2px solid red !important;
     outline-offset: -1px;
 }
@@ -1670,6 +1890,14 @@ body {
     --slkm-m-structure-width: 960px;
     --slkm-m-subway-labelcol-width: 160px;
     --slkm-m-toolbar-icon-size: 14px;
+    --slkm-m-chip-font: 12px;
+    --slkm-m-chip-pad-y: 3px;
+    --slkm-m-chip-pad-x: 10px;
+    --slkm-m-chip-gap: 6px;
+    --slkm-m-chip-radius: 20px;
+    --slkm-m-chip-group-space: 12px;
+    --slkm-m-chip-title-font: 14px;
+    --slkm-m-chip-title-pad: 6px;
     --slkm-m-toolbar-icon-pad: 4px;
     --slkm-m-subway-labelcol-gap: 24px;
     --slkm-m-subway-labelcol-font: 15px;
@@ -1713,6 +1941,14 @@ body:is(.slkm-mode-mobile, .slkm-mode-auto.is-mobile) {
     --slkm-structure-width: var(--slkm-m-structure-width);
     --slkm-subway-labelcol-width: var(--slkm-m-subway-labelcol-width);
     --slkm-toolbar-icon-size: var(--slkm-m-toolbar-icon-size);
+    --slkm-chip-font: var(--slkm-m-chip-font);
+    --slkm-chip-pad-y: var(--slkm-m-chip-pad-y);
+    --slkm-chip-pad-x: var(--slkm-m-chip-pad-x);
+    --slkm-chip-gap: var(--slkm-m-chip-gap);
+    --slkm-chip-radius: var(--slkm-m-chip-radius);
+    --slkm-chip-group-space: var(--slkm-m-chip-group-space);
+    --slkm-chip-title-font: var(--slkm-m-chip-title-font);
+    --slkm-chip-title-pad: var(--slkm-m-chip-title-pad);
     --slkm-toolbar-icon-pad: var(--slkm-m-toolbar-icon-pad);
     --slkm-subway-labelcol-gap: var(--slkm-m-subway-labelcol-gap);
     --slkm-subway-labelcol-font: var(--slkm-m-subway-labelcol-font);
