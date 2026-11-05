@@ -1,0 +1,1366 @@
+/* =====================================================================
+   StoryLine Advanced Settings – UI snippet with Style Settings
+   Install: copy into <vault config folder>/snippets/, enable it under
+   Settings → Appearance → CSS snippets, then adjust everything under
+   Settings → Style Settings → "StoryLine Advanced Settings".
+   Every block is gated by the device switch (desktop / mobile) and by
+   its own toggle, so nothing applies unless it is switched on.
+   ===================================================================== */
+
+/* @settings
+
+name: StoryLine Advanced Settings
+id: storyline-km
+settings:
+    -
+        id: slkm-h-devices
+        title: Devices
+        description: "Choose where these tweaks apply. Desktop and mobile have separate switches and values: changing one never changes the other."
+        type: heading
+        level: 1
+        collapsed: false
+    -
+        id: slkm-on-desktop
+        title: Apply on desktop
+        description: "Uses the switches and values in the sections below."
+        type: class-toggle
+        default: true
+    -
+        id: slkm-on-mobile
+        title: Apply on mobile (phone and tablet)
+        description: "Uses the switches and values in the \"Mobile\" section at the end. They are separate copies, so mobile changes never affect desktop."
+        type: class-toggle
+        default: false
+
+    -
+        id: slkm-h-filterbar
+        title: Filter bar
+        description: Board, Manuscript and Plot Grid (Filter by, search, sort, Type, State). The search field settings also apply to "Filter scenes…" in the Navigator and Plotlines sidebar.
+        type: heading
+        level: 1
+        collapsed: true
+    -
+        id: slkm-filterbar-size
+        title: Adjust filter bar spacing and search field
+        type: class-toggle
+        default: true
+    -
+        id: slkm-filterbar-pad-y
+        title: Filter bar padding (top / bottom)
+        type: variable-number-slider
+        default: 8
+        min: 0
+        max: 20
+        step: 1
+        format: px
+    -
+        id: slkm-search-height
+        title: Search field height
+        type: variable-number-slider
+        default: 28
+        min: 18
+        max: 40
+        step: 1
+        format: px
+    -
+        id: slkm-search-font
+        title: Search field font size
+        type: variable-number-slider
+        default: 13
+        min: 9
+        max: 16
+        step: 1
+        format: px
+    -
+        id: slkm-compact-filters
+        title: Compact buttons (Type, State, Arc Points filter, "+ new …")
+        description: Applies the size below to the All / Scenes / Arc Points and Active / All / Inactive buttons and to the "+ new scene / note / chapter / plotline" buttons.
+        type: class-toggle
+        default: true
+    -
+        id: slkm-filter-btn-font
+        title: Button font size
+        type: variable-number-slider
+        default: 12
+        min: 9
+        max: 15
+        step: 1
+        format: px
+    -
+        id: slkm-filter-btn-pad-y
+        title: Button padding (top / bottom)
+        type: variable-number-slider
+        default: 1
+        min: 0
+        max: 8
+        step: 1
+        format: px
+    -
+        id: slkm-filter-btn-pad-x
+        title: Button padding (left / right)
+        type: variable-number-slider
+        default: 3
+        min: 0
+        max: 14
+        step: 1
+        format: px
+    -
+        id: slkm-filter-flat
+        title: Remove frames around the Type / State groups
+        type: class-toggle
+        default: true
+    -
+        id: slkm-filter-hide-labels
+        title: Hide the "Type" / "State" labels
+        type: class-toggle
+        default: false
+    -
+        id: slkm-compact-dropdowns
+        title: Compact dropdowns
+        description: Volume selector (filter bar and toolbars of Timeline, Subway, Navigator, Statistics), Sort, Group by, and in the Timeline Reading / Chronological order and the swimlane grouping.
+        type: class-toggle
+        default: true
+    -
+        id: slkm-dropdown-height
+        title: Dropdown height
+        type: variable-number-slider
+        default: 22
+        min: 16
+        max: 34
+        step: 1
+        format: px
+    -
+        id: slkm-dropdown-font
+        title: Dropdown font size
+        type: variable-number-slider
+        default: 12
+        min: 9
+        max: 15
+        step: 1
+        format: px
+
+    -
+        id: slkm-h-layout
+        title: Layout
+        type: heading
+        level: 1
+        collapsed: true
+    -
+        id: slkm-filter-panel-overflow
+        title: Let the filter panel overflow the board area
+        description: Keeps the expanded filter panel and dropdowns from being cut off at the bottom of Board and Timeline.
+        type: class-toggle
+        default: true
+
+    -
+        id: slkm-h-cards
+        title: Scene cards
+        description: Kanban and Corkboard.
+        type: heading
+        level: 1
+        collapsed: true
+    -
+        id: slkm-card-tint-kanban
+        title: Tint scene cards in Kanban
+        type: class-toggle
+        default: true
+    -
+        id: slkm-card-tint-corkboard
+        title: Tint scene cards in Corkboard
+        type: class-toggle
+        default: false
+    -
+        id: slkm-card-tint-mode
+        title: Tint colour source
+        description: Card colour = the coloured stripe on the left (follows StoryLine → Color coding; choose "By tag / plotline" for plotline colours). Fixed = the colour below.
+        type: class-select
+        allowEmpty: false
+        default: slkm-tint-card-colour
+        options:
+            -
+                label: Card colour (plotline / colour coding)
+                value: slkm-tint-card-colour
+            -
+                label: Fixed colour
+                value: slkm-tint-fixed
+    -
+        id: slkm-card-tint-color
+        title: Fixed tint colour
+        type: variable-color
+        format: hex
+        default: '#808080'
+    -
+        id: slkm-card-tint-opacity
+        title: Tint opacity
+        type: variable-number-slider
+        default: 0.08
+        min: 0
+        max: 0.4
+        step: 0.01
+
+    -
+        id: slkm-h-badges
+        title: Badges
+        description: Arc Point and Volume badges on scene cards.
+        type: heading
+        level: 1
+        collapsed: true
+    -
+        id: slkm-arc-badge-pinned
+        title: Kanban / Corkboard - pin the Arc Point badge into the card header
+        description: Moves "◆ Arc Point" up next to the scene number instead of its own line. Scene cards in Kanban and Corkboard only.
+        type: class-toggle
+        default: true
+    -
+        id: slkm-arc-badge-top
+        title: Arc Point badge – distance from top
+        type: variable-number-slider
+        default: 10
+        min: 0
+        max: 40
+        step: 1
+        format: px
+    -
+        id: slkm-arc-badge-left
+        title: Arc Point badge – distance from left
+        type: variable-number-slider
+        default: 85
+        min: 0
+        max: 220
+        step: 1
+        format: px
+    -
+        id: slkm-timeline-arc-badge-right
+        title: Timeline - Arc Point badge at the right edge of the card
+        type: class-toggle
+        default: true
+    -
+        id: slkm-timeline-arc-badge-top
+        title: Timeline - Arc Point badge distance from top
+        type: variable-number-slider
+        default: 10
+        min: 0
+        max: 40
+        step: 1
+        format: px
+    -
+        id: slkm-timeline-arc-badge-right-offset
+        title: Timeline - Arc Point badge distance from the right edge
+        type: variable-number-slider
+        default: 10
+        min: 0
+        max: 60
+        step: 1
+        format: px
+    -
+        id: slkm-kanban-volume-badge-fix
+        title: Kanban - volume badge at the start of the card header
+        description: Avoids overlapping the word count (top right in Kanban). Hidden when the board is grouped by act, because the volume bands already show the volume.
+        type: class-toggle
+        default: true
+    -
+        id: slkm-hide-volume-badge
+        title: Hide the volume badge (V1, V2 …)
+        type: class-toggle
+        default: false
+    -
+        id: slkm-h-volumes
+        title: Volumes
+        description: Volume dividers, bands and the volume selector.
+        type: heading
+        level: 1
+        collapsed: true
+    -
+        id: slkm-volume-style
+        title: Restyle volume dividers and bands
+        type: class-toggle
+        default: false
+    -
+        id: slkm-volume-accent
+        title: Volume title colour
+        type: variable-themed-color
+        format: hex
+        default-light: '#7a4fd6'
+        default-dark: '#a88bff'
+    -
+        id: slkm-volume-line
+        title: Divider line thickness
+        type: variable-number-slider
+        default: 3
+        min: 1
+        max: 8
+        step: 1
+        format: px
+    -
+        id: slkm-volume-column-width
+        title: Kanban volume band width
+        type: variable-number-slider
+        default: 28
+        min: 16
+        max: 60
+        step: 1
+        format: px
+    -
+        id: slkm-hide-filter-by-label
+        title: Hide the "Filter by" label in front of the volume selector
+        type: class-toggle
+        default: false
+
+    -
+        id: slkm-h-subway
+        title: Subway map
+        description: Zoom, horizontal spacing, line width, stations, Arc Points, connectors (incl. realized Arc Point links) and plotline pills.
+        type: heading
+        level: 1
+        collapsed: true
+    -
+        id: slkm-subway-style
+        title: Restyle the Subway map
+        type: class-toggle
+        default: true
+    -
+        id: slkm-subway-zoom
+        title: Zoom (whole Subway map)
+        description: Scales everything (lines, stations, labels) like a smaller zoom level. 1 = StoryLine default.
+        type: variable-number-slider
+        default: 0.8
+        min: 0.4
+        max: 1.2
+        step: 0.05
+    -
+        id: slkm-subway-line
+        title: Line width
+        description: StoryLine default 8 px.
+        type: variable-number-slider
+        default: 8
+        min: 1
+        max: 12
+        step: 1
+        format: px
+    -
+        id: slkm-subway-station-scale
+        title: Scene (station) size
+        description: 1 = StoryLine default. Works like the Arc Point size.
+        type: variable-number-slider
+        default: 1
+        min: 0.4
+        max: 1.6
+        step: 0.05
+    -
+        id: slkm-subway-station-ring
+        title: Station ring width
+        description: StoryLine default 3.5 px.
+        type: variable-number-slider
+        default: 3.5
+        min: 1
+        max: 6
+        step: 0.5
+        format: px
+    -
+        id: slkm-subway-arc-scale
+        title: Arc Point (diamond) size
+        description: 1 = StoryLine default.
+        type: variable-number-slider
+        default: 1
+        min: 0.4
+        max: 1.6
+        step: 0.05
+    -
+        id: slkm-subway-connector-width
+        title: Connector width
+        description: Applies to both connectors - scenes on several lines and realized Arc Points. StoryLine default 6 (realized 5).
+        type: variable-number-slider
+        default: 6
+        min: 1
+        max: 14
+        step: 0.5
+    -
+        id: slkm-subway-connector-opacity
+        title: Opacity - connectors (scene on several lines)
+        description: StoryLine default 0.55.
+        type: variable-number-slider
+        default: 0.55
+        min: 0.1
+        max: 1
+        step: 0.05
+    -
+        id: slkm-realized-opacity
+        title: Opacity - realized Arc Point link
+        description: StoryLine (km) default 0.65.
+        type: variable-number-slider
+        default: 0.65
+        min: 0.1
+        max: 1
+        step: 0.05
+    -
+        id: slkm-realized-dash
+        title: Realized link - dash length
+        type: variable-number-slider
+        default: 12
+        min: 2
+        max: 30
+        step: 1
+    -
+        id: slkm-realized-gap
+        title: Realized link - gap length
+        type: variable-number-slider
+        default: 4
+        min: 1
+        max: 20
+        step: 1
+    -
+        id: slkm-subway-pill-width
+        title: Plotline pill width
+        description: 1 = StoryLine default. Pills cannot be moved apart with CSS; if they overlap (e.g. with a smaller horizontal spacing), make them narrower, at most as small as the spacing factor, and reduce the font size if the name does not fit.
+        type: variable-number-slider
+        default: 1
+        min: 0.4
+        max: 1.4
+        step: 0.05
+    -
+        id: slkm-subway-pill-offset
+        title: Plotline name - vertical position in its pill
+        description: 0 = StoryLine default. Negative moves the text up, positive down.
+        type: variable-number-slider
+        default: 0
+        min: -4
+        max: 4
+        step: 0.5
+        format: px
+    -
+        id: slkm-subway-pill-font
+        title: Plotline pill font size
+        description: StoryLine default 9 px.
+        type: variable-number-slider
+        default: 9
+        min: 7
+        max: 13
+        step: 0.5
+        format: px
+    -
+        id: slkm-subway-spacing-factor
+        title: Horizontal spacing (distance between stations)
+        description: 1 = StoryLine default. Only left-right; stations, diamonds, labels and pills keep their shape. Below 1 the map leaves some empty scroll space on the right.
+        type: variable-number-slider
+        default: 1
+        min: 0.3
+        max: 2
+        step: 0.05
+    -
+        id: slkm-h-dialogs
+        title: Dialogs
+        type: heading
+        level: 1
+        collapsed: true
+    -
+        id: slkm-structure-width
+        title: Manage story structure dialog width
+        type: variable-number-slider
+        default: 960
+        min: 600
+        max: 1400
+        step: 20
+        format: px
+    -
+        id: slkm-export-actions-space
+        title: "Export dialog: space below Export / Cancel"
+        description: "Upstream gives the button row space above it only. This adds the standard space below it, before the export options."
+        type: class-toggle
+        default: true
+    -
+        id: "slkm-m-h-mobile"
+        title: "Mobile (phone and tablet)"
+        description: "Separate copies of all switches and values above, used only on mobile when \"Apply on mobile\" is on. Defaults match the desktop defaults."
+        type: "heading"
+        level: 1
+        collapsed: true
+    -
+        id: "slkm-m-h-mobile-only"
+        title: "Mobile only"
+        type: "heading"
+        level: 2
+        collapsed: true
+    -
+        id: "slkm-m-safe-top"
+        title: "Keep StoryLine below the status bar"
+        description: "StoryLine hides Obsidian's mobile view header, which normally keeps the space for the clock and status icons. This adds that space back above StoryLine's own toolbar."
+        type: "class-toggle"
+        default: true
+    -
+        id: "slkm-m-safe-top-extra"
+        title: "Extra space below the status bar"
+        description: "Raise this if the view switcher still sits under the clock (e.g. 24–32 px on Android)."
+        type: "variable-number-slider"
+        default: 0
+        min: 0
+        max: 80
+        step: 2
+        format: "px"
+    -
+        id: "slkm-m-kanban-volume-horizontal"
+        title: "Kanban volume bands: horizontal on phones"
+        description: "On phones the Kanban stacks columns vertically. The volume band then runs across the full width with a horizontal title."
+        type: "class-toggle"
+        default: true
+    -
+        id: "slkm-m-h-filterbar"
+        title: "Filter bar"
+        description: "Board, Manuscript and Plot Grid (Filter by, search, sort, Type, State). The search field settings also apply to \"Filter scenes…\" in the Navigator and Plotlines sidebar."
+        type: "heading"
+        level: 2
+        collapsed: true
+    -
+        id: "slkm-m-filterbar-size"
+        title: "Adjust filter bar spacing and search field"
+        type: "class-toggle"
+        default: true
+    -
+        id: "slkm-m-filterbar-pad-y"
+        title: "Filter bar padding (top / bottom)"
+        type: "variable-number-slider"
+        default: 8
+        min: 0
+        max: 20
+        step: 1
+        format: "px"
+    -
+        id: "slkm-m-search-height"
+        title: "Search field height"
+        type: "variable-number-slider"
+        default: 28
+        min: 18
+        max: 40
+        step: 1
+        format: "px"
+    -
+        id: "slkm-m-search-font"
+        title: "Search field font size"
+        type: "variable-number-slider"
+        default: 13
+        min: 9
+        max: 16
+        step: 1
+        format: "px"
+    -
+        id: "slkm-m-compact-filters"
+        title: "Compact buttons (Type, State, Arc Points filter, \"+ new …\")"
+        description: "Applies the size below to the All / Scenes / Arc Points and Active / All / Inactive buttons and to the \"+ new scene / note / chapter / plotline\" buttons."
+        type: "class-toggle"
+        default: true
+    -
+        id: "slkm-m-filter-btn-font"
+        title: "Button font size"
+        type: "variable-number-slider"
+        default: 12
+        min: 9
+        max: 15
+        step: 1
+        format: "px"
+    -
+        id: "slkm-m-filter-btn-pad-y"
+        title: "Button padding (top / bottom)"
+        type: "variable-number-slider"
+        default: 1
+        min: 0
+        max: 8
+        step: 1
+        format: "px"
+    -
+        id: "slkm-m-filter-btn-pad-x"
+        title: "Button padding (left / right)"
+        type: "variable-number-slider"
+        default: 3
+        min: 0
+        max: 14
+        step: 1
+        format: "px"
+    -
+        id: "slkm-m-filter-flat"
+        title: "Remove frames around the Type / State groups"
+        type: "class-toggle"
+        default: true
+    -
+        id: "slkm-m-filter-hide-labels"
+        title: "Hide the \"Type\" / \"State\" labels"
+        type: "class-toggle"
+        default: false
+    -
+        id: "slkm-m-compact-dropdowns"
+        title: "Compact dropdowns"
+        description: "Volume selector (filter bar and toolbars of Timeline, Subway, Navigator, Statistics), Sort, Group by, and in the Timeline Reading / Chronological order and the swimlane grouping."
+        type: "class-toggle"
+        default: true
+    -
+        id: "slkm-m-dropdown-height"
+        title: "Dropdown height"
+        type: "variable-number-slider"
+        default: 22
+        min: 16
+        max: 34
+        step: 1
+        format: "px"
+    -
+        id: "slkm-m-dropdown-font"
+        title: "Dropdown font size"
+        type: "variable-number-slider"
+        default: 12
+        min: 9
+        max: 15
+        step: 1
+        format: "px"
+    -
+        id: "slkm-m-h-layout"
+        title: "Layout"
+        type: "heading"
+        level: 2
+        collapsed: true
+    -
+        id: "slkm-m-filter-panel-overflow"
+        title: "Let the filter panel overflow the board area"
+        description: "Keeps the expanded filter panel and dropdowns from being cut off at the bottom of Board and Timeline."
+        type: "class-toggle"
+        default: true
+    -
+        id: "slkm-m-h-cards"
+        title: "Scene cards"
+        description: "Kanban and Corkboard."
+        type: "heading"
+        level: 2
+        collapsed: true
+    -
+        id: "slkm-m-card-tint-kanban"
+        title: "Tint scene cards in Kanban"
+        type: "class-toggle"
+        default: true
+    -
+        id: "slkm-m-card-tint-corkboard"
+        title: "Tint scene cards in Corkboard"
+        type: "class-toggle"
+        default: false
+    -
+        id: "slkm-m-card-tint-mode"
+        title: "Tint colour source"
+        description: "Card colour = the coloured stripe on the left (follows StoryLine → Color coding; choose \"By tag / plotline\" for plotline colours). Fixed = the colour below."
+        type: "class-select"
+        allowEmpty: false
+        default: "slkm-m-tint-card-colour"
+        options:
+            -
+                label: "Card colour (plotline / colour coding)"
+                value: "slkm-m-tint-card-colour"
+            -
+                label: "Fixed colour"
+                value: "slkm-m-tint-fixed"
+    -
+        id: "slkm-m-card-tint-color"
+        title: "Fixed tint colour"
+        type: "variable-color"
+        format: "hex"
+        default: "#808080"
+    -
+        id: "slkm-m-card-tint-opacity"
+        title: "Tint opacity"
+        type: "variable-number-slider"
+        default: 0.08
+        min: 0
+        max: 0.4
+        step: 0.01
+    -
+        id: "slkm-m-h-badges"
+        title: "Badges"
+        description: "Arc Point and Volume badges on scene cards."
+        type: "heading"
+        level: 2
+        collapsed: true
+    -
+        id: "slkm-m-arc-badge-pinned"
+        title: "Kanban / Corkboard - pin the Arc Point badge into the card header"
+        description: "Moves \"◆ Arc Point\" up next to the scene number instead of its own line. Scene cards in Kanban and Corkboard only."
+        type: "class-toggle"
+        default: true
+    -
+        id: "slkm-m-arc-badge-top"
+        title: "Arc Point badge – distance from top"
+        type: "variable-number-slider"
+        default: 10
+        min: 0
+        max: 40
+        step: 1
+        format: "px"
+    -
+        id: "slkm-m-arc-badge-left"
+        title: "Arc Point badge – distance from left"
+        type: "variable-number-slider"
+        default: 85
+        min: 0
+        max: 220
+        step: 1
+        format: "px"
+    -
+        id: "slkm-m-timeline-arc-badge-right"
+        title: "Timeline - Arc Point badge at the right edge of the card"
+        type: "class-toggle"
+        default: true
+    -
+        id: "slkm-m-timeline-arc-badge-top"
+        title: "Timeline - Arc Point badge distance from top"
+        type: "variable-number-slider"
+        default: 10
+        min: 0
+        max: 40
+        step: 1
+        format: "px"
+    -
+        id: "slkm-m-timeline-arc-badge-right-offset"
+        title: "Timeline - Arc Point badge distance from the right edge"
+        type: "variable-number-slider"
+        default: 10
+        min: 0
+        max: 60
+        step: 1
+        format: "px"
+    -
+        id: "slkm-m-kanban-volume-badge-fix"
+        title: "Kanban - volume badge at the start of the card header"
+        description: "Avoids overlapping the word count (top right in Kanban). Hidden when the board is grouped by act, because the volume bands already show the volume."
+        type: "class-toggle"
+        default: true
+    -
+        id: "slkm-m-hide-volume-badge"
+        title: "Hide the volume badge (V1, V2 …)"
+        type: "class-toggle"
+        default: false
+    -
+        id: "slkm-m-h-volumes"
+        title: "Volumes"
+        description: "Volume dividers, bands and the volume selector."
+        type: "heading"
+        level: 2
+        collapsed: true
+    -
+        id: "slkm-m-volume-style"
+        title: "Restyle volume dividers and bands"
+        type: "class-toggle"
+        default: false
+    -
+        id: "slkm-m-volume-accent"
+        title: "Volume title colour"
+        type: "variable-themed-color"
+        format: "hex"
+        default-light: "#7a4fd6"
+        default-dark: "#a88bff"
+    -
+        id: "slkm-m-volume-line"
+        title: "Divider line thickness"
+        type: "variable-number-slider"
+        default: 3
+        min: 1
+        max: 8
+        step: 1
+        format: "px"
+    -
+        id: "slkm-m-volume-column-width"
+        title: "Kanban volume band width"
+        type: "variable-number-slider"
+        default: 28
+        min: 16
+        max: 60
+        step: 1
+        format: "px"
+    -
+        id: "slkm-m-hide-filter-by-label"
+        title: "Hide the \"Filter by\" label in front of the volume selector"
+        type: "class-toggle"
+        default: false
+    -
+        id: "slkm-m-h-subway"
+        title: "Subway map"
+        description: "Zoom, horizontal spacing, line width, stations, Arc Points, connectors (incl. realized Arc Point links) and plotline pills."
+        type: "heading"
+        level: 2
+        collapsed: true
+    -
+        id: "slkm-m-subway-style"
+        title: "Restyle the Subway map"
+        type: "class-toggle"
+        default: true
+    -
+        id: "slkm-m-subway-zoom"
+        title: "Zoom (whole Subway map)"
+        description: "Scales everything (lines, stations, labels) like a smaller zoom level. 1 = StoryLine default."
+        type: "variable-number-slider"
+        default: 0.8
+        min: 0.4
+        max: 1.2
+        step: 0.05
+    -
+        id: "slkm-m-subway-line"
+        title: "Line width"
+        description: "StoryLine default 8 px."
+        type: "variable-number-slider"
+        default: 8
+        min: 1
+        max: 12
+        step: 1
+        format: "px"
+    -
+        id: "slkm-m-subway-station-scale"
+        title: "Scene (station) size"
+        description: "1 = StoryLine default. Works like the Arc Point size."
+        type: "variable-number-slider"
+        default: 1
+        min: 0.4
+        max: 1.6
+        step: 0.05
+    -
+        id: "slkm-m-subway-station-ring"
+        title: "Station ring width"
+        description: "StoryLine default 3.5 px."
+        type: "variable-number-slider"
+        default: 3.5
+        min: 1
+        max: 6
+        step: 0.5
+        format: "px"
+    -
+        id: "slkm-m-subway-arc-scale"
+        title: "Arc Point (diamond) size"
+        description: "1 = StoryLine default."
+        type: "variable-number-slider"
+        default: 1
+        min: 0.4
+        max: 1.6
+        step: 0.05
+    -
+        id: "slkm-m-subway-connector-width"
+        title: "Connector width"
+        description: "Applies to both connectors - scenes on several lines and realized Arc Points. StoryLine default 6 (realized 5)."
+        type: "variable-number-slider"
+        default: 6
+        min: 1
+        max: 14
+        step: 0.5
+    -
+        id: "slkm-m-subway-connector-opacity"
+        title: "Opacity - connectors (scene on several lines)"
+        description: "StoryLine default 0.55."
+        type: "variable-number-slider"
+        default: 0.55
+        min: 0.1
+        max: 1
+        step: 0.05
+    -
+        id: "slkm-m-realized-opacity"
+        title: "Opacity - realized Arc Point link"
+        description: "StoryLine (km) default 0.65."
+        type: "variable-number-slider"
+        default: 0.65
+        min: 0.1
+        max: 1
+        step: 0.05
+    -
+        id: "slkm-m-realized-dash"
+        title: "Realized link - dash length"
+        type: "variable-number-slider"
+        default: 12
+        min: 2
+        max: 30
+        step: 1
+    -
+        id: "slkm-m-realized-gap"
+        title: "Realized link - gap length"
+        type: "variable-number-slider"
+        default: 4
+        min: 1
+        max: 20
+        step: 1
+    -
+        id: "slkm-m-subway-pill-width"
+        title: "Plotline pill width"
+        description: "1 = StoryLine default. Pills cannot be moved apart with CSS; if they overlap (e.g. with a smaller horizontal spacing), make them narrower, at most as small as the spacing factor, and reduce the font size if the name does not fit."
+        type: "variable-number-slider"
+        default: 1
+        min: 0.4
+        max: 1.4
+        step: 0.05
+    -
+        id: "slkm-m-subway-pill-offset"
+        title: "Plotline name - vertical position in its pill"
+        description: "0 = StoryLine default. Negative moves the text up, positive down."
+        type: "variable-number-slider"
+        default: 0
+        min: -4
+        max: 4
+        step: 0.5
+        format: "px"
+    -
+        id: "slkm-m-subway-pill-font"
+        title: "Plotline pill font size"
+        description: "StoryLine default 9 px."
+        type: "variable-number-slider"
+        default: 9
+        min: 7
+        max: 13
+        step: 0.5
+        format: "px"
+    -
+        id: "slkm-m-subway-spacing-factor"
+        title: "Horizontal spacing (distance between stations)"
+        description: "1 = StoryLine default. Only left-right; stations, diamonds, labels and pills keep their shape. Below 1 the map leaves some empty scroll space on the right."
+        type: "variable-number-slider"
+        default: 1
+        min: 0.3
+        max: 2
+        step: 0.05
+    -
+        id: "slkm-m-h-dialogs"
+        title: "Dialogs"
+        type: "heading"
+        level: 2
+        collapsed: true
+    -
+        id: "slkm-m-structure-width"
+        title: "Manage story structure dialog width"
+        type: "variable-number-slider"
+        default: 960
+        min: 600
+        max: 1400
+        step: 20
+        format: "px"
+    -
+        id: "slkm-m-export-actions-space"
+        title: "Export dialog: space below Export / Cancel"
+        description: "Upstream gives the button row space above it only. This adds the standard space below it, before the export options."
+        type: "class-toggle"
+        default: true
+*/
+
+/* ---------- Defaults (Style Settings overrides these on body) ---------- */
+body {
+    --slkm-filterbar-pad-y: 8px;
+    --slkm-search-height: 28px;
+    --slkm-search-font: 13px;
+    --slkm-filter-btn-font: 12px;
+    --slkm-filter-btn-pad-y: 1px;
+    --slkm-filter-btn-pad-x: 3px;
+    --slkm-dropdown-height: 22px;
+    --slkm-dropdown-font: 12px;
+    --slkm-card-tint-color: #808080;
+    --slkm-card-tint-opacity: 0.08;
+    --slkm-arc-badge-top: 10px;
+    --slkm-arc-badge-left: 85px;
+    --slkm-timeline-arc-badge-top: 10px;
+    --slkm-timeline-arc-badge-right-offset: 10px;
+    --slkm-volume-accent: var(--text-accent);
+    --slkm-volume-line: 3px;
+    --slkm-volume-column-width: 28px;
+    --slkm-realized-opacity: 0.65;
+    --slkm-realized-dash: 12;
+    --slkm-realized-gap: 4;
+    --slkm-structure-width: 960px;
+    --slkm-subway-zoom: 0.8;
+    --slkm-subway-line: 8px;
+    --slkm-subway-station-scale: 1;
+    --slkm-subway-station-ring: 3.5px;
+    --slkm-subway-arc-scale: 1;
+    --slkm-subway-connector-opacity: 0.55;
+    --slkm-subway-connector-width: 6;
+    --slkm-subway-pill-font: 9px;
+    --slkm-subway-pill-offset: 0px;
+    --slkm-subway-pill-width: 1;
+    --slkm-subway-spacing-factor: 1;
+}
+
+/* =====================================================================
+   RULES (desktop: body.slkm-on-desktop, not mobile, with the slkm-*
+   switches; mobile: body.slkm-on-mobile.is-mobile with the slkm-m-*
+   switches, see the MOBILE section at the end)
+   ===================================================================== */
+
+/* ---------- Filter bar: spacing and search field ---------- */
+body:is(.slkm-filterbar-size.slkm-on-desktop:not(.is-mobile), .slkm-m-filterbar-size.slkm-on-mobile.is-mobile) .story-line-filter-bar {
+    padding-top: var(--slkm-filterbar-pad-y);
+    padding-bottom: var(--slkm-filterbar-pad-y);
+}
+
+body:is(.slkm-filterbar-size.slkm-on-desktop:not(.is-mobile), .slkm-m-filterbar-size.slkm-on-mobile.is-mobile) .story-line-filter-bar input.story-line-search {
+    height: var(--slkm-search-height);
+    padding-top: 0;
+    padding-bottom: 0;
+    font-size: var(--slkm-search-font);
+    line-height: var(--slkm-search-height);
+}
+
+/* Navigator "Filter scenes…": same height and font as the filter bar search;
+   no second frame from the theme around the input inside the rounded box */
+body:is(.slkm-filterbar-size.slkm-on-desktop:not(.is-mobile), .slkm-m-filterbar-size.slkm-on-mobile.is-mobile) .sl-nav-search-wrap {
+    min-height: var(--slkm-search-height);
+    padding-top: 0;
+    padding-bottom: 0;
+}
+
+body:is(.slkm-filterbar-size.slkm-on-desktop:not(.is-mobile), .slkm-m-filterbar-size.slkm-on-mobile.is-mobile) .sl-nav-search-wrap input.sl-nav-search,
+body:is(.slkm-filterbar-size.slkm-on-desktop:not(.is-mobile), .slkm-m-filterbar-size.slkm-on-mobile.is-mobile) .sl-nav-search-wrap input.sl-nav-search:hover,
+body:is(.slkm-filterbar-size.slkm-on-desktop:not(.is-mobile), .slkm-m-filterbar-size.slkm-on-mobile.is-mobile) .sl-nav-search-wrap input.sl-nav-search:focus {
+    height: calc(var(--slkm-search-height) - 2px);
+    padding: 0;
+    font-size: var(--slkm-search-font);
+    line-height: calc(var(--slkm-search-height) - 2px);
+    border: none;
+    box-shadow: none;
+    background: transparent;
+}
+
+/* ---------- Filter bar: compact Type / State buttons ---------- */
+body:is(.slkm-compact-filters.slkm-on-desktop:not(.is-mobile), .slkm-m-compact-filters.slkm-on-mobile.is-mobile) :is(.story-line-arc-filter-btn, .story-line-active-filter-btn, .story-line-add-btn) {
+    height: auto;
+    padding: var(--slkm-filter-btn-pad-y) var(--slkm-filter-btn-pad-x);
+    font-size: var(--slkm-filter-btn-font);
+}
+
+/* ---------- Filter bar: no frames around the groups ---------- */
+body:is(.slkm-filter-flat.slkm-on-desktop:not(.is-mobile), .slkm-m-filter-flat.slkm-on-mobile.is-mobile) :is(.story-line-arc-filter, .story-line-active-filter) {
+    border: none;
+    box-shadow: none;
+    outline: none;
+}
+
+/* ---------- Filter bar: hide the Type / State labels ---------- */
+body:is(.slkm-filter-hide-labels.slkm-on-desktop:not(.is-mobile), .slkm-m-filter-hide-labels.slkm-on-mobile.is-mobile) .story-line-filter-bar :is(.story-line-arc-filter, .story-line-active-filter)::before {
+    content: none;
+}
+
+/* ---------- Compact dropdowns (Volume, Sort, Group by) ---------- */
+body:is(.slkm-compact-dropdowns.slkm-on-desktop:not(.is-mobile), .slkm-m-compact-dropdowns.slkm-on-mobile.is-mobile) :is(:is(.story-line-filter-bar, .story-line-sort, .story-line-group-control) select.dropdown, select.sl-km-volume-scope, select.story-line-order-select, select.story-line-swimlane-group-select) {
+    height: var(--slkm-dropdown-height);
+    padding-top: 0;
+    padding-bottom: 0;
+    font-size: var(--slkm-dropdown-font);
+    line-height: var(--slkm-dropdown-height);
+}
+
+/* ---------- Layout: filter panel may overflow the board area ---------- */
+body:is(.slkm-filter-panel-overflow.slkm-on-desktop:not(.is-mobile), .slkm-m-filter-panel-overflow.slkm-on-mobile.is-mobile) .story-line-main-area {
+    overflow: visible;
+    overflow-x: clip;
+}
+
+/* ---------- Scene cards: tint ---------- */
+body:is(.slkm-on-desktop:not(.is-mobile), .slkm-on-mobile.is-mobile):is(.slkm-card-tint-kanban, .slkm-card-tint-corkboard) .scene-card {
+    position: relative;
+}
+
+body:is(.slkm-card-tint-kanban.slkm-on-desktop:not(.is-mobile), .slkm-m-card-tint-kanban.slkm-on-mobile.is-mobile) .story-line-column .scene-card::before,
+body:is(.slkm-card-tint-corkboard.slkm-on-desktop:not(.is-mobile), .slkm-m-card-tint-corkboard.slkm-on-mobile.is-mobile) .story-line-corkboard .scene-card::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    border-radius: inherit;
+    background-color: var(--slkm-card-tint-color);
+    opacity: var(--slkm-card-tint-opacity);
+    pointer-events: none;
+}
+
+/* Card colour: the pseudo element inherits the card's stripe colour (inline
+   border-left-color set by StoryLine) and paints it as a wide left border
+   that covers the card. The card clips it (contain: content). */
+body:is(.slkm-tint-card-colour.slkm-card-tint-kanban.slkm-on-desktop:not(.is-mobile), .slkm-m-tint-card-colour.slkm-m-card-tint-kanban.slkm-on-mobile.is-mobile) .story-line-column .scene-card::before,
+body:is(.slkm-tint-card-colour.slkm-card-tint-corkboard.slkm-on-desktop:not(.is-mobile), .slkm-m-tint-card-colour.slkm-m-card-tint-corkboard.slkm-on-mobile.is-mobile) .story-line-corkboard .scene-card::before {
+    background-color: transparent;
+    border-left-style: solid;
+    border-left-width: 2000px;
+    border-left-color: inherit;
+}
+
+/* ---------- Badges: Arc Point badge pinned into the header ---------- */
+body:is(.slkm-arc-badge-pinned.slkm-on-desktop:not(.is-mobile), .slkm-m-arc-badge-pinned.slkm-on-mobile.is-mobile) .scene-card {
+    position: relative;
+}
+
+body:is(.slkm-arc-badge-pinned.slkm-on-desktop:not(.is-mobile), .slkm-m-arc-badge-pinned.slkm-on-mobile.is-mobile) .scene-card .scene-card-arc-point-badge {
+    position: absolute;
+    top: var(--slkm-arc-badge-top);
+    left: var(--slkm-arc-badge-left);
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    height: 16px;
+    margin: 0;
+    padding: 0 6px;
+    border-radius: 5px;
+    font-size: var(--font-smallest);
+    line-height: 16px;
+}
+
+body:is(.slkm-arc-badge-pinned.slkm-on-desktop:not(.is-mobile), .slkm-m-arc-badge-pinned.slkm-on-mobile.is-mobile) .scene-card .scene-card-arc-point-badge svg {
+    translate: -1px 1.5px;
+}
+
+/* ---------- Badges: Arc Point badge in Timeline cards, at the right edge ---------- */
+body:is(.slkm-timeline-arc-badge-right.slkm-on-desktop:not(.is-mobile), .slkm-m-timeline-arc-badge-right.slkm-on-mobile.is-mobile) .timeline-card {
+    position: relative;
+}
+
+body:is(.slkm-timeline-arc-badge-right.slkm-on-desktop:not(.is-mobile), .slkm-m-timeline-arc-badge-right.slkm-on-mobile.is-mobile) .timeline-card .scene-card-arc-point-badge {
+    position: absolute;
+    top: var(--slkm-timeline-arc-badge-top);
+    right: var(--slkm-timeline-arc-badge-right-offset);
+    left: auto;
+    margin: 0;
+}
+
+/* ---------- Badges: volume badge in Kanban ----------
+   Kanban puts the word count absolutely at the top right; the badge goes first instead. */
+body:is(.slkm-kanban-volume-badge-fix.slkm-on-desktop:not(.is-mobile), .slkm-m-kanban-volume-badge-fix.slkm-on-mobile.is-mobile) .story-line-column-body .sl-km-volume-badge {
+    order: -1;
+    margin-left: 0;
+}
+
+body:is(.slkm-kanban-volume-badge-fix.slkm-on-desktop:not(.is-mobile), .slkm-m-kanban-volume-badge-fix.slkm-on-mobile.is-mobile) .story-line-board:has(.sl-km-volume-column) .story-line-column-body .sl-km-volume-badge {
+    display: none;
+}
+
+/* ---------- Badges: hide the volume badge ---------- */
+body:is(.slkm-hide-volume-badge.slkm-on-desktop:not(.is-mobile), .slkm-m-hide-volume-badge.slkm-on-mobile.is-mobile) .sl-km-volume-badge {
+    display: none;
+}
+
+/* ---------- Volumes: dividers, bands, selector ---------- */
+body:is(.slkm-volume-style.slkm-on-desktop:not(.is-mobile), .slkm-m-volume-style.slkm-on-mobile.is-mobile) .sl-km-volume-divider {
+    border-top-width: var(--slkm-volume-line);
+    color: var(--slkm-volume-accent);
+}
+
+body:is(.slkm-volume-style.slkm-on-desktop:not(.is-mobile), .slkm-m-volume-style.slkm-on-mobile.is-mobile) .sl-km-volume-column {
+    flex-basis: var(--slkm-volume-column-width);
+    border-left-width: var(--slkm-volume-line);
+}
+
+body:is(.slkm-volume-style.slkm-on-desktop:not(.is-mobile), .slkm-m-volume-style.slkm-on-mobile.is-mobile) .sl-km-volume-column-label {
+    color: var(--slkm-volume-accent);
+}
+
+body:is(.slkm-hide-filter-by-label.slkm-on-desktop:not(.is-mobile), .slkm-m-hide-filter-by-label.slkm-on-mobile.is-mobile) .sl-km-filter-by-label {
+    display: none;
+}
+
+/* ---------- Subway map ----------
+   The map is an SVG with fixed coordinates. Sizes are changed with CSS
+   transforms on the single elements; the horizontal spacing squeezes the
+   whole SVG left-right (scaleX) and scales every element back by the same
+   factor, so circles, diamonds, labels and pills keep their shape. */
+body:is(.slkm-subway-style.slkm-on-desktop:not(.is-mobile), .slkm-m-subway-style.slkm-on-mobile.is-mobile) {
+    --slkm-f: var(--slkm-subway-spacing-factor);
+}
+
+/* Zoom: scales the whole map (Subway only, not the Plotlines list view); the width is widened so it still fills the pane */
+body:is(.slkm-subway-style.slkm-on-desktop:not(.is-mobile), .slkm-m-subway-style.slkm-on-mobile.is-mobile) .story-line-storyline-content:has(> .subway-map-wrapper) {
+    transform: scale(var(--slkm-subway-zoom));
+    transform-origin: top left;
+    width: calc(100% / var(--slkm-subway-zoom));
+}
+
+/* Horizontal spacing: squeeze around x = 160 px (start of the tracks, right of the line names) */
+body:is(.slkm-subway-style.slkm-on-desktop:not(.is-mobile), .slkm-m-subway-style.slkm-on-mobile.is-mobile) .subway-map-wrapper > svg {
+    transform: scaleX(var(--slkm-f));
+    transform-origin: 160px 0;
+}
+
+body:is(.slkm-subway-style.slkm-on-desktop:not(.is-mobile), .slkm-m-subway-style.slkm-on-mobile.is-mobile) .subway-map-wrapper svg :is(path, line) {
+    vector-effect: non-scaling-stroke;
+}
+
+body:is(.slkm-subway-style.slkm-on-desktop:not(.is-mobile), .slkm-m-subway-style.slkm-on-mobile.is-mobile) .subway-map-wrapper svg path {
+    stroke-width: var(--slkm-subway-line);
+}
+
+body:is(.slkm-subway-style.slkm-on-desktop:not(.is-mobile), .slkm-m-subway-style.slkm-on-mobile.is-mobile) .subway-map-wrapper svg :is(circle, polygon, rect, text) {
+    transform-box: fill-box;
+    transform-origin: center;
+}
+
+/* Scene stations */
+body:is(.slkm-subway-style.slkm-on-desktop:not(.is-mobile), .slkm-m-subway-style.slkm-on-mobile.is-mobile) .subway-map-wrapper svg circle {
+    stroke-width: var(--slkm-subway-station-ring);
+    scale: calc(var(--slkm-subway-station-scale) / var(--slkm-f)) var(--slkm-subway-station-scale);
+}
+
+/* Arc Points (diamonds) */
+body:is(.slkm-subway-style.slkm-on-desktop:not(.is-mobile), .slkm-m-subway-style.slkm-on-mobile.is-mobile) .subway-map-wrapper svg polygon {
+    scale: calc(var(--slkm-subway-arc-scale) / var(--slkm-f)) var(--slkm-subway-arc-scale);
+}
+
+/* Connectors between lines (scene on several plotlines): gradient bars, default 6 px wide */
+body:is(.slkm-subway-style.slkm-on-desktop:not(.is-mobile), .slkm-m-subway-style.slkm-on-mobile.is-mobile) .subway-map-wrapper svg rect[fill^="url(#conn-grad"] {
+    opacity: var(--slkm-subway-connector-opacity);
+    scale: calc(var(--slkm-subway-connector-width) / 6 / var(--slkm-f)) 1;
+}
+
+/* All labels keep their width */
+body:is(.slkm-subway-style.slkm-on-desktop:not(.is-mobile), .slkm-m-subway-style.slkm-on-mobile.is-mobile) .subway-map-wrapper svg text {
+    scale: calc(1 / var(--slkm-f)) 1;
+}
+
+/* Left-aligned labels (volume titles next to their divider) keep their left edge */
+body:is(.slkm-subway-style.slkm-on-desktop:not(.is-mobile), .slkm-m-subway-style.slkm-on-mobile.is-mobile) .subway-map-wrapper svg text[text-anchor="start"] {
+    transform-origin: left center;
+}
+
+/* Plotline pills: own width setting */
+body:is(.slkm-subway-style.slkm-on-desktop:not(.is-mobile), .slkm-m-subway-style.slkm-on-mobile.is-mobile) .subway-map-wrapper svg rect[rx="7"] {
+    scale: calc(var(--slkm-subway-pill-width) / var(--slkm-f)) 1;
+}
+
+/* Plotline pills under the stations: the pill is a rect with rx=7, its text follows it */
+body:is(.slkm-subway-style.slkm-on-desktop:not(.is-mobile), .slkm-m-subway-style.slkm-on-mobile.is-mobile) .subway-map-wrapper svg rect[rx="7"] + text {
+    font-size: var(--slkm-subway-pill-font);
+}
+
+/* Fine-tune the vertical position of the plotline name inside its pill */
+body:is(.slkm-subway-style.slkm-on-desktop:not(.is-mobile), .slkm-m-subway-style.slkm-on-mobile.is-mobile) .subway-map-wrapper svg rect[rx="7"] + text {
+    translate: 0 var(--slkm-subway-pill-offset);
+}
+
+/* Realized Arc Point link (dashed): shares the connector width */
+body:is(.slkm-subway-style.slkm-on-desktop:not(.is-mobile), .slkm-m-subway-style.slkm-on-mobile.is-mobile) .sl-km-realized-link {
+    opacity: var(--slkm-realized-opacity);
+    stroke-width: calc(var(--slkm-subway-connector-width) * 1px);
+    stroke-dasharray: var(--slkm-realized-dash) var(--slkm-realized-gap);
+}
+
+/* ---------- Dialogs ---------- */
+body:is(.slkm-on-desktop:not(.is-mobile), .slkm-on-mobile.is-mobile) .sl-km-structure-modal .modal {
+    width: min(var(--slkm-structure-width), 92vw);
+}
+
+/* ---------- Export dialog: space below the Export / Cancel row ---------- */
+body:is(.slkm-export-actions-space.slkm-on-desktop:not(.is-mobile), .slkm-m-export-actions-space.slkm-on-mobile.is-mobile) .storyline-export-actions {
+    margin-bottom: var(--size-4-4, 16px);
+}
+
+/* ---------- Subway: no 1 px border along the line-name column ----------
+   StoryLine draws it over the full column height, so it sticks out above
+   and below the map. Always removed, no switch. */
+.subway-label-col {
+    border-right: none;
+}
+
+/* =====================================================================
+   MOBILE (body.slkm-on-mobile.is-mobile)
+   Every rule above also applies on mobile, but gated by the mobile copies
+   of its switches (slkm-m-*) and fed by the mobile copies of its values.
+   ===================================================================== */
+
+/* ---------- Mobile values: separate copies of every value above ----------
+   Style Settings writes the mobile sliders to --slkm-m-*; on mobile they
+   replace the desktop variables, so the two never affect each other. */
+body {
+    --slkm-m-filterbar-pad-y: 8px;
+    --slkm-m-search-height: 28px;
+    --slkm-m-search-font: 13px;
+    --slkm-m-filter-btn-font: 12px;
+    --slkm-m-filter-btn-pad-y: 1px;
+    --slkm-m-filter-btn-pad-x: 3px;
+    --slkm-m-dropdown-height: 22px;
+    --slkm-m-dropdown-font: 12px;
+    --slkm-m-card-tint-color: #808080;
+    --slkm-m-card-tint-opacity: 0.08;
+    --slkm-m-arc-badge-top: 10px;
+    --slkm-m-arc-badge-left: 85px;
+    --slkm-m-timeline-arc-badge-top: 10px;
+    --slkm-m-timeline-arc-badge-right-offset: 10px;
+    --slkm-m-volume-accent: var(--text-accent);
+    --slkm-m-volume-line: 3px;
+    --slkm-m-volume-column-width: 28px;
+    --slkm-m-subway-zoom: 0.8;
+    --slkm-m-subway-line: 8px;
+    --slkm-m-subway-station-scale: 1;
+    --slkm-m-subway-station-ring: 3.5px;
+    --slkm-m-subway-arc-scale: 1;
+    --slkm-m-subway-connector-width: 6;
+    --slkm-m-subway-connector-opacity: 0.55;
+    --slkm-m-realized-opacity: 0.65;
+    --slkm-m-realized-dash: 12;
+    --slkm-m-realized-gap: 4;
+    --slkm-m-subway-pill-width: 1;
+    --slkm-m-subway-pill-offset: 0px;
+    --slkm-m-subway-pill-font: 9px;
+    --slkm-m-subway-spacing-factor: 1;
+    --slkm-m-structure-width: 960px;
+}
+
+body.is-mobile.slkm-on-mobile {
+    --slkm-filterbar-pad-y: var(--slkm-m-filterbar-pad-y);
+    --slkm-search-height: var(--slkm-m-search-height);
+    --slkm-search-font: var(--slkm-m-search-font);
+    --slkm-filter-btn-font: var(--slkm-m-filter-btn-font);
+    --slkm-filter-btn-pad-y: var(--slkm-m-filter-btn-pad-y);
+    --slkm-filter-btn-pad-x: var(--slkm-m-filter-btn-pad-x);
+    --slkm-dropdown-height: var(--slkm-m-dropdown-height);
+    --slkm-dropdown-font: var(--slkm-m-dropdown-font);
+    --slkm-card-tint-color: var(--slkm-m-card-tint-color);
+    --slkm-card-tint-opacity: var(--slkm-m-card-tint-opacity);
+    --slkm-arc-badge-top: var(--slkm-m-arc-badge-top);
+    --slkm-arc-badge-left: var(--slkm-m-arc-badge-left);
+    --slkm-timeline-arc-badge-top: var(--slkm-m-timeline-arc-badge-top);
+    --slkm-timeline-arc-badge-right-offset: var(--slkm-m-timeline-arc-badge-right-offset);
+    --slkm-volume-line: var(--slkm-m-volume-line);
+    --slkm-volume-column-width: var(--slkm-m-volume-column-width);
+    --slkm-subway-zoom: var(--slkm-m-subway-zoom);
+    --slkm-subway-line: var(--slkm-m-subway-line);
+    --slkm-subway-station-scale: var(--slkm-m-subway-station-scale);
+    --slkm-subway-station-ring: var(--slkm-m-subway-station-ring);
+    --slkm-subway-arc-scale: var(--slkm-m-subway-arc-scale);
+    --slkm-subway-connector-width: var(--slkm-m-subway-connector-width);
+    --slkm-subway-connector-opacity: var(--slkm-m-subway-connector-opacity);
+    --slkm-realized-opacity: var(--slkm-m-realized-opacity);
+    --slkm-realized-dash: var(--slkm-m-realized-dash);
+    --slkm-realized-gap: var(--slkm-m-realized-gap);
+    --slkm-subway-pill-width: var(--slkm-m-subway-pill-width);
+    --slkm-subway-pill-offset: var(--slkm-m-subway-pill-offset);
+    --slkm-subway-pill-font: var(--slkm-m-subway-pill-font);
+    --slkm-subway-spacing-factor: var(--slkm-m-subway-spacing-factor);
+    --slkm-structure-width: var(--slkm-m-structure-width);
+}
+
+body.theme-light.is-mobile.slkm-on-mobile,
+body.theme-dark.is-mobile.slkm-on-mobile {
+    --slkm-volume-accent: var(--slkm-m-volume-accent);
+}
+
+/* ---------- Mobile only: keep StoryLine below the system status bar ----------
+   Upstream hides Obsidian's mobile view header for StoryLine views and pads
+   with env(safe-area-inset-top), which is often 0 on Android. Use Obsidian's
+   --safe-area-inset-top as well, plus an adjustable extra. */
+body {
+    --slkm-m-safe-top-extra: 0px;
+}
+
+@media (max-width: 768px) {
+    /* upstream hides Obsidian's view header only up to this width */
+    body.is-mobile.slkm-on-mobile.slkm-m-safe-top :is(.story-line-board-container, .story-line-timeline-container, .story-line-storyline-container, .story-line-character-container, .story-line-location-container, .story-line-codex-container, .story-line-stats-container, .story-line-manuscript-container) {
+        padding-top: calc(max(var(--safe-area-inset-top, 0px), env(safe-area-inset-top, 0px)) + var(--slkm-m-safe-top-extra)) !important;
+    }
+
+    body.is-mobile.slkm-on-mobile.slkm-m-safe-top :is(.story-line-board-container, .story-line-timeline-container, .story-line-storyline-container, .story-line-character-container, .story-line-location-container, .story-line-codex-container, .story-line-stats-container, .story-line-manuscript-container) .story-line-toolbar {
+        top: calc(max(var(--safe-area-inset-top, 0px), env(safe-area-inset-top, 0px)) + var(--slkm-m-safe-top-extra));
+        padding-top: 8px;
+    }
+}
+
+/* ---------- Mobile only: Kanban volume bands run across on phones ---------- */
+body.is-phone.slkm-on-mobile.slkm-m-kanban-volume-horizontal .sl-km-volume-column {
+    flex: 0 0 auto;
+    align-self: stretch;
+    justify-content: flex-start;
+    padding: 4px 8px;
+    border-left: none;
+    border-top: 3px solid var(--text-muted);
+}
+
+body.is-phone.slkm-on-mobile.slkm-m-kanban-volume-horizontal .sl-km-volume-column-label {
+    writing-mode: horizontal-tb;
+    transform: none;
+}
+
