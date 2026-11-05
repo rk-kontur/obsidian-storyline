@@ -1,5 +1,16 @@
 /* =====================================================================
    StoryLine Advanced Settings – UI snippet with Style Settings
+   Version 1.0 (2026-11-05)
+
+   Changelog
+   1.0  First versioned release:
+        - "Mode" select replaces the desktop / mobile switches
+        - Subway: plotline name column (width, font, wrapping, fixed
+          divider, space before the first act)
+        - Mobile: removes StoryLine's 44 px minimum size for compact
+          buttons, dropdowns and the search field
+        - Toolbar icons: same size as the view switcher icons
+
    Install: copy into <vault config folder>/snippets/, enable it under
    Settings → Appearance → CSS snippets, then adjust everything under
    Settings → Style Settings → "StoryLine Advanced Settings".
@@ -9,7 +20,7 @@
 
 /* @settings
 
-name: StoryLine Advanced Settings
+name: StoryLine Advanced Settings 1.0
 id: storyline-km
 settings:
     -
