@@ -158,6 +158,38 @@ settings:
         format: px
 
     -
+        id: slkm-h-icons
+        title: Toolbar icons
+        description: Icon buttons in the toolbars and the filter bar (filter, sort direction, refresh / sync, undo, redo, zoom …) and the view switcher icons (Board, Timeline, Subway …).
+        type: heading
+        level: 2
+        collapsed: true
+    -
+        id: slkm-toolbar-icons
+        title: Menu icons the same size as the view switcher icons
+        description: Uses the size below for the view switcher icons and for all toolbar / filter bar icon buttons, so they match. On mobile it also removes the 44 px minimum size StoryLine gives these buttons.
+        type: class-toggle
+        default: true
+    -
+        id: slkm-toolbar-icon-size
+        title: Icon size
+        description: "StoryLine default for the view switcher icons: 14 px."
+        type: variable-number-slider
+        default: 14
+        min: 10
+        max: 26
+        step: 1
+        format: px
+    -
+        id: slkm-toolbar-icon-pad
+        title: Space around each icon
+        type: variable-number-slider
+        default: 4
+        min: 0
+        max: 12
+        step: 1
+        format: px
+    -
         id: slkm-h-layout
         title: Layout
         type: heading
@@ -715,6 +747,38 @@ settings:
         step: 1
         format: "px"
     -
+        id: "slkm-m-h-icons"
+        title: "Toolbar icons"
+        description: "Icon buttons in the toolbars and the filter bar (filter, sort direction, refresh / sync, undo, redo, zoom …) and the view switcher icons (Board, Timeline, Subway …)."
+        type: "heading"
+        level: 2
+        collapsed: true
+    -
+        id: "slkm-m-toolbar-icons"
+        title: "Menu icons the same size as the view switcher icons"
+        description: "Uses the size below for the view switcher icons and for all toolbar / filter bar icon buttons, so they match. On mobile it also removes the 44 px minimum size StoryLine gives these buttons."
+        type: "class-toggle"
+        default: true
+    -
+        id: "slkm-m-toolbar-icon-size"
+        title: "Icon size"
+        description: "StoryLine default for the view switcher icons: 14 px."
+        type: "variable-number-slider"
+        default: 14
+        min: 10
+        max: 26
+        step: 1
+        format: "px"
+    -
+        id: "slkm-m-toolbar-icon-pad"
+        title: "Space around each icon"
+        type: "variable-number-slider"
+        default: 4
+        min: 0
+        max: 12
+        step: 1
+        format: "px"
+    -
         id: "slkm-m-h-layout"
         title: "Layout"
         type: "heading"
@@ -1164,6 +1228,8 @@ body {
     --slkm-subway-pill-width: 1;
     --slkm-subway-spacing-factor: 1;
     --slkm-subway-labelcol-width: 160px;
+    --slkm-toolbar-icon-size: 14px;
+    --slkm-toolbar-icon-pad: 4px;
     --slkm-subway-labelcol-gap: 24px;
     --slkm-subway-labelcol-font: 15px;
     --slkm-subway-labelcol-weight: 700;
@@ -1175,16 +1241,17 @@ body {
 /* =====================================================================
    RULES (desktop value set: slkm-* switches; mobile value set: slkm-m-*
    switches; which set is active is decided by the Mode select
-   switches, see the MOBILE section at the end)
    ===================================================================== */
 
 /* ---------- Filter bar: spacing and search field ---------- */
 body:is(.slkm-filterbar-size:is(.slkm-mode-desktop, :is(.slkm-mode-auto, .slkm-mode-desktop-only):not(.is-mobile)), .slkm-m-filterbar-size:is(.slkm-mode-mobile, .slkm-mode-auto.is-mobile)) .story-line-filter-bar {
+    min-height: 0;
     padding-top: var(--slkm-filterbar-pad-y);
     padding-bottom: var(--slkm-filterbar-pad-y);
 }
 
 body:is(.slkm-filterbar-size:is(.slkm-mode-desktop, :is(.slkm-mode-auto, .slkm-mode-desktop-only):not(.is-mobile)), .slkm-m-filterbar-size:is(.slkm-mode-mobile, .slkm-mode-auto.is-mobile)) .story-line-filter-bar input.story-line-search {
+    min-height: var(--slkm-search-height);
     height: var(--slkm-search-height);
     padding-top: 0;
     padding-bottom: 0;
@@ -1214,9 +1281,16 @@ body:is(.slkm-filterbar-size:is(.slkm-mode-desktop, :is(.slkm-mode-auto, .slkm-m
 
 /* ---------- Filter bar: compact Type / State buttons ---------- */
 body:is(.slkm-compact-filters:is(.slkm-mode-desktop, :is(.slkm-mode-auto, .slkm-mode-desktop-only):not(.is-mobile)), .slkm-m-compact-filters:is(.slkm-mode-mobile, .slkm-mode-auto.is-mobile)) :is(.story-line-arc-filter-btn, .story-line-active-filter-btn, .story-line-add-btn) {
+    min-height: 0;
+    min-width: 0;
     height: auto;
     padding: var(--slkm-filter-btn-pad-y) var(--slkm-filter-btn-pad-x);
     font-size: var(--slkm-filter-btn-font);
+}
+
+/* ---------- Mobile: StoryLine gives the Type / State groups 44 px minimum height ---------- */
+body:is(.slkm-compact-filters:is(.slkm-mode-desktop, :is(.slkm-mode-auto, .slkm-mode-desktop-only):not(.is-mobile)), .slkm-m-compact-filters:is(.slkm-mode-mobile, .slkm-mode-auto.is-mobile)) :is(.story-line-arc-filter, .story-line-active-filter) {
+    min-height: 0;
 }
 
 /* ---------- Filter bar: no frames around the groups ---------- */
@@ -1233,11 +1307,29 @@ body:is(.slkm-filter-hide-labels:is(.slkm-mode-desktop, :is(.slkm-mode-auto, .sl
 
 /* ---------- Compact dropdowns (Volume, Sort, Group by) ---------- */
 body:is(.slkm-compact-dropdowns:is(.slkm-mode-desktop, :is(.slkm-mode-auto, .slkm-mode-desktop-only):not(.is-mobile)), .slkm-m-compact-dropdowns:is(.slkm-mode-mobile, .slkm-mode-auto.is-mobile)) :is(:is(.story-line-filter-bar, .story-line-sort, .story-line-group-control) select.dropdown, select.sl-km-volume-scope, select.story-line-order-select, select.story-line-swimlane-group-select) {
+    min-height: var(--slkm-dropdown-height);
     height: var(--slkm-dropdown-height);
     padding-top: 0;
     padding-bottom: 0;
     font-size: var(--slkm-dropdown-font);
     line-height: var(--slkm-dropdown-height);
+}
+
+/* ---------- Toolbar icons: same size as the view switcher icons ----------
+   StoryLine: view switcher icons 14 px, other icon buttons follow Obsidian's
+   --icon-size (larger on mobile, plus a 44 px minimum button size). */
+body:is(.slkm-toolbar-icons:is(.slkm-mode-desktop, :is(.slkm-mode-auto, .slkm-mode-desktop-only):not(.is-mobile)), .slkm-m-toolbar-icons:is(.slkm-mode-mobile, .slkm-mode-auto.is-mobile)) .story-line-view-tab .view-tab-icon svg,
+body:is(.slkm-toolbar-icons:is(.slkm-mode-desktop, :is(.slkm-mode-auto, .slkm-mode-desktop-only):not(.is-mobile)), .slkm-m-toolbar-icons:is(.slkm-mode-mobile, .slkm-mode-auto.is-mobile)) :is(.story-line-toolbar, .story-line-filters-container, .story-line-filter-bar) :is(.clickable-icon, .codex-toolbar-icon-btn) svg,
+body:is(.slkm-toolbar-icons:is(.slkm-mode-desktop, :is(.slkm-mode-auto, .slkm-mode-desktop-only):not(.is-mobile)), .slkm-m-toolbar-icons:is(.slkm-mode-mobile, .slkm-mode-auto.is-mobile)) :is(.story-line-search-wrapper, .story-line-sort) > span svg {
+    width: var(--slkm-toolbar-icon-size);
+    height: var(--slkm-toolbar-icon-size);
+    --icon-size: var(--slkm-toolbar-icon-size);
+}
+
+body:is(.slkm-toolbar-icons:is(.slkm-mode-desktop, :is(.slkm-mode-auto, .slkm-mode-desktop-only):not(.is-mobile)), .slkm-m-toolbar-icons:is(.slkm-mode-mobile, .slkm-mode-auto.is-mobile)) :is(.story-line-toolbar, .story-line-filters-container, .story-line-filter-bar) :is(.clickable-icon, .codex-toolbar-icon-btn) {
+    min-width: 0;
+    min-height: 0;
+    padding: var(--slkm-toolbar-icon-pad);
 }
 
 /* ---------- Layout: filter panel may overflow the board area ---------- */
@@ -1534,6 +1626,8 @@ body {
     --slkm-m-subway-spacing-factor: 1;
     --slkm-m-structure-width: 960px;
     --slkm-m-subway-labelcol-width: 160px;
+    --slkm-m-toolbar-icon-size: 14px;
+    --slkm-m-toolbar-icon-pad: 4px;
     --slkm-m-subway-labelcol-gap: 24px;
     --slkm-m-subway-labelcol-font: 15px;
     --slkm-m-subway-labelcol-weight: 700;
@@ -1575,6 +1669,8 @@ body:is(.slkm-mode-mobile, .slkm-mode-auto.is-mobile) {
     --slkm-subway-spacing-factor: var(--slkm-m-subway-spacing-factor);
     --slkm-structure-width: var(--slkm-m-structure-width);
     --slkm-subway-labelcol-width: var(--slkm-m-subway-labelcol-width);
+    --slkm-toolbar-icon-size: var(--slkm-m-toolbar-icon-size);
+    --slkm-toolbar-icon-pad: var(--slkm-m-toolbar-icon-pad);
     --slkm-subway-labelcol-gap: var(--slkm-m-subway-labelcol-gap);
     --slkm-subway-labelcol-font: var(--slkm-m-subway-labelcol-font);
     --slkm-subway-labelcol-weight: var(--slkm-m-subway-labelcol-weight);
