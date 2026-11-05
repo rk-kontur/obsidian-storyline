@@ -44,6 +44,42 @@ Everything this fork adds to the original StoryLine 1.11.8 by Jan Sandström, as
 - **Plot Grid:** with a volume selected, synced columns that are empty in that volume are hidden (a hint in the filter bar can show them again).
 - Without `volumes:` in the project file, nothing of this is visible.
 
+<img width="479" height="302" alt="grafik" src="https://github.com/user-attachments/assets/4cc07b73-956d-4624-95a5-bc1acd3a7946" />
+
+Volumes dropdown and divider in Navigator
+
+<img width="191" height="312" alt="grafik" src="https://github.com/user-attachments/assets/bc09bdfb-5a91-4bdc-ad05-70d6e4228904" />
+
+Volume dropdown filter in all views (works globally and can be set globally in all views)
+
+<img width="114" height="384" alt="grafik" src="https://github.com/user-attachments/assets/300d070a-b682-419a-8a41-bc0b01164bb1" />
+
+Volume divider in Kanban view
+
+<img width="550" height="87" alt="grafik" src="https://github.com/user-attachments/assets/fc0b655b-1094-4d78-a891-4e98a2b17af9" />
+
+Volume divider in plotgrid view
+
+<img width="519" height="176" alt="grafik" src="https://github.com/user-attachments/assets/1180511a-ea57-45a2-ab04-353f33643d1a" />
+
+Volume divider in Timeline
+
+<img width="551" height="87" alt="grafik" src="https://github.com/user-attachments/assets/0dd6f874-bf40-44db-9867-d6f958d42698" />
+
+Volume / Act label in Subway map
+
+<img width="547" height="117" alt="grafik" src="https://github.com/user-attachments/assets/7ce1407b-a99d-48a2-a952-12ce02a94699" />
+
+Volume divider in Manuscript
+
+<img width="803" height="683" alt="grafik" src="https://github.com/user-attachments/assets/94e6fbbf-9e0e-49f9-9dde-04936472907b" />
+
+Volumes section in Statistics including setups across volumes
+
+<img width="600" height="413" alt="grafik" src="https://github.com/user-attachments/assets/44215fc2-74a1-4576-b097-7cfe60205868" />
+
+Volumes in Export
+
 **Arc Points**
 - **Arc Point filter and badges in Timeline and Plot Grid:** the Timeline gets the All / Scenes / Arc Points toggle and the "Arc Point" badge the Board already has; the Plot Grid marks Arc Point scenes with a diamond.
 - **Arc Point linked to the scene that tells it ("Realized by"):** in the Inspector, an Arc Point gets a **Realized** dropdown (`realizedBy: "[[Scene]]"`). In the Subway map its diamond sits at that scene's station, joined by a dashed line in the blended plotline colours. Unticking "Arc point" keeps the link.
@@ -53,16 +89,46 @@ Everything this fork adds to the original StoryLine 1.11.8 by Jan Sandström, as
 - Plotlines that develop off stage can be marked **off page** (right-click a plotline → **Move to off page**). They get their own tinted zone in the Subway map (also behind the line names), their own heading in the Plotlines list, a tint in Timeline swimlanes (where they come last) and in Plot Grid columns.
 - **Statistics:** an overview card counts how many stages of the off page lines are already told in scenes ("12 / 30"); a section lists each off page line with progress, open stages and the scenes that tell the others.
 
+<img width="1514" height="469" alt="grafik" src="https://github.com/user-attachments/assets/dd26d3bb-1200-4892-b069-4f29fe8738df" />
+
+Subway area with On and Off Page items
+
+<img width="457" height="203" alt="grafik" src="https://github.com/user-attachments/assets/2b985c3e-9d2f-4263-b0de-dd4984885c52" />
+
+Rightclick option to move a plotline off page
+
+<img width="485" height="447" alt="grafik" src="https://github.com/user-attachments/assets/f942389d-c4da-4ee9-91a8-d9d119272a02" />
+
+Rightclick option to move a plotline on page
+
+
 **Plotline colours in more views**
 - Settings → Colors → Plotline color scheme → **Transfer plotline colors to**: six toggles (Subway / list, Plot Grid, Timeline, Inspector, Filters, Navigator), all off by default. When on, the view uses the Board's plotline colours; Timeline and Plot Grid scene cards get the Board's 4 px stripe (one segment per plotline), Plot Grid plotline columns and Timeline swimlane headers are tinted. Own Plot Grid column colours still win.
 
+<img width="122" height="552" alt="grafik" src="https://github.com/user-attachments/assets/1ddb04ff-15e9-41be-8748-416dee45a165" />
+
+Plotline indicators in Plotgrid (multiple colors for scenes that serve more than one plotline combined)
+
+<img width="112" height="208" alt="grafik" src="https://github.com/user-attachments/assets/76bc6453-836c-4f26-b9e0-257048843563" />
+
+Plotline indicators in Timeline (multiple colors for scenes that serve more than one plotline combined)
+
+<img width="80" alt="grafik" src="https://github.com/user-attachments/assets/41e9eccd-8282-4c20-958d-2b33446e42e5" />
+
+Plotline indicators in Navigator (multiple colors for scenes that serve more than one plotline combined)
+
 #### Smaller features
 
-- **Manage story structure:** collapsible sections (follows the "Default section state" setting), wider dialog, and a command **Manage story structure** for the command palette.
 - **Filter bar:** the two "All" groups are labelled **Type** (All · Scenes · Arc Points) and **State** (Active · All · Inactive); buttons are no longer cut off, the search field gives way instead.
 - **POV character counts as a character:** filtering by a character also finds scenes where it is only the POV, and Timeline swimlanes by character show those scenes.
 - **Subway map:** volume name in the act labels; readable act labels in narrow acts.
 - **Arc points validator switch:** Statistics → Warnings can leave Arc Points out of the plot hole checks.
+
+- **Manage story structure:** collapsible sections (follows the "Default section state" setting), wider dialog, and a command **Manage story structure** for the command palette.
+
+<img width="1416" height="1740" alt="grafik" src="https://github.com/user-attachments/assets/9256fc92-0fb7-4384-bebe-f655937d8256" />
+
+Manage story structure including Volume manager
 
 #### Fixes
 
