@@ -2,6 +2,80 @@
 
 Changes of this fork compared to the original StoryLine plugin by Jan Sandström. Each `## <version>` section is used as the initial text of the matching GitHub release; texts edited on GitHub (e.g. with screenshots) are never overwritten. Every release also carries `storyline-km-source.zip` (all source files that are new or changed compared to the original, without `main.js`) and `storyline-km.patch` (the full diff against the original).
 
+## 1.11.8-km.37
+
+**New: Arc points validator switch**
+
+- **Statistics → Warnings** gets a switch **Arc points shown / hidden**. It only appears when the project has Arc Points. Default: shown, so nothing changes until you switch it.
+- **Hidden:** Arc Points are left out of the plot hole checks. Planned beats (for example separate Arc Point files on a character arc plotline, or beats for a later volume) no longer raise "no POV", "no conflict", "no plotline tags", "Act imbalance", "character disappears" or setup/payoff warnings of their own.
+- Setup/payoff links still resolve against all scenes: a written scene that links to an Arc Point is not reported as "scene doesn't exist".
+- The off page notes ("stages not yet told in a scene") list Arc Points only, so they are hidden too; the **Off page** section in Statistics still shows them.
+- With Arc Points hidden, the written scenes are checked on their own. This can show warnings the Arc Points used to cover, e.g. a sequence gap where several Arc Points sit between two scenes, or a date gap they bridged.
+- Upstream proposal: `suggest-feature/arc-points-validator-switch`.
+
+<!-- screenshot: Statistics → Warnings with the Arc points switch -->
+
+**How and where to use:**
+
+1. Open **Statistics** and expand **Warnings**.
+2. At the top, switch **Arc points** to **hidden**: the warnings now cover the written scenes only. The choice is remembered.
+
+**Files:**
+
+- `services/Validator.ts` (`validate()` option `excludeArcPoints`)
+- `views/StatsView.ts` (`renderWarnings()`: switch, off page notes)
+- `settings.ts` (`statsWarningsIncludeArcPoints`)
+- `styles.css` (switch row)
+- `HELP.md` (Statistics → Warnings)
+
+### The changes so far
+
+Everything this fork adds to the original StoryLine 1.11.8 by Jan Sandström, as of 1.11.8-km.37. The fork has its own plugin id (`storyline-km`) and must never be enabled in the same vault as the original. Every change is also prepared as a clean branch for upstream (`suggest-feature/…`, `suggest-fix/…`).
+
+#### Major features
+
+**Volumes**
+- **Volumes as groups of acts:** "Manage story structure" gets a **Volumes** section (title, first and last act, word goal, deadline per volume). A volume is only a range of acts: scenes, numbering and file names stay as they are; Prologue and Epilogue belong to no volume. New command **Manage volumes**.
+- **One volume selection for all views:** Board, Manuscript and Plot Grid get "Filter by [Volume]" in the filter bar; Timeline, Plotlines, Navigator, Statistics, Characters, Locations and Codex get it in the toolbar. A choice in one view applies to all; scenes without an act stay visible.
+- **Volume bands in the views:** Timeline, Board (grouped by act), Manuscript, Plot Grid and Navigator show a titled band where a volume begins and a line where it ends; the Subway map draws a solid divider and adds the volume name to the act labels. Scene cards get a small volume badge ("V2").
+- **Statistics per volume:** with a volume selected, every Statistics section counts only that volume; "All volumes" counts the whole series. A **Volumes** table lists scenes, words, goal, progress, deadline and words per day per volume, plus the setups still open at the end of each volume.
+- **Export a single volume:** the Export dialog gets a **Volume** choice (preset to the selected volume) and names the file after it.
+- **Navigator with volumes:** progress, plotline and chapter lists follow the selected volume.
+- **Plot Grid:** with a volume selected, synced columns that are empty in that volume are hidden (a hint in the filter bar can show them again).
+- Without `volumes:` in the project file, nothing of this is visible.
+
+**Arc Points**
+- **Arc Point filter and badges in Timeline and Plot Grid:** the Timeline gets the All / Scenes / Arc Points toggle and the "Arc Point" badge the Board already has; the Plot Grid marks Arc Point scenes with a diamond.
+- **Arc Point linked to the scene that tells it ("Realized by"):** in the Inspector, an Arc Point gets a **Realized** dropdown (`realizedBy: "[[Scene]]"`). In the Subway map its diamond sits at that scene's station, joined by a dashed line in the blended plotline colours. Unticking "Arc point" keeps the link.
+- **Export option "Include arc points":** Arc Points can be left out of an export (on by default).
+
+**Off page plotlines**
+- Plotlines that develop off stage can be marked **off page** (right-click a plotline → **Move to off page**). They get their own tinted zone in the Subway map (also behind the line names), their own heading in the Plotlines list, a tint in Timeline swimlanes (where they come last) and in Plot Grid columns.
+- **Statistics:** an overview card counts how many stages of the off page lines are already told in scenes ("12 / 30"); a section lists each off page line with progress, open stages and the scenes that tell the others.
+
+**Plotline colours in more views**
+- Settings → Colors → Plotline color scheme → **Transfer plotline colors to**: six toggles (Subway / list, Plot Grid, Timeline, Inspector, Filters, Navigator), all off by default. When on, the view uses the Board's plotline colours; Timeline and Plot Grid scene cards get the Board's 4 px stripe (one segment per plotline), Plot Grid plotline columns and Timeline swimlane headers are tinted. Own Plot Grid column colours still win.
+
+#### Smaller features
+
+- **Manage story structure:** collapsible sections (follows the "Default section state" setting), wider dialog, and a command **Manage story structure** for the command palette.
+- **Filter bar:** the two "All" groups are labelled **Type** (All · Scenes · Arc Points) and **State** (Active · All · Inactive); buttons are no longer cut off, the search field gives way instead.
+- **POV character counts as a character:** filtering by a character also finds scenes where it is only the POV, and Timeline swimlanes by character show those scenes.
+- **Subway map:** volume name in the act labels; readable act labels in narrow acts.
+- **Arc points validator switch:** Statistics → Warnings can leave Arc Points out of the plot hole checks.
+
+#### Fixes
+
+- **Android UI (phones):**
+  - **StoryLine below the status bar, portrait and landscape:** in portrait the toolbar slid under the Android status bar; in landscape a large empty gap appeared above StoryLine. The toolbar now sits directly below the status bar in both orientations, and scrolled content no longer shows through behind the status bar.
+  - **Manuscript toolbar:** the long text squeezed the toolbar to a few pixels, so the view switcher slid behind the filter bar. Toolbar and filter bar now keep their full height.
+- **Manuscript with Pane Relief "Maximize active tab":** clicking into a scene no longer blanks the Manuscript or resets its scroll position.
+- **Plot Grid keyboard:** arrow keys and Tab follow the visible rows (with sorting, filters or collapsed sections), and the highlighted row header matches the selection.
+- **Rename plotline onto an existing one:** scenes no longer get the same tag twice, and the target plotline keeps its own description.
+- **Delete plotline:** the dialog counts every scene that loses the tag, including inactive scenes and corkboard notes.
+- **Timeline:** the POV character is no longer listed twice on linear and swimlane cards.
+- **Subway map:** plotline colours no longer shift when the Arc Point filter is toggled or a plotline is hidden.
+
 ## 1.11.8-km.36
 
 **Phones: StoryLine below the status bar, Manuscript toolbar no longer squeezed**
