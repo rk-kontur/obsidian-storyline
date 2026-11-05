@@ -2270,9 +2270,28 @@ export class StatsView extends ItemView {
 
     private renderWarnings(parent: HTMLElement, allScenes: Scene[]): void {
         if (this.plugin.settings.enablePlotHoleDetection && allScenes.length > 0) {
+            const includeArcPoints = this.plugin.settings.statsWarningsIncludeArcPoints;
+            if (allScenes.some(s => s.arcAnchor)) {
+                const row = parent.createDiv('stats-warning-arc-toggle');
+                row.createSpan({ cls: 'stats-warning-arc-toggle-label', text: 'Arc points' });
+                new obsidian.ToggleComponent(row)
+                    .setValue(includeArcPoints)
+                    .setTooltip('Include arc points in the warnings')
+                    .onChange(async (value) => {
+                        this.plugin.settings.statsWarningsIncludeArcPoints = value;
+                        await this.plugin.saveSettings();
+                        parent.empty();
+                        this.renderWarnings(parent, allScenes);
+                    });
+                row.createSpan({
+                    cls: 'stats-warning-arc-toggle-state',
+                    text: includeArcPoints ? 'shown' : 'hidden',
+                });
+            }
             // fork: with a volume selected, validate with cross-volume link partners
             const warnings = adjustOffPageWarnings( // fork: off page lines - no act gap warnings, unrealized stages instead
-                validateForScope(allScenes, this.sceneManager.getAllScenes().filter(sc => !sc.inactive && !sc.corkboardNote)), this.kmOffPage);
+                validateForScope(allScenes, this.sceneManager.getAllScenes().filter(sc => !sc.inactive && !sc.corkboardNote),
+                    sc => Validator.validate(sc, { excludeArcPoints: !includeArcPoints })), this.kmOffPage);
             if (warnings.length === 0) {
                 const ok = parent.createDiv('stats-ok');
                 const ic = ok.createSpan();

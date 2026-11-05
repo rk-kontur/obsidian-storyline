@@ -48,18 +48,22 @@ export class Validator {
     /**
      * Run all plot hole checks and return a list of warnings.
      */
-    static validate(scenes: Scene[]): PlotWarning[] {
+    static validate(scenes: Scene[], options: { excludeArcPoints?: boolean } = {}): PlotWarning[] {
         if (scenes.length === 0) return [];
 
         const warnings: PlotWarning[] = [];
+        // Arc points are often planned beats rather than written scenes. When
+        // excluded, they skip the scene checks, but setup/payoff still sees
+        // them so links to an arc point are not reported as missing.
+        const checked = options.excludeArcPoints ? scenes.filter(s => !s.arcAnchor) : scenes;
 
-        this.checkTimeline(scenes, warnings);
-        this.checkCharacters(scenes, warnings);
-        this.checkPlotlines(scenes, warnings);
+        this.checkTimeline(checked, warnings);
+        this.checkCharacters(checked, warnings);
+        this.checkPlotlines(checked, warnings);
         this.checkSetupPayoff(scenes, warnings);
-        this.checkStructure(scenes, warnings);
-        this.checkContinuity(scenes, warnings);
-        this.checkTimelineGaps(scenes, warnings);
+        this.checkStructure(checked, warnings);
+        this.checkContinuity(checked, warnings);
+        this.checkTimelineGaps(checked, warnings);
 
         return warnings;
     }
