@@ -204,9 +204,10 @@ body.theme-dark {
     padding-right: 320px;
 }
 
-@media (max-width: 768px) {
+@media (max-width: 768px), (max-height: 500px) and (hover: none) {
     /* Obsidian's mobile custom-view header can expand into a large empty
-       region above StoryLine. StoryLine already renders its own toolbar. */
+       region above StoryLine. StoryLine already renders its own toolbar.
+       The height query covers phones in landscape. */
     body.is-mobile .workspace-leaf-content[data-type^="story-line-"] > .view-header {
         display: none !important;
     }
@@ -214,6 +215,12 @@ body.theme-dark {
     body.is-mobile .workspace-leaf-content[data-type^="story-line-"] > .view-content {
         padding: 0 !important;
         margin: 0 !important;
+    }
+
+    /* On phones Obsidian puts the status bar inset into the view header,
+       which is hidden above, so the view content takes it over. */
+    body.is-phone .workspace-leaf-content[data-type^="story-line-"] > .view-content {
+        padding-top: var(--safe-area-inset-top, 0px) !important;
     }
 
     .story-line-board-container,
@@ -226,14 +233,13 @@ body.theme-dark {
     .story-line-manuscript-container {
         padding-right: 0 !important;
         padding-left: 0 !important;
-        padding-top: env(safe-area-inset-top, 0px) !important;
     }
 
     .sl-mobile .story-line-toolbar {
         position: sticky;
-        top: env(safe-area-inset-top, 0px);
+        top: 0;
         z-index: 30;
-        padding-top: max(8px, calc(env(safe-area-inset-top, 0px) + 8px));
+        padding-top: 8px;
         border-top: 1px solid var(--sc-card-border);
     }
 
