@@ -3,8 +3,8 @@
    Install: copy into <vault config folder>/snippets/, enable it under
    Settings → Appearance → CSS snippets, then adjust everything under
    Settings → Style Settings → "StoryLine Advanced Settings".
-   Every block is gated by the device switch (desktop / mobile) and by
-   its own toggle, so nothing applies unless it is switched on.
+   "Mode" at the top decides which value set is active (desktop / mobile);
+   every block is also gated by its own toggle.
    ===================================================================== */
 
 /* @settings
@@ -13,31 +13,49 @@ name: StoryLine Advanced Settings
 id: storyline-km
 settings:
     -
-        id: slkm-h-devices
-        title: Devices
-        description: "Choose where these tweaks apply. Desktop and mobile have separate switches and values: changing one never changes the other."
+        id: slkm-h-mode
+        title: Mode
+        description: "Decides which of the two value sets below is used. All settings are visible at all times (Style Settings cannot hide them), but only the set chosen here has an effect."
         type: heading
         level: 1
         collapsed: false
     -
-        id: slkm-on-desktop
-        title: Apply on desktop
-        description: "Uses the switches and values in the sections below."
-        type: class-toggle
-        default: true
-    -
-        id: slkm-on-mobile
-        title: Apply on mobile (phone and tablet)
-        description: "Uses the switches and values in the \"Mobile\" section at the end. They are separate copies, so mobile changes never affect desktop."
-        type: class-toggle
-        default: false
+        id: slkm-mode
+        title: Active value set
+        description: "Automatic = \"Desktop values\" on the computer, \"Mobile values\" on phone and tablet. Style Settings values are synced to all devices, so Automatic is the only mode that keeps the two apart."
+        type: class-select
+        allowEmpty: false
+        default: slkm-mode-auto
+        options:
+            -
+                label: "Automatic: desktop values on desktop, mobile values on mobile"
+                value: slkm-mode-auto
+            -
+                label: "Desktop only: desktop values on desktop, mobile unchanged"
+                value: slkm-mode-desktop-only
+            -
+                label: "Desktop values on all devices"
+                value: slkm-mode-desktop
+            -
+                label: "Mobile values on all devices"
+                value: slkm-mode-mobile
+            -
+                label: "Off: StoryLine unchanged everywhere"
+                value: slkm-mode-off
 
+    -
+        id: slkm-h-desktop
+        title: "Desktop values"
+        description: "Used on desktop in Automatic and Desktop only mode, and everywhere in \"Desktop values on all devices\"."
+        type: heading
+        level: 1
+        collapsed: true
     -
         id: slkm-h-filterbar
         title: Filter bar
         description: Board, Manuscript and Plot Grid (Filter by, search, sort, Type, State). The search field settings also apply to "Filter scenes…" in the Navigator and Plotlines sidebar.
         type: heading
-        level: 1
+        level: 2
         collapsed: true
     -
         id: slkm-filterbar-size
@@ -143,7 +161,7 @@ settings:
         id: slkm-h-layout
         title: Layout
         type: heading
-        level: 1
+        level: 2
         collapsed: true
     -
         id: slkm-filter-panel-overflow
@@ -157,7 +175,7 @@ settings:
         title: Scene cards
         description: Kanban and Corkboard.
         type: heading
-        level: 1
+        level: 2
         collapsed: true
     -
         id: slkm-card-tint-kanban
@@ -203,7 +221,7 @@ settings:
         title: Badges
         description: Arc Point and Volume badges on scene cards.
         type: heading
-        level: 1
+        level: 2
         collapsed: true
     -
         id: slkm-arc-badge-pinned
@@ -268,7 +286,7 @@ settings:
         title: Volumes
         description: Volume dividers, bands and the volume selector.
         type: heading
-        level: 1
+        level: 2
         collapsed: true
     -
         id: slkm-volume-style
@@ -311,7 +329,7 @@ settings:
         title: Subway map
         description: Zoom, horizontal spacing, line width, stations, Arc Points, connectors (incl. realized Arc Point links) and plotline pills.
         type: heading
-        level: 1
+        level: 2
         collapsed: true
     -
         id: slkm-subway-style
@@ -451,7 +469,7 @@ settings:
         title: Subway - plotline name column
         description: The fixed column on the left with the plotline names.
         type: heading
-        level: 2
+        level: 3
         collapsed: true
     -
         id: slkm-subway-labelcol
@@ -538,7 +556,7 @@ settings:
         id: slkm-h-dialogs
         title: Dialogs
         type: heading
-        level: 1
+        level: 2
         collapsed: true
     -
         id: slkm-structure-width
@@ -557,8 +575,8 @@ settings:
         default: true
     -
         id: "slkm-m-h-mobile"
-        title: "Mobile (phone and tablet)"
-        description: "Separate copies of all switches and values above, used only on mobile when \"Apply on mobile\" is on. Defaults match the desktop defaults."
+        title: "Mobile values"
+        description: "Separate copies of all desktop settings. Used on phone and tablet in Automatic mode, and everywhere in \"Mobile values on all devices\". Defaults match the desktop defaults."
         type: "heading"
         level: 1
         collapsed: true
@@ -1155,18 +1173,18 @@ body {
 }
 
 /* =====================================================================
-   RULES (desktop: body.slkm-on-desktop, not mobile, with the slkm-*
-   switches; mobile: body.slkm-on-mobile.is-mobile with the slkm-m-*
+   RULES (desktop value set: slkm-* switches; mobile value set: slkm-m-*
+   switches; which set is active is decided by the Mode select
    switches, see the MOBILE section at the end)
    ===================================================================== */
 
 /* ---------- Filter bar: spacing and search field ---------- */
-body:is(.slkm-filterbar-size.slkm-on-desktop:not(.is-mobile), .slkm-m-filterbar-size.slkm-on-mobile.is-mobile) .story-line-filter-bar {
+body:is(.slkm-filterbar-size:is(.slkm-mode-desktop, :is(.slkm-mode-auto, .slkm-mode-desktop-only):not(.is-mobile)), .slkm-m-filterbar-size:is(.slkm-mode-mobile, .slkm-mode-auto.is-mobile)) .story-line-filter-bar {
     padding-top: var(--slkm-filterbar-pad-y);
     padding-bottom: var(--slkm-filterbar-pad-y);
 }
 
-body:is(.slkm-filterbar-size.slkm-on-desktop:not(.is-mobile), .slkm-m-filterbar-size.slkm-on-mobile.is-mobile) .story-line-filter-bar input.story-line-search {
+body:is(.slkm-filterbar-size:is(.slkm-mode-desktop, :is(.slkm-mode-auto, .slkm-mode-desktop-only):not(.is-mobile)), .slkm-m-filterbar-size:is(.slkm-mode-mobile, .slkm-mode-auto.is-mobile)) .story-line-filter-bar input.story-line-search {
     height: var(--slkm-search-height);
     padding-top: 0;
     padding-bottom: 0;
@@ -1176,15 +1194,15 @@ body:is(.slkm-filterbar-size.slkm-on-desktop:not(.is-mobile), .slkm-m-filterbar-
 
 /* Navigator "Filter scenes…": same height and font as the filter bar search;
    no second frame from the theme around the input inside the rounded box */
-body:is(.slkm-filterbar-size.slkm-on-desktop:not(.is-mobile), .slkm-m-filterbar-size.slkm-on-mobile.is-mobile) .sl-nav-search-wrap {
+body:is(.slkm-filterbar-size:is(.slkm-mode-desktop, :is(.slkm-mode-auto, .slkm-mode-desktop-only):not(.is-mobile)), .slkm-m-filterbar-size:is(.slkm-mode-mobile, .slkm-mode-auto.is-mobile)) .sl-nav-search-wrap {
     min-height: var(--slkm-search-height);
     padding-top: 0;
     padding-bottom: 0;
 }
 
-body:is(.slkm-filterbar-size.slkm-on-desktop:not(.is-mobile), .slkm-m-filterbar-size.slkm-on-mobile.is-mobile) .sl-nav-search-wrap input.sl-nav-search,
-body:is(.slkm-filterbar-size.slkm-on-desktop:not(.is-mobile), .slkm-m-filterbar-size.slkm-on-mobile.is-mobile) .sl-nav-search-wrap input.sl-nav-search:hover,
-body:is(.slkm-filterbar-size.slkm-on-desktop:not(.is-mobile), .slkm-m-filterbar-size.slkm-on-mobile.is-mobile) .sl-nav-search-wrap input.sl-nav-search:focus {
+body:is(.slkm-filterbar-size:is(.slkm-mode-desktop, :is(.slkm-mode-auto, .slkm-mode-desktop-only):not(.is-mobile)), .slkm-m-filterbar-size:is(.slkm-mode-mobile, .slkm-mode-auto.is-mobile)) .sl-nav-search-wrap input.sl-nav-search,
+body:is(.slkm-filterbar-size:is(.slkm-mode-desktop, :is(.slkm-mode-auto, .slkm-mode-desktop-only):not(.is-mobile)), .slkm-m-filterbar-size:is(.slkm-mode-mobile, .slkm-mode-auto.is-mobile)) .sl-nav-search-wrap input.sl-nav-search:hover,
+body:is(.slkm-filterbar-size:is(.slkm-mode-desktop, :is(.slkm-mode-auto, .slkm-mode-desktop-only):not(.is-mobile)), .slkm-m-filterbar-size:is(.slkm-mode-mobile, .slkm-mode-auto.is-mobile)) .sl-nav-search-wrap input.sl-nav-search:focus {
     height: calc(var(--slkm-search-height) - 2px);
     padding: 0;
     font-size: var(--slkm-search-font);
@@ -1195,26 +1213,26 @@ body:is(.slkm-filterbar-size.slkm-on-desktop:not(.is-mobile), .slkm-m-filterbar-
 }
 
 /* ---------- Filter bar: compact Type / State buttons ---------- */
-body:is(.slkm-compact-filters.slkm-on-desktop:not(.is-mobile), .slkm-m-compact-filters.slkm-on-mobile.is-mobile) :is(.story-line-arc-filter-btn, .story-line-active-filter-btn, .story-line-add-btn) {
+body:is(.slkm-compact-filters:is(.slkm-mode-desktop, :is(.slkm-mode-auto, .slkm-mode-desktop-only):not(.is-mobile)), .slkm-m-compact-filters:is(.slkm-mode-mobile, .slkm-mode-auto.is-mobile)) :is(.story-line-arc-filter-btn, .story-line-active-filter-btn, .story-line-add-btn) {
     height: auto;
     padding: var(--slkm-filter-btn-pad-y) var(--slkm-filter-btn-pad-x);
     font-size: var(--slkm-filter-btn-font);
 }
 
 /* ---------- Filter bar: no frames around the groups ---------- */
-body:is(.slkm-filter-flat.slkm-on-desktop:not(.is-mobile), .slkm-m-filter-flat.slkm-on-mobile.is-mobile) :is(.story-line-arc-filter, .story-line-active-filter) {
+body:is(.slkm-filter-flat:is(.slkm-mode-desktop, :is(.slkm-mode-auto, .slkm-mode-desktop-only):not(.is-mobile)), .slkm-m-filter-flat:is(.slkm-mode-mobile, .slkm-mode-auto.is-mobile)) :is(.story-line-arc-filter, .story-line-active-filter) {
     border: none;
     box-shadow: none;
     outline: none;
 }
 
 /* ---------- Filter bar: hide the Type / State labels ---------- */
-body:is(.slkm-filter-hide-labels.slkm-on-desktop:not(.is-mobile), .slkm-m-filter-hide-labels.slkm-on-mobile.is-mobile) .story-line-filter-bar :is(.story-line-arc-filter, .story-line-active-filter)::before {
+body:is(.slkm-filter-hide-labels:is(.slkm-mode-desktop, :is(.slkm-mode-auto, .slkm-mode-desktop-only):not(.is-mobile)), .slkm-m-filter-hide-labels:is(.slkm-mode-mobile, .slkm-mode-auto.is-mobile)) .story-line-filter-bar :is(.story-line-arc-filter, .story-line-active-filter)::before {
     content: none;
 }
 
 /* ---------- Compact dropdowns (Volume, Sort, Group by) ---------- */
-body:is(.slkm-compact-dropdowns.slkm-on-desktop:not(.is-mobile), .slkm-m-compact-dropdowns.slkm-on-mobile.is-mobile) :is(:is(.story-line-filter-bar, .story-line-sort, .story-line-group-control) select.dropdown, select.sl-km-volume-scope, select.story-line-order-select, select.story-line-swimlane-group-select) {
+body:is(.slkm-compact-dropdowns:is(.slkm-mode-desktop, :is(.slkm-mode-auto, .slkm-mode-desktop-only):not(.is-mobile)), .slkm-m-compact-dropdowns:is(.slkm-mode-mobile, .slkm-mode-auto.is-mobile)) :is(:is(.story-line-filter-bar, .story-line-sort, .story-line-group-control) select.dropdown, select.sl-km-volume-scope, select.story-line-order-select, select.story-line-swimlane-group-select) {
     height: var(--slkm-dropdown-height);
     padding-top: 0;
     padding-bottom: 0;
@@ -1223,18 +1241,18 @@ body:is(.slkm-compact-dropdowns.slkm-on-desktop:not(.is-mobile), .slkm-m-compact
 }
 
 /* ---------- Layout: filter panel may overflow the board area ---------- */
-body:is(.slkm-filter-panel-overflow.slkm-on-desktop:not(.is-mobile), .slkm-m-filter-panel-overflow.slkm-on-mobile.is-mobile) .story-line-main-area {
+body:is(.slkm-filter-panel-overflow:is(.slkm-mode-desktop, :is(.slkm-mode-auto, .slkm-mode-desktop-only):not(.is-mobile)), .slkm-m-filter-panel-overflow:is(.slkm-mode-mobile, .slkm-mode-auto.is-mobile)) .story-line-main-area {
     overflow: visible;
     overflow-x: clip;
 }
 
 /* ---------- Scene cards: tint ---------- */
-body:is(.slkm-on-desktop:not(.is-mobile), .slkm-on-mobile.is-mobile):is(.slkm-card-tint-kanban, .slkm-card-tint-corkboard) .scene-card {
+body:is(:is(.slkm-mode-desktop, :is(.slkm-mode-auto, .slkm-mode-desktop-only):not(.is-mobile)), :is(.slkm-mode-mobile, .slkm-mode-auto.is-mobile)):is(.slkm-card-tint-kanban, .slkm-card-tint-corkboard) .scene-card {
     position: relative;
 }
 
-body:is(.slkm-card-tint-kanban.slkm-on-desktop:not(.is-mobile), .slkm-m-card-tint-kanban.slkm-on-mobile.is-mobile) .story-line-column .scene-card::before,
-body:is(.slkm-card-tint-corkboard.slkm-on-desktop:not(.is-mobile), .slkm-m-card-tint-corkboard.slkm-on-mobile.is-mobile) .story-line-corkboard .scene-card::before {
+body:is(.slkm-card-tint-kanban:is(.slkm-mode-desktop, :is(.slkm-mode-auto, .slkm-mode-desktop-only):not(.is-mobile)), .slkm-m-card-tint-kanban:is(.slkm-mode-mobile, .slkm-mode-auto.is-mobile)) .story-line-column .scene-card::before,
+body:is(.slkm-card-tint-corkboard:is(.slkm-mode-desktop, :is(.slkm-mode-auto, .slkm-mode-desktop-only):not(.is-mobile)), .slkm-m-card-tint-corkboard:is(.slkm-mode-mobile, .slkm-mode-auto.is-mobile)) .story-line-corkboard .scene-card::before {
     content: "";
     position: absolute;
     inset: 0;
@@ -1248,8 +1266,8 @@ body:is(.slkm-card-tint-corkboard.slkm-on-desktop:not(.is-mobile), .slkm-m-card-
 /* Card colour: the pseudo element inherits the card's stripe colour (inline
    border-left-color set by StoryLine) and paints it as a wide left border
    that covers the card. The card clips it (contain: content). */
-body:is(.slkm-tint-card-colour.slkm-card-tint-kanban.slkm-on-desktop:not(.is-mobile), .slkm-m-tint-card-colour.slkm-m-card-tint-kanban.slkm-on-mobile.is-mobile) .story-line-column .scene-card::before,
-body:is(.slkm-tint-card-colour.slkm-card-tint-corkboard.slkm-on-desktop:not(.is-mobile), .slkm-m-tint-card-colour.slkm-m-card-tint-corkboard.slkm-on-mobile.is-mobile) .story-line-corkboard .scene-card::before {
+body:is(.slkm-tint-card-colour.slkm-card-tint-kanban:is(.slkm-mode-desktop, :is(.slkm-mode-auto, .slkm-mode-desktop-only):not(.is-mobile)), .slkm-m-tint-card-colour.slkm-m-card-tint-kanban:is(.slkm-mode-mobile, .slkm-mode-auto.is-mobile)) .story-line-column .scene-card::before,
+body:is(.slkm-tint-card-colour.slkm-card-tint-corkboard:is(.slkm-mode-desktop, :is(.slkm-mode-auto, .slkm-mode-desktop-only):not(.is-mobile)), .slkm-m-tint-card-colour.slkm-m-card-tint-corkboard:is(.slkm-mode-mobile, .slkm-mode-auto.is-mobile)) .story-line-corkboard .scene-card::before {
     background-color: transparent;
     border-left-style: solid;
     border-left-width: 2000px;
@@ -1257,11 +1275,11 @@ body:is(.slkm-tint-card-colour.slkm-card-tint-corkboard.slkm-on-desktop:not(.is-
 }
 
 /* ---------- Badges: Arc Point badge pinned into the header ---------- */
-body:is(.slkm-arc-badge-pinned.slkm-on-desktop:not(.is-mobile), .slkm-m-arc-badge-pinned.slkm-on-mobile.is-mobile) .scene-card {
+body:is(.slkm-arc-badge-pinned:is(.slkm-mode-desktop, :is(.slkm-mode-auto, .slkm-mode-desktop-only):not(.is-mobile)), .slkm-m-arc-badge-pinned:is(.slkm-mode-mobile, .slkm-mode-auto.is-mobile)) .scene-card {
     position: relative;
 }
 
-body:is(.slkm-arc-badge-pinned.slkm-on-desktop:not(.is-mobile), .slkm-m-arc-badge-pinned.slkm-on-mobile.is-mobile) .scene-card .scene-card-arc-point-badge {
+body:is(.slkm-arc-badge-pinned:is(.slkm-mode-desktop, :is(.slkm-mode-auto, .slkm-mode-desktop-only):not(.is-mobile)), .slkm-m-arc-badge-pinned:is(.slkm-mode-mobile, .slkm-mode-auto.is-mobile)) .scene-card .scene-card-arc-point-badge {
     position: absolute;
     top: var(--slkm-arc-badge-top);
     left: var(--slkm-arc-badge-left);
@@ -1276,16 +1294,16 @@ body:is(.slkm-arc-badge-pinned.slkm-on-desktop:not(.is-mobile), .slkm-m-arc-badg
     line-height: 16px;
 }
 
-body:is(.slkm-arc-badge-pinned.slkm-on-desktop:not(.is-mobile), .slkm-m-arc-badge-pinned.slkm-on-mobile.is-mobile) .scene-card .scene-card-arc-point-badge svg {
+body:is(.slkm-arc-badge-pinned:is(.slkm-mode-desktop, :is(.slkm-mode-auto, .slkm-mode-desktop-only):not(.is-mobile)), .slkm-m-arc-badge-pinned:is(.slkm-mode-mobile, .slkm-mode-auto.is-mobile)) .scene-card .scene-card-arc-point-badge svg {
     translate: -1px 1.5px;
 }
 
 /* ---------- Badges: Arc Point badge in Timeline cards, at the right edge ---------- */
-body:is(.slkm-timeline-arc-badge-right.slkm-on-desktop:not(.is-mobile), .slkm-m-timeline-arc-badge-right.slkm-on-mobile.is-mobile) .timeline-card {
+body:is(.slkm-timeline-arc-badge-right:is(.slkm-mode-desktop, :is(.slkm-mode-auto, .slkm-mode-desktop-only):not(.is-mobile)), .slkm-m-timeline-arc-badge-right:is(.slkm-mode-mobile, .slkm-mode-auto.is-mobile)) .timeline-card {
     position: relative;
 }
 
-body:is(.slkm-timeline-arc-badge-right.slkm-on-desktop:not(.is-mobile), .slkm-m-timeline-arc-badge-right.slkm-on-mobile.is-mobile) .timeline-card .scene-card-arc-point-badge {
+body:is(.slkm-timeline-arc-badge-right:is(.slkm-mode-desktop, :is(.slkm-mode-auto, .slkm-mode-desktop-only):not(.is-mobile)), .slkm-m-timeline-arc-badge-right:is(.slkm-mode-mobile, .slkm-mode-auto.is-mobile)) .timeline-card .scene-card-arc-point-badge {
     position: absolute;
     top: var(--slkm-timeline-arc-badge-top);
     right: var(--slkm-timeline-arc-badge-right-offset);
@@ -1295,36 +1313,36 @@ body:is(.slkm-timeline-arc-badge-right.slkm-on-desktop:not(.is-mobile), .slkm-m-
 
 /* ---------- Badges: volume badge in Kanban ----------
    Kanban puts the word count absolutely at the top right; the badge goes first instead. */
-body:is(.slkm-kanban-volume-badge-fix.slkm-on-desktop:not(.is-mobile), .slkm-m-kanban-volume-badge-fix.slkm-on-mobile.is-mobile) .story-line-column-body .sl-km-volume-badge {
+body:is(.slkm-kanban-volume-badge-fix:is(.slkm-mode-desktop, :is(.slkm-mode-auto, .slkm-mode-desktop-only):not(.is-mobile)), .slkm-m-kanban-volume-badge-fix:is(.slkm-mode-mobile, .slkm-mode-auto.is-mobile)) .story-line-column-body .sl-km-volume-badge {
     order: -1;
     margin-left: 0;
 }
 
-body:is(.slkm-kanban-volume-badge-fix.slkm-on-desktop:not(.is-mobile), .slkm-m-kanban-volume-badge-fix.slkm-on-mobile.is-mobile) .story-line-board:has(.sl-km-volume-column) .story-line-column-body .sl-km-volume-badge {
+body:is(.slkm-kanban-volume-badge-fix:is(.slkm-mode-desktop, :is(.slkm-mode-auto, .slkm-mode-desktop-only):not(.is-mobile)), .slkm-m-kanban-volume-badge-fix:is(.slkm-mode-mobile, .slkm-mode-auto.is-mobile)) .story-line-board:has(.sl-km-volume-column) .story-line-column-body .sl-km-volume-badge {
     display: none;
 }
 
 /* ---------- Badges: hide the volume badge ---------- */
-body:is(.slkm-hide-volume-badge.slkm-on-desktop:not(.is-mobile), .slkm-m-hide-volume-badge.slkm-on-mobile.is-mobile) .sl-km-volume-badge {
+body:is(.slkm-hide-volume-badge:is(.slkm-mode-desktop, :is(.slkm-mode-auto, .slkm-mode-desktop-only):not(.is-mobile)), .slkm-m-hide-volume-badge:is(.slkm-mode-mobile, .slkm-mode-auto.is-mobile)) .sl-km-volume-badge {
     display: none;
 }
 
 /* ---------- Volumes: dividers, bands, selector ---------- */
-body:is(.slkm-volume-style.slkm-on-desktop:not(.is-mobile), .slkm-m-volume-style.slkm-on-mobile.is-mobile) .sl-km-volume-divider {
+body:is(.slkm-volume-style:is(.slkm-mode-desktop, :is(.slkm-mode-auto, .slkm-mode-desktop-only):not(.is-mobile)), .slkm-m-volume-style:is(.slkm-mode-mobile, .slkm-mode-auto.is-mobile)) .sl-km-volume-divider {
     border-top-width: var(--slkm-volume-line);
     color: var(--slkm-volume-accent);
 }
 
-body:is(.slkm-volume-style.slkm-on-desktop:not(.is-mobile), .slkm-m-volume-style.slkm-on-mobile.is-mobile) .sl-km-volume-column {
+body:is(.slkm-volume-style:is(.slkm-mode-desktop, :is(.slkm-mode-auto, .slkm-mode-desktop-only):not(.is-mobile)), .slkm-m-volume-style:is(.slkm-mode-mobile, .slkm-mode-auto.is-mobile)) .sl-km-volume-column {
     flex-basis: var(--slkm-volume-column-width);
     border-left-width: var(--slkm-volume-line);
 }
 
-body:is(.slkm-volume-style.slkm-on-desktop:not(.is-mobile), .slkm-m-volume-style.slkm-on-mobile.is-mobile) .sl-km-volume-column-label {
+body:is(.slkm-volume-style:is(.slkm-mode-desktop, :is(.slkm-mode-auto, .slkm-mode-desktop-only):not(.is-mobile)), .slkm-m-volume-style:is(.slkm-mode-mobile, .slkm-mode-auto.is-mobile)) .sl-km-volume-column-label {
     color: var(--slkm-volume-accent);
 }
 
-body:is(.slkm-hide-filter-by-label.slkm-on-desktop:not(.is-mobile), .slkm-m-hide-filter-by-label.slkm-on-mobile.is-mobile) .sl-km-filter-by-label {
+body:is(.slkm-hide-filter-by-label:is(.slkm-mode-desktop, :is(.slkm-mode-auto, .slkm-mode-desktop-only):not(.is-mobile)), .slkm-m-hide-filter-by-label:is(.slkm-mode-mobile, .slkm-mode-auto.is-mobile)) .sl-km-filter-by-label {
     display: none;
 }
 
@@ -1333,80 +1351,80 @@ body:is(.slkm-hide-filter-by-label.slkm-on-desktop:not(.is-mobile), .slkm-m-hide
    transforms on the single elements; the horizontal spacing squeezes the
    whole SVG left-right (scaleX) and scales every element back by the same
    factor, so circles, diamonds, labels and pills keep their shape. */
-body:is(.slkm-subway-style.slkm-on-desktop:not(.is-mobile), .slkm-m-subway-style.slkm-on-mobile.is-mobile) {
+body:is(.slkm-subway-style:is(.slkm-mode-desktop, :is(.slkm-mode-auto, .slkm-mode-desktop-only):not(.is-mobile)), .slkm-m-subway-style:is(.slkm-mode-mobile, .slkm-mode-auto.is-mobile)) {
     --slkm-f: var(--slkm-subway-spacing-factor);
 }
 
 /* Zoom: scales the whole map (Subway only, not the Plotlines list view); the width is widened so it still fills the pane */
-body:is(.slkm-subway-style.slkm-on-desktop:not(.is-mobile), .slkm-m-subway-style.slkm-on-mobile.is-mobile) .story-line-storyline-content:has(> .subway-map-wrapper) {
+body:is(.slkm-subway-style:is(.slkm-mode-desktop, :is(.slkm-mode-auto, .slkm-mode-desktop-only):not(.is-mobile)), .slkm-m-subway-style:is(.slkm-mode-mobile, .slkm-mode-auto.is-mobile)) .story-line-storyline-content:has(> .subway-map-wrapper) {
     transform: scale(var(--slkm-subway-zoom));
     transform-origin: top left;
     width: calc(100% / var(--slkm-subway-zoom));
 }
 
 /* Horizontal spacing: squeeze around x = 160 px (start of the tracks, right of the line names) */
-body:is(.slkm-subway-style.slkm-on-desktop:not(.is-mobile), .slkm-m-subway-style.slkm-on-mobile.is-mobile) .subway-map-wrapper > svg {
+body:is(.slkm-subway-style:is(.slkm-mode-desktop, :is(.slkm-mode-auto, .slkm-mode-desktop-only):not(.is-mobile)), .slkm-m-subway-style:is(.slkm-mode-mobile, .slkm-mode-auto.is-mobile)) .subway-map-wrapper > svg {
     transform: scaleX(var(--slkm-f));
     transform-origin: 160px 0;
 }
 
-body:is(.slkm-subway-style.slkm-on-desktop:not(.is-mobile), .slkm-m-subway-style.slkm-on-mobile.is-mobile) .subway-map-wrapper svg :is(path, line) {
+body:is(.slkm-subway-style:is(.slkm-mode-desktop, :is(.slkm-mode-auto, .slkm-mode-desktop-only):not(.is-mobile)), .slkm-m-subway-style:is(.slkm-mode-mobile, .slkm-mode-auto.is-mobile)) .subway-map-wrapper svg :is(path, line) {
     vector-effect: non-scaling-stroke;
 }
 
-body:is(.slkm-subway-style.slkm-on-desktop:not(.is-mobile), .slkm-m-subway-style.slkm-on-mobile.is-mobile) .subway-map-wrapper svg path {
+body:is(.slkm-subway-style:is(.slkm-mode-desktop, :is(.slkm-mode-auto, .slkm-mode-desktop-only):not(.is-mobile)), .slkm-m-subway-style:is(.slkm-mode-mobile, .slkm-mode-auto.is-mobile)) .subway-map-wrapper svg path {
     stroke-width: var(--slkm-subway-line);
 }
 
-body:is(.slkm-subway-style.slkm-on-desktop:not(.is-mobile), .slkm-m-subway-style.slkm-on-mobile.is-mobile) .subway-map-wrapper svg :is(circle, polygon, rect, text) {
+body:is(.slkm-subway-style:is(.slkm-mode-desktop, :is(.slkm-mode-auto, .slkm-mode-desktop-only):not(.is-mobile)), .slkm-m-subway-style:is(.slkm-mode-mobile, .slkm-mode-auto.is-mobile)) .subway-map-wrapper svg :is(circle, polygon, rect, text) {
     transform-box: fill-box;
     transform-origin: center;
 }
 
 /* Scene stations */
-body:is(.slkm-subway-style.slkm-on-desktop:not(.is-mobile), .slkm-m-subway-style.slkm-on-mobile.is-mobile) .subway-map-wrapper svg circle {
+body:is(.slkm-subway-style:is(.slkm-mode-desktop, :is(.slkm-mode-auto, .slkm-mode-desktop-only):not(.is-mobile)), .slkm-m-subway-style:is(.slkm-mode-mobile, .slkm-mode-auto.is-mobile)) .subway-map-wrapper svg circle {
     stroke-width: var(--slkm-subway-station-ring);
     scale: calc(var(--slkm-subway-station-scale) / var(--slkm-f)) var(--slkm-subway-station-scale);
 }
 
 /* Arc Points (diamonds) */
-body:is(.slkm-subway-style.slkm-on-desktop:not(.is-mobile), .slkm-m-subway-style.slkm-on-mobile.is-mobile) .subway-map-wrapper svg polygon {
+body:is(.slkm-subway-style:is(.slkm-mode-desktop, :is(.slkm-mode-auto, .slkm-mode-desktop-only):not(.is-mobile)), .slkm-m-subway-style:is(.slkm-mode-mobile, .slkm-mode-auto.is-mobile)) .subway-map-wrapper svg polygon {
     scale: calc(var(--slkm-subway-arc-scale) / var(--slkm-f)) var(--slkm-subway-arc-scale);
 }
 
 /* Connectors between lines (scene on several plotlines): gradient bars, default 6 px wide */
-body:is(.slkm-subway-style.slkm-on-desktop:not(.is-mobile), .slkm-m-subway-style.slkm-on-mobile.is-mobile) .subway-map-wrapper svg rect[fill^="url(#conn-grad"] {
+body:is(.slkm-subway-style:is(.slkm-mode-desktop, :is(.slkm-mode-auto, .slkm-mode-desktop-only):not(.is-mobile)), .slkm-m-subway-style:is(.slkm-mode-mobile, .slkm-mode-auto.is-mobile)) .subway-map-wrapper svg rect[fill^="url(#conn-grad"] {
     opacity: var(--slkm-subway-connector-opacity);
     scale: calc(var(--slkm-subway-connector-width) / 6 / var(--slkm-f)) 1;
 }
 
 /* All labels keep their width */
-body:is(.slkm-subway-style.slkm-on-desktop:not(.is-mobile), .slkm-m-subway-style.slkm-on-mobile.is-mobile) .subway-map-wrapper svg text {
+body:is(.slkm-subway-style:is(.slkm-mode-desktop, :is(.slkm-mode-auto, .slkm-mode-desktop-only):not(.is-mobile)), .slkm-m-subway-style:is(.slkm-mode-mobile, .slkm-mode-auto.is-mobile)) .subway-map-wrapper svg text {
     scale: calc(1 / var(--slkm-f)) 1;
 }
 
 /* Left-aligned labels (volume titles next to their divider) keep their left edge */
-body:is(.slkm-subway-style.slkm-on-desktop:not(.is-mobile), .slkm-m-subway-style.slkm-on-mobile.is-mobile) .subway-map-wrapper svg text[text-anchor="start"] {
+body:is(.slkm-subway-style:is(.slkm-mode-desktop, :is(.slkm-mode-auto, .slkm-mode-desktop-only):not(.is-mobile)), .slkm-m-subway-style:is(.slkm-mode-mobile, .slkm-mode-auto.is-mobile)) .subway-map-wrapper svg text[text-anchor="start"] {
     transform-origin: left center;
 }
 
 /* Plotline pills: own width setting */
-body:is(.slkm-subway-style.slkm-on-desktop:not(.is-mobile), .slkm-m-subway-style.slkm-on-mobile.is-mobile) .subway-map-wrapper svg rect[rx="7"] {
+body:is(.slkm-subway-style:is(.slkm-mode-desktop, :is(.slkm-mode-auto, .slkm-mode-desktop-only):not(.is-mobile)), .slkm-m-subway-style:is(.slkm-mode-mobile, .slkm-mode-auto.is-mobile)) .subway-map-wrapper svg rect[rx="7"] {
     scale: calc(var(--slkm-subway-pill-width) / var(--slkm-f)) 1;
 }
 
 /* Plotline pills under the stations: the pill is a rect with rx=7, its text follows it */
-body:is(.slkm-subway-style.slkm-on-desktop:not(.is-mobile), .slkm-m-subway-style.slkm-on-mobile.is-mobile) .subway-map-wrapper svg rect[rx="7"] + text {
+body:is(.slkm-subway-style:is(.slkm-mode-desktop, :is(.slkm-mode-auto, .slkm-mode-desktop-only):not(.is-mobile)), .slkm-m-subway-style:is(.slkm-mode-mobile, .slkm-mode-auto.is-mobile)) .subway-map-wrapper svg rect[rx="7"] + text {
     font-size: var(--slkm-subway-pill-font);
 }
 
 /* Fine-tune the vertical position of the plotline name inside its pill */
-body:is(.slkm-subway-style.slkm-on-desktop:not(.is-mobile), .slkm-m-subway-style.slkm-on-mobile.is-mobile) .subway-map-wrapper svg rect[rx="7"] + text {
+body:is(.slkm-subway-style:is(.slkm-mode-desktop, :is(.slkm-mode-auto, .slkm-mode-desktop-only):not(.is-mobile)), .slkm-m-subway-style:is(.slkm-mode-mobile, .slkm-mode-auto.is-mobile)) .subway-map-wrapper svg rect[rx="7"] + text {
     translate: 0 var(--slkm-subway-pill-offset);
 }
 
 /* Realized Arc Point link (dashed): shares the connector width */
-body:is(.slkm-subway-style.slkm-on-desktop:not(.is-mobile), .slkm-m-subway-style.slkm-on-mobile.is-mobile) .sl-km-realized-link {
+body:is(.slkm-subway-style:is(.slkm-mode-desktop, :is(.slkm-mode-auto, .slkm-mode-desktop-only):not(.is-mobile)), .slkm-m-subway-style:is(.slkm-mode-mobile, .slkm-mode-auto.is-mobile)) .sl-km-realized-link {
     opacity: var(--slkm-realized-opacity);
     stroke-width: calc(var(--slkm-subway-connector-width) * 1px);
     stroke-dasharray: var(--slkm-realized-dash) var(--slkm-realized-gap);
@@ -1417,17 +1435,17 @@ body:is(.slkm-subway-style.slkm-on-desktop:not(.is-mobile), .slkm-m-subway-style
    inline, so these rules need !important. The SVG is shifted by the
    width difference plus the adjustable gap, so the tracks start right of
    the column with some space after the divider. */
-body:is(.slkm-subway-labelcol.slkm-on-desktop:not(.is-mobile), .slkm-m-subway-labelcol.slkm-on-mobile.is-mobile) .subway-map-wrapper > .subway-label-col {
+body:is(.slkm-subway-labelcol:is(.slkm-mode-desktop, :is(.slkm-mode-auto, .slkm-mode-desktop-only):not(.is-mobile)), .slkm-m-subway-labelcol:is(.slkm-mode-mobile, .slkm-mode-auto.is-mobile)) .subway-map-wrapper > .subway-label-col {
     width: var(--slkm-subway-labelcol-width) !important;
 }
 
-body:is(.slkm-subway-labelcol.slkm-on-desktop:not(.is-mobile), .slkm-m-subway-labelcol.slkm-on-mobile.is-mobile) .subway-map-wrapper > svg {
+body:is(.slkm-subway-labelcol:is(.slkm-mode-desktop, :is(.slkm-mode-auto, .slkm-mode-desktop-only):not(.is-mobile)), .slkm-m-subway-labelcol:is(.slkm-mode-mobile, .slkm-mode-auto.is-mobile)) .subway-map-wrapper > svg {
     margin-left: calc(var(--slkm-subway-labelcol-width) - 160px + var(--slkm-subway-labelcol-gap));
 }
 
 /* Each name is centred on its line (StoryLine places its top 8 px above the
    line, which only fits one line of 15 px text) */
-body:is(.slkm-subway-labelcol.slkm-on-desktop:not(.is-mobile), .slkm-m-subway-labelcol.slkm-on-mobile.is-mobile) .subway-label-col > .subway-lane-label {
+body:is(.slkm-subway-labelcol:is(.slkm-mode-desktop, :is(.slkm-mode-auto, .slkm-mode-desktop-only):not(.is-mobile)), .slkm-m-subway-labelcol:is(.slkm-mode-mobile, .slkm-mode-auto.is-mobile)) .subway-label-col > .subway-lane-label {
     font-size: var(--slkm-subway-labelcol-font) !important;
     font-weight: var(--slkm-subway-labelcol-weight) !important;
     line-height: var(--slkm-subway-labelcol-line-height);
@@ -1435,7 +1453,7 @@ body:is(.slkm-subway-labelcol.slkm-on-desktop:not(.is-mobile), .slkm-m-subway-la
 }
 
 /* Wrap long names inside the column (14 px left inset from StoryLine, 10 px gap to the divider) */
-body:is(.slkm-subway-labelcol-wrap.slkm-on-desktop:not(.is-mobile), .slkm-m-subway-labelcol-wrap.slkm-on-mobile.is-mobile) .subway-label-col > .subway-lane-label {
+body:is(.slkm-subway-labelcol-wrap:is(.slkm-mode-desktop, :is(.slkm-mode-auto, .slkm-mode-desktop-only):not(.is-mobile)), .slkm-m-subway-labelcol-wrap:is(.slkm-mode-mobile, .slkm-mode-auto.is-mobile)) .subway-label-col > .subway-lane-label {
     width: calc(100% - 24px);
     white-space: normal !important;
     overflow-wrap: break-word;
@@ -1446,7 +1464,7 @@ body:is(.slkm-subway-labelcol-wrap.slkm-on-desktop:not(.is-mobile), .slkm-m-subw
 /* Fixed divider: the column is sticky, so the line stays while the map scrolls.
    Same height as the dashed act dividers (y = 45 px to the bottom of the last lane,
    30 px above the end of the column). */
-body:is(.slkm-subway-labelcol-divider.slkm-on-desktop:not(.is-mobile), .slkm-m-subway-labelcol-divider.slkm-on-mobile.is-mobile) .subway-map-wrapper > .subway-label-col::after {
+body:is(.slkm-subway-labelcol-divider:is(.slkm-mode-desktop, :is(.slkm-mode-auto, .slkm-mode-desktop-only):not(.is-mobile)), .slkm-m-subway-labelcol-divider:is(.slkm-mode-mobile, .slkm-mode-auto.is-mobile)) .subway-map-wrapper > .subway-label-col::after {
     content: "";
     position: absolute;
     top: 45px;
@@ -1457,12 +1475,12 @@ body:is(.slkm-subway-labelcol-divider.slkm-on-desktop:not(.is-mobile), .slkm-m-s
 }
 
 /* ---------- Dialogs ---------- */
-body:is(.slkm-on-desktop:not(.is-mobile), .slkm-on-mobile.is-mobile) .sl-km-structure-modal .modal {
+body:is(:is(.slkm-mode-desktop, :is(.slkm-mode-auto, .slkm-mode-desktop-only):not(.is-mobile)), :is(.slkm-mode-mobile, .slkm-mode-auto.is-mobile)) .sl-km-structure-modal .modal {
     width: min(var(--slkm-structure-width), 92vw);
 }
 
 /* ---------- Export dialog: space below the Export / Cancel row ---------- */
-body:is(.slkm-export-actions-space.slkm-on-desktop:not(.is-mobile), .slkm-m-export-actions-space.slkm-on-mobile.is-mobile) .storyline-export-actions {
+body:is(.slkm-export-actions-space:is(.slkm-mode-desktop, :is(.slkm-mode-auto, .slkm-mode-desktop-only):not(.is-mobile)), .slkm-m-export-actions-space:is(.slkm-mode-mobile, .slkm-mode-auto.is-mobile)) .storyline-export-actions {
     margin-bottom: var(--size-4-4, 16px);
 }
 
@@ -1474,7 +1492,7 @@ body:is(.slkm-export-actions-space.slkm-on-desktop:not(.is-mobile), .slkm-m-expo
 }
 
 /* =====================================================================
-   MOBILE (body.slkm-on-mobile.is-mobile)
+   MOBILE VALUE SET (active per the Mode select)
    Every rule above also applies on mobile, but gated by the mobile copies
    of its switches (slkm-m-*) and fed by the mobile copies of its values.
    ===================================================================== */
@@ -1524,7 +1542,7 @@ body {
     --slkm-m-subway-labelcol-divider-color: var(--text-faint);
 }
 
-body.is-mobile.slkm-on-mobile {
+body:is(.slkm-mode-mobile, .slkm-mode-auto.is-mobile) {
     --slkm-filterbar-pad-y: var(--slkm-m-filterbar-pad-y);
     --slkm-search-height: var(--slkm-m-search-height);
     --slkm-search-font: var(--slkm-m-search-font);
@@ -1564,8 +1582,8 @@ body.is-mobile.slkm-on-mobile {
     --slkm-subway-labelcol-divider-width: var(--slkm-m-subway-labelcol-divider-width);
 }
 
-body.theme-light.is-mobile.slkm-on-mobile,
-body.theme-dark.is-mobile.slkm-on-mobile {
+body.theme-light:is(.slkm-mode-mobile, .slkm-mode-auto.is-mobile),
+body.theme-dark:is(.slkm-mode-mobile, .slkm-mode-auto.is-mobile) {
     --slkm-volume-accent: var(--slkm-m-volume-accent);
     --slkm-subway-labelcol-divider-color: var(--slkm-m-subway-labelcol-divider-color);
 }
@@ -1580,18 +1598,18 @@ body {
 
 @media (max-width: 768px) {
     /* upstream hides Obsidian's view header only up to this width */
-    body.is-mobile.slkm-on-mobile.slkm-m-safe-top :is(.story-line-board-container, .story-line-timeline-container, .story-line-storyline-container, .story-line-character-container, .story-line-location-container, .story-line-codex-container, .story-line-stats-container, .story-line-manuscript-container) {
+    body.is-mobile:is(.slkm-mode-auto, .slkm-mode-mobile).slkm-m-safe-top :is(.story-line-board-container, .story-line-timeline-container, .story-line-storyline-container, .story-line-character-container, .story-line-location-container, .story-line-codex-container, .story-line-stats-container, .story-line-manuscript-container) {
         padding-top: calc(max(var(--safe-area-inset-top, 0px), env(safe-area-inset-top, 0px)) + var(--slkm-m-safe-top-extra)) !important;
     }
 
-    body.is-mobile.slkm-on-mobile.slkm-m-safe-top :is(.story-line-board-container, .story-line-timeline-container, .story-line-storyline-container, .story-line-character-container, .story-line-location-container, .story-line-codex-container, .story-line-stats-container, .story-line-manuscript-container) .story-line-toolbar {
+    body.is-mobile:is(.slkm-mode-auto, .slkm-mode-mobile).slkm-m-safe-top :is(.story-line-board-container, .story-line-timeline-container, .story-line-storyline-container, .story-line-character-container, .story-line-location-container, .story-line-codex-container, .story-line-stats-container, .story-line-manuscript-container) .story-line-toolbar {
         top: calc(max(var(--safe-area-inset-top, 0px), env(safe-area-inset-top, 0px)) + var(--slkm-m-safe-top-extra));
         padding-top: 8px;
     }
 }
 
 /* ---------- Mobile only: Kanban volume bands run across on phones ---------- */
-body.is-phone.slkm-on-mobile.slkm-m-kanban-volume-horizontal .sl-km-volume-column {
+body.is-phone:is(.slkm-mode-auto, .slkm-mode-mobile).slkm-m-kanban-volume-horizontal .sl-km-volume-column {
     flex: 0 0 auto;
     align-self: stretch;
     justify-content: flex-start;
@@ -1600,7 +1618,7 @@ body.is-phone.slkm-on-mobile.slkm-m-kanban-volume-horizontal .sl-km-volume-colum
     border-top: 3px solid var(--text-muted);
 }
 
-body.is-phone.slkm-on-mobile.slkm-m-kanban-volume-horizontal .sl-km-volume-column-label {
+body.is-phone:is(.slkm-mode-auto, .slkm-mode-mobile).slkm-m-kanban-volume-horizontal .sl-km-volume-column-label {
     writing-mode: horizontal-tb;
     transform: none;
 }
