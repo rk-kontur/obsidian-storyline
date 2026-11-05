@@ -2,10 +2,16 @@ name: Release notes km
 
 # Overwrites the text of an existing fork release with its section from
 # CHANGELOG-km.md (plus the compare links), e.g. after screenshots were
-# added to the changelog. Started manually; release-km.yml never overwrites
-# a text that is already set.
+# added to the changelog. release-km.yml never overwrites a text that is
+# already set.
+# Start: push `.github/release-notes-request` (containing the version) to
+# _testing, or run manually (workflow_dispatch only works once this file is
+# on the default branch).
 
 on:
+  push:
+    branches: [_testing]
+    paths: [".github/release-notes-request"]
   workflow_dispatch:
     inputs:
       version:
@@ -27,8 +33,9 @@ jobs:
       - name: Set release text
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          V: ${{ inputs.version }}
+          INPUT_VERSION: ${{ inputs.version }}
         run: |
+          V="${INPUT_VERSION:-$(tr -d '[:space:]' < .github/release-notes-request)}"
           gh release view "$V" >/dev/null
           node .github/scripts/km-release-notes.js notes
           f="notes/$V.md"
