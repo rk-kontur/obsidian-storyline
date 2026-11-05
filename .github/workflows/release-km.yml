@@ -1,0 +1,140 @@
+name: Release km
+
+# Builds the plugin and publishes a GitHub release for BRAT
+# when a tag of the form 1.2.3-km.N is pushed.
+# The tag must match "version" in manifest.json.
+# Feature versions (1.2.3-km.N.<branch>.M) are published as pre-releases,
+# so BRAT does not install them for everyone.
+#
+# Can also be started manually (workflow_dispatch): the version is taken
+# from manifest.json and the tag is created on the selected branch.
+
+on:
+  push:
+    tags:
+      - "*-km.*"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+# One release run at a time (never cancel a running one). Note: GitHub keeps
+# only ONE pending run per group; if a third run is queued while one runs and
+# one waits, the waiting (middle) one is cancelled. Release one version at a time.
+concurrency:
+  group: release-km
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 20.19.1
+          cache: npm
+
+      - name: Resolve version
+        id: v
+        run: |
+          V=$(node -p "require('./manifest.json').version")
+          if [ "${GITHUB_EVENT_NAME}" = "push" ] && [ "$V" != "${GITHUB_REF_NAME}" ]; then
+            echo "Tag ${GITHUB_REF_NAME} does not match manifest.json ($V)"
+            exit 1
+          fi
+          case "$V" in
+            *-km.*) ;;
+            *) echo "Version $V has no -km.N suffix"; exit 1 ;;
+          esac
+          # A version that is already tagged on another commit must not be rebuilt:
+          # the uploaded files would no longer match the tag. Bump the version instead.
+          if git rev-parse -q --verify "refs/tags/$V" >/dev/null; then
+            TAG_SHA=$(git rev-parse "refs/tags/$V^{commit}")
+            if [ "$TAG_SHA" != "${GITHUB_SHA}" ]; then
+              echo "::error::Version $V is already released at $TAG_SHA, this run is $GITHUB_SHA. Increase the version in manifest.json."
+              exit 1
+            fi
+          fi
+          echo "version=$V" >> "$GITHUB_OUTPUT"
+
+      - run: npm ci
+      - run: npm run build
+
+      - name: Publish release assets
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          V: ${{ steps.v.outputs.version }}
+        run: |
+          # Feature version (x.y.z-km.N.<branch>.M): pre-release
+          PRE=()
+          case "$V" in *-km.*.*.*) PRE=(--prerelease) ;; esac
+          if ! gh release view "$V" >/dev/null 2>&1; then
+            gh release create "$V" "${PRE[@]}" \
+              --target "${GITHUB_SHA}" \
+              --title "$V" \
+              --notes "Fork build of StoryLine (id storyline-km) for BRAT testing."
+          elif [ ${#PRE[@]} -gt 0 ]; then
+            gh release edit "$V" --prerelease
+          fi
+          gh release upload "$V" main.js manifest.json styles.css --clobber
+
+      - name: Source bundle (changes compared to upstream)
+        id: bundle
+        run: |
+          # All source files the fork adds or changes compared to main (= upstream),
+          # without build output, plus a patch with the full diff.
+          git fetch --no-tags origin main:refs/remotes/origin/main
+          EXCL=(':(exclude)main.js' ':(exclude)package-lock.json')
+          git diff --name-only --diff-filter=AMR origin/main...HEAD -- . "${EXCL[@]}" > changed-files.txt
+          cat changed-files.txt
+          zip -q storyline-km-source.zip -@ < changed-files.txt
+          zip -q storyline-km-source.zip changed-files.txt
+          git diff origin/main...HEAD -- . "${EXCL[@]}" > storyline-km.patch
+          # Delta against the previous fork release: the nearest *-km.N tag in the
+          # history before this commit (by ancestry, not by date), without feature tags
+          PREV=$(git describe --tags --abbrev=0 --match '*-km.*' --exclude '*-km.*.*.*' HEAD^ 2>/dev/null || true)
+          echo "prev=$PREV" >> "$GITHUB_OUTPUT"
+          if [ -n "$PREV" ]; then
+            git diff "$PREV" HEAD -- . "${EXCL[@]}" > "changes-since-$PREV.patch"
+          fi
+
+      - name: Release notes and attachments
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          V: ${{ steps.v.outputs.version }}
+        run: |
+          node .github/scripts/km-release-notes.js notes
+          gh release upload "$V" storyline-km-source.zip storyline-km.patch --clobber
+          PREV="${{ steps.bundle.outputs.prev }}"
+          if [ -n "$PREV" ] && [ -e "changes-since-$PREV.patch" ]; then
+            gh release upload "$V" "changes-since-$PREV.patch" --clobber
+          fi
+          # Release text comes from the matching CHANGELOG-km.md section, but ONLY for the
+          # current version, and never when the text was edited by hand on GitHub
+          # (screenshots, images, extra notes). Older releases are never touched.
+          f="notes/$V.md"
+          [ -e "$f" ] || { echo "No changelog section for $V"; exit 0; }
+          # Append compare links (all fork changes vs. the original, and this release only)
+          {
+            echo ""
+            echo "**Compare:**"
+            echo ""
+            echo "- [All changes compared with the original StoryLine (Jan)](https://github.com/PixeroJan/obsidian-storyline/compare/main...${GITHUB_REPOSITORY_OWNER}:obsidian-storyline:$V) · attached: \`storyline-km.patch\`, \`storyline-km-source.zip\`"
+            if [ -n "$PREV" ]; then
+              echo "- [Changes in this release only (since $PREV)](https://github.com/${GITHUB_REPOSITORY}/compare/$PREV...$V) · attached: \`changes-since-$PREV.patch\`"
+            fi
+          } >> "$f"
+          current=$(gh release view "$V" --json body -q .body)
+          placeholder="Fork build of StoryLine (id storyline-km) for BRAT testing."
+          if [ -z "$current" ] || [ "$current" = "$placeholder" ] || [ "$current" = "$(cat "$f")" ]; then
+            gh release edit "$V" --notes-file "$f"
+            echo "Notes set: $V"
+          elif printf '%s' "$current" | grep -q -E '!\[|<img|user-attachments'; then
+            echo "Notes of $V contain images edited on GitHub - left untouched"
+          else
+            echo "Notes of $V were edited on GitHub - left untouched"
+          fi
