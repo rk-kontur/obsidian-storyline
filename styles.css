@@ -204,9 +204,10 @@ body.theme-dark {
     padding-right: 320px;
 }
 
-@media (max-width: 768px) {
+@media (max-width: 768px), (max-height: 500px) and (hover: none) {
     /* Obsidian's mobile custom-view header can expand into a large empty
-       region above StoryLine. StoryLine already renders its own toolbar. */
+       region above StoryLine. StoryLine already renders its own toolbar.
+       The height query covers phones in landscape. */
     body.is-mobile .workspace-leaf-content[data-type^="story-line-"] > .view-header {
         display: none !important;
     }
@@ -214,6 +215,13 @@ body.theme-dark {
     body.is-mobile .workspace-leaf-content[data-type^="story-line-"] > .view-content {
         padding: 0 !important;
         margin: 0 !important;
+    }
+
+    /* On phones Obsidian puts the status bar inset into the view header,
+       which is hidden above, so the view content takes it over. Only in the
+       main area: the sidebar drawers already keep clear of the status bar. */
+    body.is-phone .mod-root .workspace-leaf-content[data-type^="story-line-"] > .view-content {
+        padding-top: var(--safe-area-inset-top, 0px) !important;
     }
 
     .story-line-board-container,
@@ -231,7 +239,7 @@ body.theme-dark {
 
     .sl-mobile .story-line-toolbar {
         position: sticky;
-        top: env(safe-area-inset-top, 0px);
+        top: 0;
         z-index: 30;
         padding-top: max(8px, calc(env(safe-area-inset-top, 0px) + 8px));
         border-top: 1px solid var(--sc-card-border);
@@ -239,6 +247,13 @@ body.theme-dark {
 
     .sl-mobile .story-line-toolbar::before {
         height: 0;
+    }
+
+    /* Cover the status bar strip above the sticky toolbar, so scrolled
+       content does not show through behind the status bar. A shadow,
+       because the toolbar clips its ::before on phones (overflow-x). */
+    body.is-phone .mod-root .sl-mobile .story-line-toolbar {
+        box-shadow: 0 calc(var(--safe-area-inset-top, 0px) / -2) 0 calc(var(--safe-area-inset-top, 0px) / 2) var(--background-primary);
     }
 }
 
