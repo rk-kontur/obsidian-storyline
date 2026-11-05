@@ -1,0 +1,47 @@
+name: Release notes km
+
+# Overwrites the text of an existing fork release with its section from
+# CHANGELOG-km.md (plus the compare links), e.g. after screenshots were
+# added to the changelog. Started manually; release-km.yml never overwrites
+# a text that is already set.
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Existing release version (e.g. 1.11.8-km.37)"
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  notes:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Set release text
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          V: ${{ inputs.version }}
+        run: |
+          gh release view "$V" >/dev/null
+          node .github/scripts/km-release-notes.js notes
+          f="notes/$V.md"
+          [ -e "$f" ] || { echo "::error::No CHANGELOG-km.md section for $V"; exit 1; }
+          PREV=$(git describe --tags --abbrev=0 --match '*-km.*' --exclude '*-km.*.*.*' "$V^" 2>/dev/null || true)
+          {
+            echo ""
+            echo "**Compare:**"
+            echo ""
+            echo "- [All changes compared with the original StoryLine (Jan)](https://github.com/PixeroJan/obsidian-storyline/compare/main...${GITHUB_REPOSITORY_OWNER}:obsidian-storyline:$V) · attached: \`storyline-km.patch\`, \`storyline-km-source.zip\`"
+            if [ -n "$PREV" ]; then
+              echo "- [Changes in this release only (since $PREV)](https://github.com/${GITHUB_REPOSITORY}/compare/$PREV...$V) · attached: \`changes-since-$PREV.patch\`"
+            fi
+          } >> "$f"
+          gh release edit "$V" --notes-file "$f"
+          echo "Notes set: $V"
