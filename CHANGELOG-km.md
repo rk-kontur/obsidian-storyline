@@ -2,6 +2,25 @@
 
 Changes of this fork compared to the original StoryLine plugin by Jan Sandström. Each `## <version>` section is used as the initial text of the matching GitHub release; texts edited on GitHub (e.g. with screenshots) are never overwritten. Every release also carries `storyline-km-source.zip` (all source files that are new or changed compared to the original, without `main.js`) and `storyline-km.patch` (the full diff against the original).
 
+## 1.11.8-km.36
+
+**Phones: StoryLine below the status bar, Manuscript toolbar no longer squeezed**
+
+(1.11.8-km.33 and km.34 were Android test builds based on the original StoryLine, not on the fork; km.35 was not used.)
+
+- **StoryLine below the status bar on phones, portrait and landscape:** in portrait the toolbar slid under the Android status bar; in landscape a large empty gap appeared above StoryLine. The toolbar now sits directly below the status bar in both orientations, and scrolled content no longer shows through behind the status bar. Android tablets are unchanged; on iPads up to 768 px wide a doubled gap above the toolbar is removed. Upstream bug, also proposed to Jan (`suggest-fix/mobile-status-bar`).
+- **Manuscript on phones:** the long text squeezed the toolbar to a few pixels, so the view switcher slid behind the filter bar. The toolbar and filter bar now keep their full height. Upstream bug, also proposed to Jan (`suggest-fix/manuscript-phone-toolbar`).
+- If you use the StoryLine Advanced Settings snippet: switch off **Mobile values → Mobile only → Keep StoryLine below the status bar**, otherwise the toolbar sits one status bar height too low, covers the top of the filter bar, and scrolled content shows behind the status bar.
+
+**How and where to use:**
+
+1. Open any StoryLine view on a phone, in portrait and in landscape: the view switcher sits directly below the status bar, also while scrolling.
+2. Open the Manuscript on a phone: the view switcher stays fully visible above the filter bar.
+
+**Files:**
+
+- `styles.css` (mobile header block near the top; Manuscript container rules)
+
 ## 1.11.8-km.32
 
 **Plotline colours: Plot Grid fixed, stripes on Timeline and Plot Grid cards**
