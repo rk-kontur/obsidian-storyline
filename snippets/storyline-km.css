@@ -1,8 +1,12 @@
 /* =====================================================================
    StoryLine Advanced Settings – UI snippet with Style Settings
-   Version 1.0 (2026-11-05)
+   Version 1.1 (2026-11-05)
 
    Changelog
+   1.1  - Filter bar, compact buttons, dropdowns and toolbar icons use
+          !important, so other CSS (themes, plugins, other snippets)
+          cannot override the sizes
+        - Debug switch: outlines everything the size settings target
    1.0  First versioned release:
         - "Mode" select replaces the desktop / mobile switches
         - Subway: plotline name column (width, font, wrapping, fixed
@@ -20,7 +24,7 @@
 
 /* @settings
 
-name: StoryLine Advanced Settings 1.0
+name: StoryLine Advanced Settings 1.1
 id: storyline-km
 settings:
     -
@@ -53,6 +57,13 @@ settings:
             -
                 label: "Off: StoryLine unchanged everywhere"
                 value: slkm-mode-off
+
+    -
+        id: slkm-debug
+        title: "Debug: outline what this snippet resizes"
+        description: "Draws a red outline around every button, icon, dropdown and search field the size settings are meant to change. Outlined but not resized = something else overrides it; no outline = the snippet does not reach it. Turn off again afterwards."
+        type: class-toggle
+        default: false
 
     -
         id: slkm-h-desktop
@@ -1256,52 +1267,52 @@ body {
 
 /* ---------- Filter bar: spacing and search field ---------- */
 body:is(.slkm-filterbar-size:is(.slkm-mode-desktop, :is(.slkm-mode-auto, .slkm-mode-desktop-only):not(.is-mobile)), .slkm-m-filterbar-size:is(.slkm-mode-mobile, .slkm-mode-auto.is-mobile)) .story-line-filter-bar {
-    min-height: 0;
-    padding-top: var(--slkm-filterbar-pad-y);
-    padding-bottom: var(--slkm-filterbar-pad-y);
+    min-height: 0 !important;
+    padding-top: var(--slkm-filterbar-pad-y) !important;
+    padding-bottom: var(--slkm-filterbar-pad-y) !important;
 }
 
 body:is(.slkm-filterbar-size:is(.slkm-mode-desktop, :is(.slkm-mode-auto, .slkm-mode-desktop-only):not(.is-mobile)), .slkm-m-filterbar-size:is(.slkm-mode-mobile, .slkm-mode-auto.is-mobile)) .story-line-filter-bar input.story-line-search {
-    min-height: var(--slkm-search-height);
-    height: var(--slkm-search-height);
-    padding-top: 0;
-    padding-bottom: 0;
-    font-size: var(--slkm-search-font);
-    line-height: var(--slkm-search-height);
+    min-height: var(--slkm-search-height) !important;
+    height: var(--slkm-search-height) !important;
+    padding-top: 0 !important;
+    padding-bottom: 0 !important;
+    font-size: var(--slkm-search-font) !important;
+    line-height: var(--slkm-search-height) !important;
 }
 
 /* Navigator "Filter scenes…": same height and font as the filter bar search;
    no second frame from the theme around the input inside the rounded box */
 body:is(.slkm-filterbar-size:is(.slkm-mode-desktop, :is(.slkm-mode-auto, .slkm-mode-desktop-only):not(.is-mobile)), .slkm-m-filterbar-size:is(.slkm-mode-mobile, .slkm-mode-auto.is-mobile)) .sl-nav-search-wrap {
-    min-height: var(--slkm-search-height);
-    padding-top: 0;
-    padding-bottom: 0;
+    min-height: var(--slkm-search-height) !important;
+    padding-top: 0 !important;
+    padding-bottom: 0 !important;
 }
 
 body:is(.slkm-filterbar-size:is(.slkm-mode-desktop, :is(.slkm-mode-auto, .slkm-mode-desktop-only):not(.is-mobile)), .slkm-m-filterbar-size:is(.slkm-mode-mobile, .slkm-mode-auto.is-mobile)) .sl-nav-search-wrap input.sl-nav-search,
 body:is(.slkm-filterbar-size:is(.slkm-mode-desktop, :is(.slkm-mode-auto, .slkm-mode-desktop-only):not(.is-mobile)), .slkm-m-filterbar-size:is(.slkm-mode-mobile, .slkm-mode-auto.is-mobile)) .sl-nav-search-wrap input.sl-nav-search:hover,
 body:is(.slkm-filterbar-size:is(.slkm-mode-desktop, :is(.slkm-mode-auto, .slkm-mode-desktop-only):not(.is-mobile)), .slkm-m-filterbar-size:is(.slkm-mode-mobile, .slkm-mode-auto.is-mobile)) .sl-nav-search-wrap input.sl-nav-search:focus {
-    height: calc(var(--slkm-search-height) - 2px);
-    padding: 0;
-    font-size: var(--slkm-search-font);
-    line-height: calc(var(--slkm-search-height) - 2px);
-    border: none;
-    box-shadow: none;
-    background: transparent;
+    height: calc(var(--slkm-search-height) - 2px) !important;
+    padding: 0 !important;
+    font-size: var(--slkm-search-font) !important;
+    line-height: calc(var(--slkm-search-height) - 2px) !important;
+    border: none !important;
+    box-shadow: none !important;
+    background: transparent !important;
 }
 
 /* ---------- Filter bar: compact Type / State buttons ---------- */
 body:is(.slkm-compact-filters:is(.slkm-mode-desktop, :is(.slkm-mode-auto, .slkm-mode-desktop-only):not(.is-mobile)), .slkm-m-compact-filters:is(.slkm-mode-mobile, .slkm-mode-auto.is-mobile)) :is(.story-line-arc-filter-btn, .story-line-active-filter-btn, .story-line-add-btn) {
-    min-height: 0;
-    min-width: 0;
-    height: auto;
-    padding: var(--slkm-filter-btn-pad-y) var(--slkm-filter-btn-pad-x);
-    font-size: var(--slkm-filter-btn-font);
+    min-height: 0 !important;
+    min-width: 0 !important;
+    height: auto !important;
+    padding: var(--slkm-filter-btn-pad-y) var(--slkm-filter-btn-pad-x) !important;
+    font-size: var(--slkm-filter-btn-font) !important;
 }
 
 /* ---------- Mobile: StoryLine gives the Type / State groups 44 px minimum height ---------- */
 body:is(.slkm-compact-filters:is(.slkm-mode-desktop, :is(.slkm-mode-auto, .slkm-mode-desktop-only):not(.is-mobile)), .slkm-m-compact-filters:is(.slkm-mode-mobile, .slkm-mode-auto.is-mobile)) :is(.story-line-arc-filter, .story-line-active-filter) {
-    min-height: 0;
+    min-height: 0 !important;
 }
 
 /* ---------- Filter bar: no frames around the groups ---------- */
@@ -1318,12 +1329,12 @@ body:is(.slkm-filter-hide-labels:is(.slkm-mode-desktop, :is(.slkm-mode-auto, .sl
 
 /* ---------- Compact dropdowns (Volume, Sort, Group by) ---------- */
 body:is(.slkm-compact-dropdowns:is(.slkm-mode-desktop, :is(.slkm-mode-auto, .slkm-mode-desktop-only):not(.is-mobile)), .slkm-m-compact-dropdowns:is(.slkm-mode-mobile, .slkm-mode-auto.is-mobile)) :is(:is(.story-line-filter-bar, .story-line-sort, .story-line-group-control) select.dropdown, select.sl-km-volume-scope, select.story-line-order-select, select.story-line-swimlane-group-select) {
-    min-height: var(--slkm-dropdown-height);
-    height: var(--slkm-dropdown-height);
-    padding-top: 0;
-    padding-bottom: 0;
-    font-size: var(--slkm-dropdown-font);
-    line-height: var(--slkm-dropdown-height);
+    min-height: var(--slkm-dropdown-height) !important;
+    height: var(--slkm-dropdown-height) !important;
+    padding-top: 0 !important;
+    padding-bottom: 0 !important;
+    font-size: var(--slkm-dropdown-font) !important;
+    line-height: var(--slkm-dropdown-height) !important;
 }
 
 /* ---------- Toolbar icons: same size as the view switcher icons ----------
@@ -1332,15 +1343,21 @@ body:is(.slkm-compact-dropdowns:is(.slkm-mode-desktop, :is(.slkm-mode-auto, .slk
 body:is(.slkm-toolbar-icons:is(.slkm-mode-desktop, :is(.slkm-mode-auto, .slkm-mode-desktop-only):not(.is-mobile)), .slkm-m-toolbar-icons:is(.slkm-mode-mobile, .slkm-mode-auto.is-mobile)) .story-line-view-tab .view-tab-icon svg,
 body:is(.slkm-toolbar-icons:is(.slkm-mode-desktop, :is(.slkm-mode-auto, .slkm-mode-desktop-only):not(.is-mobile)), .slkm-m-toolbar-icons:is(.slkm-mode-mobile, .slkm-mode-auto.is-mobile)) :is(.story-line-toolbar, .story-line-filters-container, .story-line-filter-bar) :is(.clickable-icon, .codex-toolbar-icon-btn) svg,
 body:is(.slkm-toolbar-icons:is(.slkm-mode-desktop, :is(.slkm-mode-auto, .slkm-mode-desktop-only):not(.is-mobile)), .slkm-m-toolbar-icons:is(.slkm-mode-mobile, .slkm-mode-auto.is-mobile)) :is(.story-line-search-wrapper, .story-line-sort) > span svg {
-    width: var(--slkm-toolbar-icon-size);
-    height: var(--slkm-toolbar-icon-size);
-    --icon-size: var(--slkm-toolbar-icon-size);
+    width: var(--slkm-toolbar-icon-size) !important;
+    height: var(--slkm-toolbar-icon-size) !important;
+    --icon-size: var(--slkm-toolbar-icon-size) !important;
 }
 
 body:is(.slkm-toolbar-icons:is(.slkm-mode-desktop, :is(.slkm-mode-auto, .slkm-mode-desktop-only):not(.is-mobile)), .slkm-m-toolbar-icons:is(.slkm-mode-mobile, .slkm-mode-auto.is-mobile)) :is(.story-line-toolbar, .story-line-filters-container, .story-line-filter-bar) :is(.clickable-icon, .codex-toolbar-icon-btn) {
-    min-width: 0;
-    min-height: 0;
-    padding: var(--slkm-toolbar-icon-pad);
+    min-width: 0 !important;
+    min-height: 0 !important;
+    padding: var(--slkm-toolbar-icon-pad) !important;
+}
+
+/* ---------- Debug: outline everything the size settings target ---------- */
+body.slkm-debug :is(.story-line-arc-filter-btn, .story-line-active-filter-btn, .story-line-add-btn, .story-line-filter-bar input.story-line-search, .sl-nav-search-wrap, select.dropdown, select.sl-km-volume-scope, select.story-line-order-select, select.story-line-swimlane-group-select, :is(.story-line-toolbar, .story-line-filters-container, .story-line-filter-bar) :is(.clickable-icon, .codex-toolbar-icon-btn), .story-line-view-tab .view-tab-icon) {
+    outline: 2px solid red !important;
+    outline-offset: -1px;
 }
 
 /* ---------- Layout: filter panel may overflow the board area ---------- */
