@@ -10746,6 +10746,16 @@ body.theme-dark .location-field-input.dropdown {
     overflow: hidden;
 }
 
+/* Only the scroll area may shrink. On phones the toolbar gets
+   overflow-x: hidden (see `.sl-phone .story-line-toolbar`), so its minimum
+   height drops to 0 and the long manuscript squeezed it to a few pixels:
+   the view switcher slid behind the filter bar. */
+.story-line-manuscript-container > .story-line-toolbar,
+.story-line-manuscript-container > .story-line-filters-container,
+.story-line-manuscript-container > .sl-fmt-toolbar {
+    flex-shrink: 0;
+}
+
 .sl-manuscript-scroll {
     flex: 1 1 auto;
     min-height: 0;
