@@ -1,8 +1,10 @@
 /* =====================================================================
    StoryLine Advanced Settings – UI snippet with Style Settings
-   Version 1.3 (2026-11-05)
+   Version 1.4 (2026-11-05)
 
    Changelog
+   1.4  - Mobile: Manuscript toolbar no longer squeezed behind the filter
+          bar on phones (bug in StoryLine itself, Jan's code too)
    1.3  - Menu filter chips: font size, padding, gap, corner radius,
           group spacing and section titles adjustable
    1.2  - Toolbar icons: "Space around each icon" now works (fixed button
@@ -29,7 +31,7 @@
 
 /* @settings
 
-name: StoryLine Advanced Settings 1.3
+name: StoryLine Advanced Settings 1.4
 id: storyline-km
 settings:
     -
@@ -752,6 +754,12 @@ settings:
         max: 80
         step: 2
         format: "px"
+    -
+        id: "slkm-m-manuscript-toolbar-fix"
+        title: "Manuscript: keep toolbar and filter bar full height on phones"
+        description: "Bug in StoryLine itself (Jan's code too): on phones the toolbar gets overflow-x: hidden, so in the Manuscript the long text squeezes the toolbar to a few pixels and the view switcher slides behind the filter bar. This stops the toolbar, filter bar and formatting bar from shrinking."
+        type: "class-toggle"
+        default: true
     -
         id: "slkm-m-kanban-volume-horizontal"
         title: "Kanban volume bands: horizontal on phones"
@@ -1981,6 +1989,13 @@ body {
         top: calc(max(var(--safe-area-inset-top, 0px), env(safe-area-inset-top, 0px)) + var(--slkm-m-safe-top-extra));
         padding-top: 8px;
     }
+}
+
+/* ---------- Mobile only: Manuscript toolbar squeezed on phones ----------
+   Upstream bug: .sl-phone .story-line-toolbar has overflow-x: hidden, which
+   lets it shrink below its content in the Manuscript's flex column. */
+body.is-mobile:is(.slkm-mode-auto, .slkm-mode-mobile).slkm-m-manuscript-toolbar-fix .story-line-manuscript-container > :is(.story-line-toolbar, .story-line-filters-container, .sl-fmt-toolbar) {
+    flex-shrink: 0 !important;
 }
 
 /* ---------- Mobile only: Kanban volume bands run across on phones ---------- */
