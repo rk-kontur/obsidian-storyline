@@ -456,7 +456,7 @@ settings:
     -
         id: slkm-subway-labelcol
         title: Adjust the plotline name column
-        description: Width, font size and weight below. The map is moved so the tracks always start right of the column.
+        description: Width, space, font size and weight below. The map is moved so the tracks always start right of the column.
         type: class-toggle
         default: true
     -
@@ -468,6 +468,16 @@ settings:
         min: 80
         max: 360
         step: 5
+        format: px
+    -
+        id: slkm-subway-labelcol-gap
+        title: Space between the divider and the first act
+        description: Moves the whole map to the right of the name column by this amount, so the first act does not start right at the divider. 0 = no extra space.
+        type: variable-number-slider
+        default: 24
+        min: 0
+        max: 120
+        step: 2
         format: px
     -
         id: slkm-subway-labelcol-font
@@ -1000,7 +1010,7 @@ settings:
     -
         id: "slkm-m-subway-labelcol"
         title: "Adjust the plotline name column"
-        description: "Width, font size and weight below. The map is moved so the tracks always start right of the column."
+        description: "Width, space, font size and weight below. The map is moved so the tracks always start right of the column."
         type: "class-toggle"
         default: true
     -
@@ -1012,6 +1022,16 @@ settings:
         min: 80
         max: 360
         step: 5
+        format: "px"
+    -
+        id: "slkm-m-subway-labelcol-gap"
+        title: "Space between the divider and the first act"
+        description: "Moves the whole map to the right of the name column by this amount, so the first act does not start right at the divider. 0 = no extra space."
+        type: "variable-number-slider"
+        default: 24
+        min: 0
+        max: 120
+        step: 2
         format: "px"
     -
         id: "slkm-m-subway-labelcol-font"
@@ -1126,6 +1146,7 @@ body {
     --slkm-subway-pill-width: 1;
     --slkm-subway-spacing-factor: 1;
     --slkm-subway-labelcol-width: 160px;
+    --slkm-subway-labelcol-gap: 24px;
     --slkm-subway-labelcol-font: 15px;
     --slkm-subway-labelcol-weight: 700;
     --slkm-subway-labelcol-line-height: 1.15;
@@ -1394,13 +1415,14 @@ body:is(.slkm-subway-style.slkm-on-desktop:not(.is-mobile), .slkm-m-subway-style
 /* ---------- Subway: plotline name column ----------
    StoryLine sets width (160 px), font size (15 px), weight and nowrap
    inline, so these rules need !important. The SVG is shifted by the
-   width difference, so the tracks still start right of the column. */
+   width difference plus the adjustable gap, so the tracks start right of
+   the column with some space after the divider. */
 body:is(.slkm-subway-labelcol.slkm-on-desktop:not(.is-mobile), .slkm-m-subway-labelcol.slkm-on-mobile.is-mobile) .subway-map-wrapper > .subway-label-col {
     width: var(--slkm-subway-labelcol-width) !important;
 }
 
 body:is(.slkm-subway-labelcol.slkm-on-desktop:not(.is-mobile), .slkm-m-subway-labelcol.slkm-on-mobile.is-mobile) .subway-map-wrapper > svg {
-    margin-left: calc(var(--slkm-subway-labelcol-width) - 160px);
+    margin-left: calc(var(--slkm-subway-labelcol-width) - 160px + var(--slkm-subway-labelcol-gap));
 }
 
 /* Each name is centred on its line (StoryLine places its top 8 px above the
@@ -1494,6 +1516,7 @@ body {
     --slkm-m-subway-spacing-factor: 1;
     --slkm-m-structure-width: 960px;
     --slkm-m-subway-labelcol-width: 160px;
+    --slkm-m-subway-labelcol-gap: 24px;
     --slkm-m-subway-labelcol-font: 15px;
     --slkm-m-subway-labelcol-weight: 700;
     --slkm-m-subway-labelcol-line-height: 1.15;
@@ -1534,6 +1557,7 @@ body.is-mobile.slkm-on-mobile {
     --slkm-subway-spacing-factor: var(--slkm-m-subway-spacing-factor);
     --slkm-structure-width: var(--slkm-m-structure-width);
     --slkm-subway-labelcol-width: var(--slkm-m-subway-labelcol-width);
+    --slkm-subway-labelcol-gap: var(--slkm-m-subway-labelcol-gap);
     --slkm-subway-labelcol-font: var(--slkm-m-subway-labelcol-font);
     --slkm-subway-labelcol-weight: var(--slkm-m-subway-labelcol-weight);
     --slkm-subway-labelcol-line-height: var(--slkm-m-subway-labelcol-line-height);
