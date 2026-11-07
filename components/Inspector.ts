@@ -494,6 +494,7 @@ export class InspectorComponent {
             const val = arcCheckbox.checked;
             await this.sceneManager.updateScene(scene.filePath, { arcAnchor: val });
             scene.arcAnchor = val || undefined;
+            scene.arcPoint = val || undefined;
         });
         // Arc Point → realizing scene, in the same row as the checkbox (fork)
         renderRealizedByControl(arcRow, this.plugin.app, scene, () => this.sceneManager.getAllScenes());

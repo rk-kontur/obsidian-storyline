@@ -2,6 +2,24 @@
 
 Changes of this fork compared to the original StoryLine plugin by Jan Sandström. Each `## <version>` section is used as the initial text of the matching GitHub release; texts edited on GitHub (e.g. with screenshots) are never overwritten. Every release also carries `storyline-km-source.zip` (all source files that are new or changed compared to the original, without `main.js`) and `storyline-km.patch` (the full diff against the original).
 
+## 1.11.9-km.38
+
+**Rebased on StoryLine 1.11.9 by Jan Sandström**
+
+No new fork features. The fork now sits on upstream 1.11.9 and keeps all its changes (Volumes, Arc Points, off page plotlines, plotline colours, fixes).
+
+- **From upstream 1.11.9:** plotline ending scenes (`System/arcs.json`), `arcPoint` as the Arc Point key (older `arcAnchor` stays readable), new status colours with settings, scene titles no longer rename files automatically, writing history calendar, IME search fix, filename sync `(1)` fix, Android landscape safe area, Focus Text limited to the active editor, character alias matching.
+- **Merged:** the Arc points validator switch now also passes the plotline endings and defined acts to the Validator (`Validator.validate(scenes, options, arcs, definedActs)`). With Arc Points hidden, ended plotlines are still handled.
+- **Android status bar:** upstream 1.11.9 contains an almost identical solution to the fork's phone fix; the fork keeps its comments, the rules are the same.
+- **Rename plotline:** upstream's description handling (normalized names) replaces the fork's; the result is the same. Delete plotline removes the off page entry and the arc record.
+- **Inspector:** the Arc point checkbox sets `arcPoint` and `arcAnchor` in memory, so a cleared Arc Point is not shown as set.
+
+**How and where to use:** nothing changes for you; update through BRAT.
+
+**Files:**
+
+- `services/Validator.ts`, `views/StatsView.ts`, `views/StorylineView.ts`, `components/Inspector.ts`, `styles.css`, `manifest.json`
+
 ## 1.11.8-km.37
 
 **New: Arc points validator switch**
