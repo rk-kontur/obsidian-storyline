@@ -9,7 +9,7 @@ Changes of this fork compared to the original StoryLine plugin by Jan Sandström
 The fork now sits on upstream 1.11.9 and keeps all its changes (Volumes, Arc Points, off page plotlines, plotline colours, fixes).
 
 - **From upstream 1.11.9:** plotline ending scenes (`System/arcs.json`), `arcPoint` as the Arc Point key (older `arcAnchor` stays readable), new status colours with settings, scene titles no longer rename files automatically, writing history calendar, IME search fix, filename sync `(1)` fix, Android landscape safe area, Focus Text limited to the active editor, character alias matching.
-- **Phones:** upstream 1.11.9 contains the fork's status bar fix of 1.11.8-km.36 (same rules); the fork now uses upstream's version. If you use the StoryLine Advanced Settings snippet, keep **Mobile values → Mobile only → Keep StoryLine below the status bar** switched off.
+- **Phones:** upstream 1.11.9 contains both phone fixes of 1.11.8-km.36 (StoryLine below the status bar, Manuscript toolbar; same rules); the fork now uses upstream's versions. If you use the StoryLine Advanced Settings snippet, keep **Mobile values → Mobile only → Keep StoryLine below the status bar** switched off.
 - **Rename plotline:** upstream's description handling replaces the fork's (same result). Delete plotline removes both the off page entry and the arc record.
 - **Statistics → Warnings with plotline endings:**
   - With a volume selected, the plotline checks only count the acts of that volume. Without this, every plotline in an earlier volume was reported as "last seen in Act 3 but story continues to Act 9".
@@ -30,7 +30,7 @@ The fork now sits on upstream 1.11.9 and keeps all its changes (Volumes, Arc Poi
 - `views/StorylineView.ts` (merge: rename/delete plotline, realized Arc Point lanes)
 - `utils/arcRealization.ts` (normalized plotline lanes)
 - `components/Inspector.ts` (Arc point checkbox)
-- `styles.css` (phone block now as in upstream)
+- `styles.css` (phone rules now as in upstream, fork duplicates removed)
 - `manifest.json`
 
 ### The changes so far
@@ -137,10 +137,10 @@ Manage story structure including Volume manager
 
 #### Fixes
 
-- **Manuscript toolbar on phones:** the long text squeezed the toolbar to a few pixels, so the view switcher slid behind the filter bar. Toolbar and filter bar now keep their full height. (The status bar fix for phones of 1.11.8-km.36 is part of StoryLine 1.11.9 now.)
 - **Manuscript with Pane Relief "Maximize active tab":** clicking into a scene no longer blanks the Manuscript or resets its scroll position.
 - **Plot Grid keyboard:** arrow keys and Tab follow the visible rows (with sorting, filters or collapsed sections), and the highlighted row header matches the selection.
 - **Rename plotline onto an existing one:** scenes no longer get the same tag twice. (Keeping the target's description is part of StoryLine 1.11.9 now.)
+- (Both phone fixes of 1.11.8-km.36, StoryLine below the status bar and the Manuscript toolbar, are part of StoryLine 1.11.9 now.)
 - **Delete plotline:** the dialog counts every scene that loses the tag, including inactive scenes and corkboard notes.
 - **Timeline:** the POV character is no longer listed twice on linear and swimlane cards.
 - **Subway map:** plotline colours no longer shift when the Arc Point filter is toggled or a plotline is hidden.
