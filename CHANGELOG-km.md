@@ -13,7 +13,7 @@ The fork now sits on upstream 1.11.9 and keeps all its changes (Volumes, Arc Poi
 - **Rename plotline:** upstream's description handling replaces the fork's (same result). Delete plotline removes both the off page entry and the arc record.
 - **Statistics → Warnings with plotline endings:**
   - With a volume selected, the plotline checks only count the acts of that volume. Without this, every plotline in an earlier volume was reported as "last seen in Act 3 but story continues to Act 9".
-  - With **Arc points** switched to hidden, the acts that only Arc Points use no longer count, and a plotline whose ending scene is an Arc Point stays ended.
+  - With **Arc points** switched to hidden, only the acts of the project structure and of the checked scenes count (acts used only by Arc Points, inactive scenes or corkboard notes do not), and a plotline whose ending scene is an Arc Point stays ended.
   - With a volume selected, a plotline that ended in an earlier volume stays ended, as in "All volumes".
 - **Subway map:** realized Arc Points also work when a plotline tag is written in different case or with spaces (upstream 1.11.9 shows these as one line).
 - **Inspector:** the Arc point checkbox updates `arcPoint` and `arcAnchor` in memory, so a cleared Arc Point is not shown as set.

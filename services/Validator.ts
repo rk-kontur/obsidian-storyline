@@ -307,7 +307,7 @@ export class Validator {
                         if (ending) {
                             const endSeq = ending.sequence ?? 0;
                             endpointIndex = sorted.reduce((last, scene, i) => ((scene.sequence ?? 0) <= endSeq ? i : last), -1);
-                            if (endpointIndex < 0) continue; // every tagged scene comes after the ending
+                            if (endpointIndex < 0) continue; // every checked scene comes after the ending
                         }
                     }
                 } else if (arc?.ended === true && allTaggedScenes.length > 0) {

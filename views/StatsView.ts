@@ -2460,11 +2460,12 @@ export class StatsView extends ItemView {
                 ? this.sceneManager.getDefinedActs()
                 : this.sceneManager.activeProject?.definedActs ?? []);
             // fork: with a volume selected, validate with cross-volume link partners
+            const projectScenes = this.sceneManager.getAllScenes().filter(sc => !sc.inactive && !sc.corkboardNote);
             const adjusted = adjustOffPageWarnings( // fork: off page lines - no act gap warnings, unrealized stages instead
-                validateForScope(allScenes, this.sceneManager.getAllScenes().filter(sc => !sc.inactive && !sc.corkboardNote),
+                validateForScope(allScenes, projectScenes,
                     sc => Validator.validate(sc, this.plugin.arcManager.getAll(), definedActs, {
                         excludeArcPoints: !includeArcPoints,
-                        endpointScenes: this.sceneManager.getAllScenes(), // fork: plotline endings outside the checked scenes
+                        endpointScenes: projectScenes, // fork: plotline endings outside the checked scenes
                     })), this.kmOffPage);
             // fork: the off page notes list arc points (stages), so the arc points switch hides them too
             const warnings = includeArcPoints ? adjusted : adjusted.filter(w => w.category !== 'Off page');
