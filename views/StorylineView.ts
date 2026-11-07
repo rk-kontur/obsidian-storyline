@@ -692,7 +692,7 @@ export class StorylineView extends ItemView {
 
             for (const col of cols) {
                 const x = colX(col);
-                const scene = realizedLaneScene.get(`${pk}|${col}`) ?? orderedScenes[col];
+                const scene = realizedLaneScene.get(`${normalizePlotlineName(pk)}|${col}`) ?? orderedScenes[col];
 
                 // Node shape: diamond for Arc Points, circle for regular scenes
                 const isArcPoint = !!scene.arcAnchor;

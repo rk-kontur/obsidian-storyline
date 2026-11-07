@@ -206,8 +206,7 @@ body.theme-dark {
 
 @media (max-width: 768px), (max-height: 500px) and (hover: none) {
     /* Obsidian's mobile custom-view header can expand into a large empty
-       region above StoryLine. StoryLine already renders its own toolbar.
-       The height query covers phones in landscape. */
+       region above StoryLine. StoryLine already renders its own toolbar. */
     body.is-mobile .workspace-leaf-content[data-type^="story-line-"] > .view-header {
         display: none !important;
     }
@@ -217,9 +216,6 @@ body.theme-dark {
         margin: 0 !important;
     }
 
-    /* On phones Obsidian puts the status bar inset into the view header,
-       which is hidden above, so the view content takes it over. Only in the
-       main area: the sidebar drawers already keep clear of the status bar. */
     body.is-phone .mod-root .workspace-leaf-content[data-type^="story-line-"] > .view-content {
         padding-top: var(--safe-area-inset-top, 0px) !important;
     }
@@ -251,13 +247,6 @@ body.theme-dark {
 
     .sl-mobile .story-line-toolbar::before {
         height: 0;
-    }
-
-    /* Cover the status bar strip above the sticky toolbar, so scrolled
-       content does not show through behind the status bar. A shadow,
-       because the toolbar clips its ::before on phones (overflow-x). */
-    body.is-phone .mod-root .sl-mobile .story-line-toolbar {
-        box-shadow: 0 calc(var(--safe-area-inset-top, 0px) / -2) 0 calc(var(--safe-area-inset-top, 0px) / 2) var(--background-primary);
     }
 }
 

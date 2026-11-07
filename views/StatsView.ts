@@ -3,7 +3,7 @@ import { SceneManager } from '../services/SceneManager';
 import { renderVolumeStatsSection } from '../components/VolumeStatsSection';
 import { getProjectVolumes } from '../utils/volumes';
 import { openStructureDialog } from '../services/ForkCommands';
-import { getVolumeScope, renderVolumeScopeSelect, volumeScopePredicate } from '../utils/volumeScope'; // fork: shared volume scope
+import { getVolumeScope, renderVolumeScopeSelect, scopeActs, volumeScopePredicate } from '../utils/volumeScope'; // fork: shared volume scope
 import { adjustOffPageWarnings, computeOffPageCoverage, offPageCardValue, renderOffPageCoverage, type OffPageLineCoverage } from '../components/OffPageStatsSection';
 import { getOffPageLines } from '../utils/pageZones';
 import { getStatsScope, scopedDeadline, scopedWordGoal, statsHeading, validateForScope, withLinkPartners } from '../utils/volumeStatsScope';
@@ -2453,11 +2453,19 @@ export class StatsView extends ItemView {
                     void this.plugin.saveSettings();
                 });
             }
+            // fork: acts of the selected volume only; with Arc Points hidden, their acts
+            // do not count (the Validator adds the acts of the checked scenes itself)
+            const projectPath = this.sceneManager.activeProject?.filePath;
+            const definedActs = scopeActs(this.app, projectPath, includeArcPoints
+                ? this.sceneManager.getDefinedActs()
+                : this.sceneManager.activeProject?.definedActs ?? []);
             // fork: with a volume selected, validate with cross-volume link partners
             const adjusted = adjustOffPageWarnings( // fork: off page lines - no act gap warnings, unrealized stages instead
                 validateForScope(allScenes, this.sceneManager.getAllScenes().filter(sc => !sc.inactive && !sc.corkboardNote),
-                    sc => Validator.validate(sc, { excludeArcPoints: !includeArcPoints },
-                        this.plugin.arcManager.getAll(), this.sceneManager.getDefinedActs())), this.kmOffPage);
+                    sc => Validator.validate(sc, this.plugin.arcManager.getAll(), definedActs, {
+                        excludeArcPoints: !includeArcPoints,
+                        endpointScenes: this.sceneManager.getAllScenes(), // fork: plotline endings outside the checked scenes
+                    })), this.kmOffPage);
             // fork: the off page notes list arc points (stages), so the arc points switch hides them too
             const warnings = includeArcPoints ? adjusted : adjusted.filter(w => w.category !== 'Off page');
             if (warnings.length === 0) {

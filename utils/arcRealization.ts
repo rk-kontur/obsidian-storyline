@@ -21,6 +21,7 @@ import type { App } from 'obsidian';
 import { TFile } from 'obsidian';
 import type { Scene } from '../models/Scene';
 import { linkName, linkpathOf } from './linkKey';
+import { normalizePlotlineName } from '../services/ArcManager';
 
 export const REALIZED_BY_KEY = 'realizedBy';
 
@@ -84,6 +85,7 @@ export function removeRealizedStations(ordered: Scene[], realizations: Map<strin
 /**
  * Subway helper. Call after `colOf` is built: gives every realized Arc Point
  * the column of its realizing scene. Returns a lookup "lane|col" → Arc Point
+ * (lane = normalized plotline name, see normalizePlotlineName)
  * so the node renderer can draw the diamond instead of the scene node on
  * the Arc Point's own lanes.
  */
@@ -96,10 +98,13 @@ export function aliasRealizedColumns(
         const col = colOf.get(target.filePath);
         if (col === undefined) continue;
         colOf.set(arcPath, col);
-        // On a lane the target scene also sits on, the scene's node wins (no diamond over it)
+        // On a lane the target scene also sits on, the scene's node wins (no diamond over it).
+        // Lanes join tags that differ only in case or spaces, so compare and key normalized.
+        const targetLanes = new Set((target.tags ?? []).map(normalizePlotlineName));
         for (const tag of arc.tags ?? []) {
-            if (target.tags?.includes(tag)) continue;
-            laneScene.set(`${tag}|${col}`, arc);
+            const lane = normalizePlotlineName(tag);
+            if (!lane || targetLanes.has(lane)) continue;
+            laneScene.set(`${lane}|${col}`, arc);
         }
     }
     return laneScene;
@@ -120,7 +125,7 @@ export function splitRealizedLanes(
     const regular: number[] = [];
     const arcLanes: number[] = [];
     for (const l of lanes) {
-        (laneScene.has(`${plotlineKeys[l]}|${col}`) ? arcLanes : regular).push(l);
+        (laneScene.has(`${normalizePlotlineName(plotlineKeys[l])}|${col}`) ? arcLanes : regular).push(l);
     }
     return { lanes: regular, arcLanes };
 }

@@ -33,6 +33,14 @@ const EXEMPT_FROM_GAP: Set<TimelineMode | undefined> = new Set([
     'timeskip', 'dream', 'mythic',
 ]);
 
+/** Options of Validator.validate (fork: storyline-km). */
+export interface ValidateOptions {
+    /** Leave Arc Points out of the scene checks (Statistics → Warnings switch). */
+    excludeArcPoints?: boolean;
+    /** All scenes of the story, to find a plotline's ending scene that is not among the checked scenes. */
+    endpointScenes?: readonly Scene[];
+}
+
 /**
  * Validates story consistency and detects potential plot holes.
  *
@@ -51,9 +59,9 @@ export class Validator {
      */
     static validate(
         scenes: Scene[],
-        options: { excludeArcPoints?: boolean } = {},
         arcs: readonly ArcRecord[] = [],
         definedActs: number[] = [],
+        options: ValidateOptions = {},
     ): PlotWarning[] {
         if (scenes.length === 0) return [];
 
@@ -66,7 +74,7 @@ export class Validator {
 
         this.checkTimeline(checked, warnings);
         this.checkCharacters(checked, warnings);
-        this.checkPlotlines(checked, warnings, arcs, definedActs);
+        this.checkPlotlines(checked, warnings, arcs, definedActs, options.endpointScenes);
         if (options.excludeArcPoints) {
             const setupPayoff: PlotWarning[] = [];
             this.checkSetupPayoff(scenes, setupPayoff);
@@ -261,6 +269,7 @@ export class Validator {
         warnings: PlotWarning[],
         arcs: readonly ArcRecord[],
         definedActs: number[],
+        endpointScenes?: readonly Scene[],
     ): void {
         const sorted = [...scenes].sort((a, b) => (a.sequence ?? 0) - (b.sequence ?? 0));
 
@@ -290,6 +299,17 @@ export class Validator {
                 let endpointIndex = -1;
                 if (arc?.endedAtSceneId) {
                     endpointIndex = sorted.findIndex(scene => matchesArcScenePath(scene.filePath, arc.endedAtSceneId!));
+                    if (endpointIndex < 0 && endpointScenes) {
+                        // The ending scene is not among the checked scenes (an
+                        // Arc Point left out, or another volume): keep the tagged
+                        // scenes up to its position in the whole story.
+                        const ending = endpointScenes.find(scene => matchesArcScenePath(scene.filePath, arc.endedAtSceneId!));
+                        if (ending) {
+                            const endSeq = ending.sequence ?? 0;
+                            endpointIndex = sorted.reduce((last, scene, i) => ((scene.sequence ?? 0) <= endSeq ? i : last), -1);
+                            if (endpointIndex < 0) continue; // every tagged scene comes after the ending
+                        }
+                    }
                 } else if (arc?.ended === true && allTaggedScenes.length > 0) {
                     endpointIndex = sorted.indexOf(allTaggedScenes[allTaggedScenes.length - 1]);
                 }

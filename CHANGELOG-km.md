@@ -6,19 +6,32 @@ Changes of this fork compared to the original StoryLine plugin by Jan Sandström
 
 **Rebased on StoryLine 1.11.9 by Jan Sandström**
 
-No new fork features. The fork now sits on upstream 1.11.9 and keeps all its changes (Volumes, Arc Points, off page plotlines, plotline colours, fixes).
+The fork now sits on upstream 1.11.9 and keeps all its changes (Volumes, Arc Points, off page plotlines, plotline colours, fixes).
 
 - **From upstream 1.11.9:** plotline ending scenes (`System/arcs.json`), `arcPoint` as the Arc Point key (older `arcAnchor` stays readable), new status colours with settings, scene titles no longer rename files automatically, writing history calendar, IME search fix, filename sync `(1)` fix, Android landscape safe area, Focus Text limited to the active editor, character alias matching.
-- **Merged:** the Arc points validator switch now also passes the plotline endings and defined acts to the Validator (`Validator.validate(scenes, options, arcs, definedActs)`). With Arc Points hidden, ended plotlines are still handled.
-- **Android status bar:** upstream 1.11.9 contains an almost identical solution to the fork's phone fix; the fork keeps its comments, the rules are the same.
-- **Rename plotline:** upstream's description handling (normalized names) replaces the fork's; the result is the same. Delete plotline removes the off page entry and the arc record.
-- **Inspector:** the Arc point checkbox sets `arcPoint` and `arcAnchor` in memory, so a cleared Arc Point is not shown as set.
+- **Phones:** upstream 1.11.9 contains the fork's status bar fix of 1.11.8-km.36 (same rules); the fork now uses upstream's version. If you use the StoryLine Advanced Settings snippet, keep **Mobile values → Mobile only → Keep StoryLine below the status bar** switched off.
+- **Rename plotline:** upstream's description handling replaces the fork's (same result). Delete plotline removes both the off page entry and the arc record.
+- **Statistics → Warnings with plotline endings:**
+  - With a volume selected, the plotline checks only count the acts of that volume. Without this, every plotline in an earlier volume was reported as "last seen in Act 3 but story continues to Act 9".
+  - With **Arc points** switched to hidden, the acts that only Arc Points use no longer count, and a plotline whose ending scene is an Arc Point stays ended.
+  - With a volume selected, a plotline that ended in an earlier volume stays ended, as in "All volumes".
+- **Subway map:** realized Arc Points also work when a plotline tag is written in different case or with spaces (upstream 1.11.9 shows these as one line).
+- **Inspector:** the Arc point checkbox updates `arcPoint` and `arcAnchor` in memory, so a cleared Arc Point is not shown as set.
 
-**How and where to use:** nothing changes for you; update through BRAT.
+**How and where to use:**
+
+1. Update through BRAT. Nothing else changes for you.
+2. To set where a plotline ends (new in upstream 1.11.9): open **Plotlines** (list), and in the plotline's section change **Ending scene** from **Active** to the scene where it resolves. **Statistics → Warnings** then no longer reports that plotline as dropped, also with a volume selected or with Arc Points hidden.
 
 **Files:**
 
-- `services/Validator.ts`, `views/StatsView.ts`, `views/StorylineView.ts`, `components/Inspector.ts`, `styles.css`, `manifest.json`
+- `services/Validator.ts` (`validate()` options `excludeArcPoints`, `endpointScenes`)
+- `views/StatsView.ts` (`renderWarnings()`: acts per volume, plotline endings)
+- `views/StorylineView.ts` (merge: rename/delete plotline, realized Arc Point lanes)
+- `utils/arcRealization.ts` (normalized plotline lanes)
+- `components/Inspector.ts` (Arc point checkbox)
+- `styles.css` (phone block now as in upstream)
+- `manifest.json`
 
 ### The changes so far
 
